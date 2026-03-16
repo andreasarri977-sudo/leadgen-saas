@@ -7,24 +7,26 @@ import { Card } from '@/components/ui/card';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const StatCard = ({ icon: Icon, label, value, trend, color }) => (
-  <Card className="stat-card hover:shadow-md transition-shadow" data-testid={`stat-card-${label.toLowerCase().replace(' ', '-')}`}>
-    <div className="flex items-start justify-between">
-      <div className={`p-3 rounded-lg ${color}`}>
-        <Icon size={24} className="text-white" />
-      </div>
-      {trend && (
-        <div className="flex items-center gap-1 text-green-600 text-sm font-medium">
-          <TrendingUp size={16} />
-          <span>{trend}</span>
+const StatCard = ({ icon: Icon, label, value, trend, color, href }) => (
+  <Link to={href}>
+    <Card className="stat-card hover:shadow-md transition-shadow cursor-pointer" data-testid={`stat-card-${label.toLowerCase().replace(' ', '-')}`}>
+      <div className="flex items-start justify-between">
+        <div className={`p-3 rounded-lg ${color}`}>
+          <Icon size={24} className="text-white" />
         </div>
-      )}
-    </div>
-    <div className="mt-4">
-      <p className="text-neutral-600 text-sm font-medium">{label}</p>
-      <p className="text-4xl font-bold mt-1 tracking-tight">{value}</p>
-    </div>
-  </Card>
+        {trend && (
+          <div className="flex items-center gap-1 text-green-600 text-sm font-medium">
+            <TrendingUp size={16} />
+            <span>{trend}</span>
+          </div>
+        )}
+      </div>
+      <div className="mt-4">
+        <p className="text-neutral-600 text-sm font-medium">{label}</p>
+        <p className="text-4xl font-bold mt-1 tracking-tight">{value}</p>
+      </div>
+    </Card>
+  </Link>
 );
 
 export default function Dashboard() {
