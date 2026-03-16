@@ -277,6 +277,9 @@ async def search_companies(request: SearchRequest):
                     return []
                 
                 leads = []
+                filtered_by_reviews = 0
+                filtered_by_website = 0
+                
                 for idx, place in enumerate(places):
                     try:
                         rating = place.get('rating', 0)
@@ -286,10 +289,16 @@ async def search_companies(request: SearchRequest):
                         
                         # Applica filtri
                         if reviews_count < request.min_reviews or rating < request.min_rating:
-                            logger.info(f"Posto {idx+1} filtrato (reviews o rating)")
+                            logger.info(f"Posto {idx+1} filtrato (reviews={reviews_count} < {request.min_reviews} o rating={rating} < {request.min_rating})")
+                            filtered_by_reviews += 1
                             continue
                         
                         has_website = place.get('websiteUri') is not None
+                        
+                        if has_website:
+                            logger.info(f"Posto {idx+1} ha già sito web: {place.get('websiteUri')}")
+                            filtered_by_website += 1
+                            continue
                         
                         if not has_website:
                             place_id = place.get('id')
