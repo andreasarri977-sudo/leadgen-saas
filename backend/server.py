@@ -192,11 +192,14 @@ async def root():
 
 @api_router.post("/search/companies", response_model=List[Lead])
 async def search_companies(request: SearchRequest):
-    if not GOOGLE_MAPS_API_KEY:
-        raise HTTPException(status_code=400, detail="Google Maps API key non configurata. Vai su https://console.cloud.google.com per crearla.")
+    settings = await db.api_settings.find_one({"setting_id": "api_settings"}, {"_id": 0})
+    api_key = settings.get('google_maps_api_key') if settings else None
+    
+    if not api_key and not GOOGLE_MAPS_API_KEY:
+        raise HTTPException(status_code=400, detail="Google Maps API key non configurata. Vai su Impostazioni API per configurarla.")
     
     try:
-        gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
+        gmaps = googlemaps.Client(key=api_key or GOOGLE_MAPS_API_KEY)
         query = f"{request.category} in {request.city}, {request.country}"
         
         places_result = gmaps.places(query=query)
