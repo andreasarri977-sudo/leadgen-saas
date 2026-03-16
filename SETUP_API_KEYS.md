@@ -33,10 +33,8 @@ Per utilizzare tutte le funzionalità di LeadHunter Pro, devi configurare le seg
 
 ### Passo 2: Abilita le API necessarie
 1. Nel menu laterale, vai su "API e servizi" → "Libreria"
-2. Cerca e abilita queste API:
-   - **Maps JavaScript API**
-   - **Places API** (obbligatoria per ricerca aziende)
-   - **Geocoding API** (opzionale, consigliata)
+2. Cerca e abilita questa API:
+   - **Places API (New)** (OBBLIGATORIA - NON la versione legacy)
 
 ### Passo 3: Crea le credenziali
 1. Vai su "API e servizi" → "Credenziali"
