@@ -824,6 +824,72 @@ async def get_api_settings():
     
     return ApiSettings(**settings)
 
+@api_router.post("/settings/test-google-api")
+async def test_google_api():
+    """Test Google Places API con richiesta semplice"""
+    settings = await db.api_settings.find_one({"setting_id": "api_settings"}, {"_id": 0})
+    api_key = settings.get('google_maps_api_key') if settings else GOOGLE_MAPS_API_KEY
+    
+    if not api_key:
+        return {
+            "success": False,
+            "error": "Google Maps API Key non configurata"
+        }
+    
+    try:
+        search_url = "https://places.googleapis.com/v1/places:searchText"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": api_key,
+            "X-Goog-FieldMask": "places.id,places.displayName"
+        }
+        
+        search_body = {
+            "textQuery": "restaurant in Paris, France"
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(search_url, json=search_body, headers=headers) as response:
+                status_code = response.status
+                response_text = await response.text()
+                
+                if status_code == 200:
+                    data = await response.json()
+                    places_count = len(data.get('places', []))
+                    return {
+                        "success": True,
+                        "message": f"API funzionante! Trovati {places_count} ristoranti a Parigi.",
+                        "status_code": status_code,
+                        "places_found": places_count
+                    }
+                else:
+                    # Determina errore specifico
+                    error_msg = "Errore sconosciuto"
+                    if status_code == 403:
+                        error_msg = "API Key non valida o Places API (New) non abilitata"
+                    elif status_code == 429:
+                        error_msg = "Quota API superata"
+                    elif "BILLING" in response_text.upper():
+                        error_msg = "Billing non configurato su Google Cloud"
+                    elif "PERMISSION" in response_text.upper():
+                        error_msg = "Permessi API insufficienti"
+                    
+                    return {
+                        "success": False,
+                        "error": error_msg,
+                        "status_code": status_code,
+                        "response": response_text[:300],
+                        "instructions": "Vai su https://console.cloud.google.com per risolvere"
+                    }
+    
+    except Exception as e:
+        logger.error(f"Errore test API: {str(e)}")
+        return {
+            "success": False,
+            "error": f"Errore connessione: {str(e)}"
+        }
+
 @api_router.put("/settings/api")
 async def update_api_settings(settings_update: ApiSettingsUpdate):
     settings = await db.api_settings.find_one({"setting_id": "api_settings"})
