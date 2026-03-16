@@ -111,11 +111,11 @@ class LeadHunterAPITester:
 
     def test_update_lead_status_invalid(self):
         """Test updating lead status for non-existent lead"""
-        return self.run_test("Update Lead Status (Invalid)", "PATCH", "api/leads/invalid-id/status", 404, data={"status": "contattato"})
+        return self.run_test("Update Lead Status (Invalid)", "PATCH", "api/leads/invalid-id/status?status=contattato", 404)
 
     def test_generate_email_invalid_lead(self):
         """Test email generation with invalid lead ID"""
-        return self.run_test("Generate Email (Invalid Lead)", "POST", "api/email/generate", 404, params={"lead_id": "invalid", "demo_url": "https://test.com"})
+        return self.run_test("Generate Email (Invalid Lead)", "POST", "api/email/generate?lead_id=invalid&demo_url=https://test.com", 404)
 
     def test_send_email_no_api_key(self):
         """Test email sending without Resend API key"""
