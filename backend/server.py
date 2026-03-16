@@ -91,6 +91,17 @@ class DashboardStats(BaseModel):
     clients_acquired: int
     new_leads: int
 
+class ApiSettings(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    setting_id: str = "api_settings"
+    google_maps_api_key: Optional[str] = None
+    resend_api_key: Optional[str] = None
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class ApiSettingsUpdate(BaseModel):
+    google_maps_api_key: Optional[str] = None
+    resend_api_key: Optional[str] = None
+
 LANGUAGE_MAP = {
     "IT": "italiano",
     "FR": "francese",
