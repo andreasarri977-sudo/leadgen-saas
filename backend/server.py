@@ -440,6 +440,9 @@ async def publish_demo(demo_id: str):
         )
         
         raise HTTPException(status_code=500, detail=f"Errore pubblicazione: {str(e)}")
+
+@api_router.get("/demos", response_model=List[DemoSite])
+async def get_demos():
     demos = await db.demo_sites.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     
     for demo in demos:
