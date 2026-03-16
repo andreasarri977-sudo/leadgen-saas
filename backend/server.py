@@ -328,18 +328,40 @@ async def generate_demo_site(request: GenerateDemoRequest):
     content = await generate_business_content(business_name, category, language)
     logo_base64 = await generate_logo(business_name)
     
-    demo_url = f"https://{business_name.lower().replace(' ', '-')}-demo.vercel.app"
+    # URL interno (non Vercel)
+    demo_id = str(uuid.uuid4())
+    demo_url = f"/demo/{demo_id}"
+    
+    # Salva dati completi azienda per rendering
+    business_data = {
+        "name": lead.get('name'),
+        "category": lead.get('category'),
+        "address": lead.get('address'),
+        "city": lead.get('city'),
+        "country": lead.get('country'),
+        "phone": lead.get('phone'),
+        "rating": lead.get('rating'),
+        "reviews_count": lead.get('reviews_count'),
+        "hours": lead.get('hours'),
+        "photos": lead.get('photos', []),
+        "google_maps_link": lead.get('google_maps_link'),
+        "language": language
+    }
     
     demo = DemoSite(
+        demo_id=demo_id,
         lead_id=request.lead_id,
         business_name=business_name,
         demo_url=demo_url,
         logo_base64=logo_base64,
-        content=content
+        content=content,
+        business_data=business_data,
+        publish_status="draft"
     )
     
     demo_dict = demo.model_dump()
     demo_dict['created_at'] = demo_dict['created_at'].isoformat()
+    demo_dict['published_at'] = None
     await db.demo_sites.insert_one(demo_dict)
     
     await db.leads.update_one(
