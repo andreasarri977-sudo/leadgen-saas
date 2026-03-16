@@ -1,34 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Mail, Send, Copy, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from 'sonner';
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
-
-export default function EmailManager() {
-  const [leads, setLeads] = useState([]);
-  const [selectedLead, setSelectedLead] = useState('');
-  const [emailData, setEmailData] = useState({
-    recipient_email: '',
-    subject: '',
-    html_content: ''
-  });
-  const [loading, setLoading] = useState(false);
-  const [sending, setSending] = useState(false);
-
-  useEffect(() => {
-    loadLeads();
-  }, []);
-
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Mail, Send, Copy, Loader2, MessageCircle, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -177,14 +148,12 @@ export default function EmailManager() {
       return;
     }
 
-    // Normalizza numero per WhatsApp (rimuovi spazi e caratteri speciali)
     const phoneNumber = selectedLeadData.phone.replace(/[^0-9+]/g, '');
     const encodedMessage = encodeURIComponent(whatsappMessage);
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
     
     window.open(whatsappUrl, '_blank');
     
-    // Aggiorna stato lead
     if (selectedLead) {
       axios.patch(`${API}/leads/${selectedLead}/status?status=contattato`);
     }
@@ -207,7 +176,6 @@ export default function EmailManager() {
       <h1 className="text-5xl font-bold mb-8 tracking-tight">Gestione Comunicazioni</h1>
 
       <div className="grid grid-cols-1 gap-6">
-        {/* Selezione Lead */}
         <Card className="p-6">
           <h2 className="text-2xl font-bold mb-4 tracking-tight">Seleziona Lead</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -240,7 +208,6 @@ export default function EmailManager() {
           </div>
         </Card>
 
-        {/* Tabs Email / WhatsApp */}
         <Card className="p-6">
           <Tabs defaultValue="email" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
@@ -254,7 +221,6 @@ export default function EmailManager() {
               </TabsTrigger>
             </TabsList>
 
-            {/* Tab Email */}
             <TabsContent value="email" className="space-y-6">
               <div>
                 <Button
@@ -348,13 +314,12 @@ export default function EmailManager() {
               </Button>
             </TabsContent>
 
-            {/* Tab WhatsApp */}
             <TabsContent value="whatsapp" className="space-y-6">
               {!selectedLeadData?.phone ? (
                 <div className="p-6 bg-amber-50 border-2 border-amber-200 rounded-lg text-center">
                   <Phone size={48} className="mx-auto mb-4 text-amber-600" />
                   <p className="text-amber-800 font-semibold mb-2">Numero di telefono non disponibile</p>
-                  <p className="text-sm text-amber-700">Questo lead non ha un numero di telefono. Usa l'email o cerca il contatto manualmente.</p>
+                  <p className="text-sm text-amber-700">Questo lead non ha un numero di telefono. Usa email o cerca il contatto manualmente.</p>
                 </div>
               ) : (
                 <>
@@ -426,7 +391,7 @@ export default function EmailManager() {
                           <strong>ℹ️ Come funziona:</strong>
                         </p>
                         <p className="text-sm text-blue-700 mt-2">
-                          Cliccando "Apri Chat WhatsApp" si aprirà WhatsApp Web o l'app (se su mobile) con il messaggio già precompilato. 
+                          Cliccando "Apri Chat WhatsApp" si aprirà WhatsApp Web o app con il messaggio precompilato. 
                           Potrai rivederlo prima di inviare.
                         </p>
                       </div>
@@ -438,7 +403,6 @@ export default function EmailManager() {
           </Tabs>
         </Card>
 
-        {/* Info Demo URL */}
         {demoUrl && (
           <Card className="p-4 bg-neutral-50">
             <p className="text-sm text-neutral-600 mb-1">Link demo incluso nei messaggi:</p>
@@ -447,127 +411,6 @@ export default function EmailManager() {
             </a>
           </Card>
         )}
-      </div>
-    </div>
-  );
-}
-    <div data-testid="email-manager-page">
-      <h1 className="text-5xl font-bold mb-8 tracking-tight">Gestione Email</h1>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6">
-          <h2 className="text-2xl font-bold mb-6 tracking-tight">Genera Email</h2>
-
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="lead-select">Seleziona Lead</Label>
-              <Select value={selectedLead} onValueChange={setSelectedLead}>
-                <SelectTrigger data-testid="select-lead" className="mt-1">
-                  <SelectValue placeholder="Scegli un lead..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {leads.map((lead) => (
-                    <SelectItem key={lead.lead_id} value={lead.lead_id}>
-                      {lead.name} - {lead.city}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button
-              data-testid="generate-email-template-button"
-              onClick={handleGenerateEmail}
-              disabled={loading || !selectedLead}
-              className="w-full bg-blue-600 hover:bg-blue-700"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 animate-spin" size={16} />
-                  Generazione...
-                </>
-              ) : (
-                <>
-                  <Mail className="mr-2" size={16} />
-                  Genera Email
-                </>
-              )}
-            </Button>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold tracking-tight">Invia Email</h2>
-            {emailData.html_content && (
-              <Button
-                data-testid="copy-email-button"
-                onClick={copyToClipboard}
-                variant="ghost"
-                size="sm"
-              >
-                <Copy size={16} />
-              </Button>
-            )}
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="recipient">Email Destinatario</Label>
-              <Input
-                id="recipient"
-                data-testid="input-recipient-email"
-                type="email"
-                placeholder="email@esempio.com"
-                value={emailData.recipient_email}
-                onChange={(e) => setEmailData({ ...emailData, recipient_email: e.target.value })}
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="subject">Oggetto</Label>
-              <Input
-                id="subject"
-                data-testid="input-subject"
-                value={emailData.subject}
-                onChange={(e) => setEmailData({ ...emailData, subject: e.target.value })}
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="content">Contenuto</Label>
-              <Textarea
-                id="content"
-                data-testid="textarea-email-content"
-                rows={12}
-                value={emailData.html_content}
-                onChange={(e) => setEmailData({ ...emailData, html_content: e.target.value })}
-                className="mt-1 font-mono text-sm"
-              />
-            </div>
-
-            <Button
-              data-testid="send-email-button"
-              onClick={handleSendEmail}
-              disabled={sending}
-              className="w-full bg-green-600 hover:bg-green-700"
-            >
-              {sending ? (
-                <>
-                  <Loader2 className="mr-2 animate-spin" size={16} />
-                  Invio in corso...
-                </>
-              ) : (
-                <>
-                  <Send className="mr-2" size={16} />
-                  Invia Email
-                </>
-              )}
-            </Button>
-          </div>
-        </Card>
       </div>
     </div>
   );
