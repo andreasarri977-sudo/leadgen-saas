@@ -1,10 +1,45 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { MapPin, Phone, Clock, Star, ExternalLink, Mail, Globe } from 'lucide-react';
+import { MapPin, Phone, Clock, Star, ExternalLink, Mail, Globe, Menu as MenuIcon, X } from 'lucide-react';
+import Lightbox from 'yet-another-react-lightbox';
+import Zoom from 'yet-another-react-lightbox/plugins/zoom';
+import 'yet-another-react-lightbox/styles.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// Filtra recensioni inappropriate
+const filterReviews = (reviews, targetLanguage) => {
+  if (!reviews || reviews.length === 0) return [];
+  
+  const inappropriateKeywords = [
+    'sex', 'porn', 'xxx', 'fuck', 'shit', 'damn', 'hell',
+    'sesso', 'porno', 'cazzo', 'merda', 'culo',
+    'sexe', 'putain', 'merde', 'bordel'
+  ];
+  
+  return reviews.filter(review => {
+    const text = review.text?.toLowerCase() || '';
+    
+    // Filtra contenuti volgari
+    if (inappropriateKeywords.some(keyword => text.includes(keyword))) {
+      return false;
+    }
+    
+    // Filtra recensioni troppo corte o spam
+    if (text.length < 10 || text.includes('spam') || text.includes('fake')) {
+      return false;
+    }
+    
+    // Filtra rating troppo bassi (< 3)
+    if (review.rating < 3) {
+      return false;
+    }
+    
+    return true;
+  });
+};
 
 // 5 varianti di stile deterministiche
 const STYLE_VARIANTS = [
@@ -50,7 +85,6 @@ const STYLE_VARIANTS = [
   }
 ];
 
-// Seleziona stile deterministico da place_id
 const getStyleFromPlaceId = (placeId) => {
   if (!placeId) return STYLE_VARIANTS[0];
   const hash = placeId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -61,10 +95,28 @@ export default function DemoPreview() {
   const { demoId } = useParams();
   const [demo, setDemo] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrollY, setScrollY] = useState(0);
 
   useEffect(() => {
     loadDemo();
   }, [demoId]);
+
+  // Salva posizione scroll prima di aprire lightbox
+  const handleOpenLightbox = (index) => {
+    setScrollY(window.scrollY);
+    setLightboxIndex(index);
+    setLightboxOpen(true);
+  };
+
+  // Ripristina posizione scroll quando chiudo lightbox
+  useEffect(() => {
+    if (!lightboxOpen && scrollY > 0) {
+      window.scrollTo(0, scrollY);
+    }
+  }, [lightboxOpen, scrollY]);
 
   const loadDemo = async () => {
     try {
@@ -77,12 +129,20 @@ export default function DemoPreview() {
     }
   };
 
+  const scrollToSection = (id) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setMobileMenuOpen(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-neutral-600">Caricamento sito demo...</p>
+          <p className="text-neutral-600">Caricamento...</p>
         </div>
       </div>
     );
@@ -102,20 +162,113 @@ export default function DemoPreview() {
   const business = demo.business_data || {};
   const content = demo.content || {};
   const photos = business.photos || [];
-  const reviews = business.reviews || [];
+  const reviews = filterReviews(business.reviews, business.language);
   const hoursText = business.hours_text || [];
   
-  // Seleziona stile basato su place_id
   const style = getStyleFromPlaceId(business.place_id);
   
-  // Foto hero e gallery
   const heroPhoto = photos.length > 0 ? photos[0].url : null;
-  const galleryPhotos = photos.slice(1, 9);
+  const galleryPhotos = photos.slice(1, 13);
+  
+  // Prepara slides per lightbox
+  const lightboxSlides = galleryPhotos.map(photo => ({
+    src: photo.url,
+    alt: business.name
+  }));
+
+  // Determina se è food business per menu
+  const isFoodBusiness = business.primary_type && ['restaurant', 'bar', 'cafe', 'pizza_restaurant'].includes(business.primary_type);
+  const hasMenu = content.menu_categories && content.menu_categories.length > 0;
 
   return (
     <div className={`min-h-screen bg-white ${style.font}`}>
-      {/* Hero Section con Foto */}
-      <header className={`relative bg-gradient-to-br ${style.primaryColor} text-white overflow-hidden`}>
+      {/* Navigation Desktop & Mobile */}
+      <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-neutral-200 shadow-sm">
+        <div className="max-w-6xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold">{demo.business_name}</h2>
+            
+            {/* Desktop Menu */}
+            <div className="hidden md:flex items-center gap-6">
+              <button onClick={() => scrollToSection('about')} className="text-neutral-700 hover:text-neutral-900 font-medium transition-colors">
+                Chi Siamo
+              </button>
+              {(hasMenu || (content.services && content.services.length > 0)) && (
+                <button onClick={() => scrollToSection('services')} className="text-neutral-700 hover:text-neutral-900 font-medium transition-colors">
+                  {isFoodBusiness ? 'Menu' : 'Servizi'}
+                </button>
+              )}
+              {galleryPhotos.length > 0 && (
+                <button onClick={() => scrollToSection('gallery')} className="text-neutral-700 hover:text-neutral-900 font-medium transition-colors">
+                  Galleria
+                </button>
+              )}
+              {reviews.length > 0 && (
+                <button onClick={() => scrollToSection('reviews')} className="text-neutral-700 hover:text-neutral-900 font-medium transition-colors">
+                  Recensioni
+                </button>
+              )}
+              {hoursText.length > 0 && (
+                <button onClick={() => scrollToSection('hours')} className="text-neutral-700 hover:text-neutral-900 font-medium transition-colors">
+                  Orari
+                </button>
+              )}
+              <button onClick={() => scrollToSection('location')} className="text-neutral-700 hover:text-neutral-900 font-medium transition-colors">
+                Dove Siamo
+              </button>
+              <button onClick={() => scrollToSection('contact')} className="text-neutral-700 hover:text-neutral-900 font-medium transition-colors">
+                Contatti
+              </button>
+            </div>
+
+            {/* Mobile Menu Button */}
+            <button 
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 text-neutral-700"
+            >
+              {mobileMenuOpen ? <X size={24} /> : <MenuIcon size={24} />}
+            </button>
+          </div>
+
+          {/* Mobile Menu Dropdown */}
+          {mobileMenuOpen && (
+            <div className="md:hidden mt-4 pb-4 space-y-2">
+              <button onClick={() => scrollToSection('about')} className="block w-full text-left px-4 py-2 text-neutral-700 hover:bg-neutral-100 rounded">
+                Chi Siamo
+              </button>
+              {(hasMenu || (content.services && content.services.length > 0)) && (
+                <button onClick={() => scrollToSection('services')} className="block w-full text-left px-4 py-2 text-neutral-700 hover:bg-neutral-100 rounded">
+                  {isFoodBusiness ? 'Menu' : 'Servizi'}
+                </button>
+              )}
+              {galleryPhotos.length > 0 && (
+                <button onClick={() => scrollToSection('gallery')} className="block w-full text-left px-4 py-2 text-neutral-700 hover:bg-neutral-100 rounded">
+                  Galleria
+                </button>
+              )}
+              {reviews.length > 0 && (
+                <button onClick={() => scrollToSection('reviews')} className="block w-full text-left px-4 py-2 text-neutral-700 hover:bg-neutral-100 rounded">
+                  Recensioni
+                </button>
+              )}
+              {hoursText.length > 0 && (
+                <button onClick={() => scrollToSection('hours')} className="block w-full text-left px-4 py-2 text-neutral-700 hover:bg-neutral-100 rounded">
+                  Orari
+                </button>
+              )}
+              <button onClick={() => scrollToSection('location')} className="block w-full text-left px-4 py-2 text-neutral-700 hover:bg-neutral-100 rounded">
+                Dove Siamo
+              </button>
+              <button onClick={() => scrollToSection('contact')} className="block w-full text-left px-4 py-2 text-neutral-700 hover:bg-neutral-100 rounded">
+                Contatti
+              </button>
+            </div>
+          )}
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <header className={`relative bg-gradient-to-br ${style.primaryColor} text-white overflow-hidden`} style={{ marginTop: '0' }}>
         {heroPhoto && (
           <div className="absolute inset-0 opacity-30">
             <img
@@ -125,16 +278,16 @@ export default function DemoPreview() {
             />
           </div>
         )}
-        <div className="relative z-10 py-24 px-6">
+        <div className="relative z-10 py-20 md:py-32 px-6">
           <div className="max-w-6xl mx-auto">
             {demo.logo_base64 && (
               <img
                 src={`data:image/png;base64,${demo.logo_base64}`}
                 alt="Logo"
-                className="w-28 h-28 mb-6 bg-white rounded-xl p-4 shadow-2xl"
+                className="w-24 h-24 md:w-32 md:h-32 mb-6 bg-white rounded-2xl p-4 shadow-2xl"
               />
             )}
-            <h1 className="text-5xl md:text-7xl font-bold mb-4 tracking-tight">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-4 tracking-tight">
               {demo.business_name}
             </h1>
             <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-2xl">
@@ -144,7 +297,7 @@ export default function DemoPreview() {
               {business.phone && (
                 <a
                   href={`tel:${business.phone}`}
-                  className={`inline-flex items-center gap-2 bg-white text-neutral-900 px-8 py-4 rounded-full font-semibold hover:shadow-xl transition-all transform hover:scale-105`}
+                  className="inline-flex items-center gap-2 bg-white text-neutral-900 px-6 md:px-8 py-3 md:py-4 rounded-full font-semibold hover:shadow-2xl transition-all transform hover:scale-105"
                 >
                   <Phone size={20} />
                   Chiama Ora
@@ -155,21 +308,10 @@ export default function DemoPreview() {
                   href={business.google_maps_link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`inline-flex items-center gap-2 ${style.buttonColor} text-white px-8 py-4 rounded-full font-semibold hover:shadow-xl transition-all transform hover:scale-105`}
+                  className={`inline-flex items-center gap-2 ${style.buttonColor} text-white px-6 md:px-8 py-3 md:py-4 rounded-full font-semibold hover:shadow-2xl transition-all transform hover:scale-105`}
                 >
                   <MapPin size={20} />
                   Indicazioni
-                </a>
-              )}
-              {business.website && (
-                <a
-                  href={business.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-8 py-4 rounded-full font-semibold hover:bg-white/30 transition-all"
-                >
-                  <Globe size={20} />
-                  Sito Web
                 </a>
               )}
             </div>
@@ -178,8 +320,8 @@ export default function DemoPreview() {
       </header>
 
       {/* Info Bar */}
-      <div className={`${style.cardBg} py-8 px-6 border-b border-neutral-200`}>
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className={`${style.cardBg} py-6 md:py-8 px-6 border-b border-neutral-200`}>
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           {business.address && (
             <div className="flex items-start gap-3">
               <MapPin size={24} className="text-neutral-600 mt-1 flex-shrink-0" />
@@ -214,25 +356,48 @@ export default function DemoPreview() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-16 space-y-20">
+      <div className="max-w-6xl mx-auto px-6 py-12 md:py-20 space-y-16 md:space-y-24">
         {/* Chi Siamo */}
         {content.about_text && (
-          <section>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">Chi Siamo</h2>
+          <section id="about">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 tracking-tight">Chi Siamo</h2>
             <p className="text-lg md:text-xl text-neutral-700 leading-relaxed max-w-4xl">
               {content.about_text}
             </p>
           </section>
         )}
 
-        {/* Servizi / Menu */}
-        {content.services && content.services.length > 0 && (
-          <section>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">
-              {business.category === 'Ristorante' || business.category === 'Bar' ? 'Il Nostro Menu' : 'I Nostri Servizi'}
+        {/* Menu / Servizi */}
+        {hasMenu && (
+          <section id="services">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 tracking-tight">
+              Il Nostro Menu
+            </h2>
+            <div className="space-y-8">
+              {content.menu_categories.map((category, idx) => (
+                <div key={idx} className={`p-6 md:p-8 ${style.cardBg} rounded-2xl border-2 border-neutral-200`}>
+                  <h3 className="text-2xl font-bold mb-4">{category.name}</h3>
+                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {category.items.map((item, itemIdx) => (
+                      <li key={itemIdx} className="flex items-center gap-2 text-neutral-700">
+                        <span className="w-2 h-2 bg-neutral-400 rounded-full flex-shrink-0"></span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {!hasMenu && content.services && content.services.length > 0 && (
+          <section id="services">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 tracking-tight">
+              I Nostri Servizi
             </h2>
             {content.services_intro && (
-              <p className="text-lg text-neutral-700 mb-10 max-w-3xl">{content.services_intro}</p>
+              <p className="text-lg text-neutral-700 mb-8 md:mb-10 max-w-3xl">{content.services_intro}</p>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {content.services.map((service, index) => (
@@ -251,32 +416,68 @@ export default function DemoPreview() {
           </section>
         )}
 
-        {/* Galleria Foto */}
+        {/* Galleria con Lightbox */}
         {galleryPhotos.length > 0 && (
-          <section>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">Galleria</h2>
+          <section id="gallery">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 tracking-tight">Galleria</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {galleryPhotos.map((photo, index) => (
-                <div
+                <button
                   key={index}
-                  className="aspect-square bg-neutral-200 rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow"
+                  onClick={() => handleOpenLightbox(index)}
+                  className="aspect-square bg-neutral-200 rounded-xl overflow-hidden shadow-md hover:shadow-2xl transition-all cursor-pointer group"
                 >
                   <img
                     src={photo.url}
                     alt={`Foto ${index + 1}`}
-                    className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     loading="lazy"
                   />
-                </div>
+                </button>
               ))}
             </div>
+
+            {/* Lightbox */}
+            <Lightbox
+              open={lightboxOpen}
+              close={() => setLightboxOpen(false)}
+              slides={lightboxSlides}
+              index={lightboxIndex}
+              plugins={[Zoom]}
+              zoom={{
+                maxZoomPixelRatio: 3,
+                scrollToZoom: true
+              }}
+              carousel={{
+                finite: false
+              }}
+              render={{
+                buttonPrev: lightboxSlides.length > 1 ? undefined : () => null,
+                buttonNext: lightboxSlides.length > 1 ? undefined : () => null,
+              }}
+              controller={{
+                closeOnBackdropClick: true
+              }}
+            />
           </section>
         )}
 
-        {/* Recensioni */}
-        {reviews.length > 0 && (
-          <section>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">Cosa Dicono i Clienti</h2>
+        {/* Recensioni Filtrate */}
+        {reviews.length > 1 && (
+          <section id="reviews">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight">Cosa Dicono i Clienti</h2>
+              {business.google_maps_link && (
+                <a
+                  href={business.google_maps_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline text-sm md:text-base font-medium flex items-center gap-1"
+                >
+                  Tutte le recensioni <ExternalLink size={16} />
+                </a>
+              )}
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {reviews.slice(0, 6).map((review, index) => (
                 <div
@@ -292,7 +493,7 @@ export default function DemoPreview() {
                       />
                     ))}
                   </div>
-                  <p className="text-neutral-700 mb-4 leading-relaxed">"{review.text}"</p>
+                  <p className="text-neutral-700 mb-4 leading-relaxed line-clamp-4">"{review.text}"</p>
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-semibold text-neutral-800">{review.author}</span>
                     <span className="text-neutral-500">{review.time}</span>
@@ -305,12 +506,12 @@ export default function DemoPreview() {
 
         {/* Orari */}
         {hoursText.length > 0 && (
-          <section>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">Orari di Apertura</h2>
-            <div className={`${style.cardBg} p-8 rounded-2xl border-2 border-neutral-200`}>
+          <section id="hours">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 tracking-tight">Orari di Apertura</h2>
+            <div className={`${style.cardBg} p-6 md:p-8 rounded-2xl border-2 border-neutral-200`}>
               <div className="flex items-start gap-4">
                 <Clock size={32} className={style.accentColor.replace('bg-', 'text-')} />
-                <div className="space-y-2 text-lg">
+                <div className="space-y-2 text-base md:text-lg">
                   {hoursText.map((day, index) => (
                     <p key={index} className="text-neutral-700">{day}</p>
                   ))}
@@ -322,9 +523,9 @@ export default function DemoPreview() {
 
         {/* Mappa */}
         {business.location && (
-          <section>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">Dove Siamo</h2>
-            <div className="rounded-2xl overflow-hidden shadow-xl border-4 border-neutral-200">
+          <section id="location">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 tracking-tight">Dove Siamo</h2>
+            <div className="rounded-2xl overflow-hidden shadow-2xl border-4 border-neutral-200">
               <iframe
                 src={`https://www.google.com/maps?q=${business.location.lat},${business.location.lng}&output=embed`}
                 width="100%"
@@ -342,7 +543,7 @@ export default function DemoPreview() {
                   href={business.google_maps_link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`inline-flex items-center gap-2 ${style.buttonColor} text-white px-8 py-4 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all`}
+                  className={`inline-flex items-center gap-2 ${style.buttonColor} text-white px-6 md:px-8 py-3 md:py-4 rounded-full font-semibold shadow-lg hover:shadow-2xl transition-all`}
                 >
                   <MapPin size={20} />
                   Apri su Google Maps
@@ -353,9 +554,9 @@ export default function DemoPreview() {
         )}
 
         {/* Contatti */}
-        <section>
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">Contatti</h2>
-          <div className={`bg-gradient-to-br ${style.primaryColor} p-10 rounded-2xl text-white shadow-2xl`}>
+        <section id="contact">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 tracking-tight">Contatti</h2>
+          <div className={`bg-gradient-to-br ${style.primaryColor} p-8 md:p-12 rounded-2xl text-white shadow-2xl`}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
                 <h3 className="text-2xl font-bold mb-6">Informazioni</h3>
@@ -416,18 +617,21 @@ export default function DemoPreview() {
         </section>
 
         {/* CTA Finale */}
-        <section className={`text-center py-16 bg-gradient-to-br ${style.primaryColor} rounded-3xl text-white shadow-2xl`}>
-          <h2 className="text-3xl md:text-5xl font-bold mb-4">
-            {content.cta_text || 'Contattaci Oggi'}
+        <section className={`text-center py-12 md:py-16 bg-gradient-to-br ${style.primaryColor} rounded-3xl text-white shadow-2xl`}>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
+            {content.cta_text || (isFoodBusiness ? 'Prenota il Tuo Tavolo' : 'Contattaci Oggi')}
           </h2>
-          <p className="text-xl md:text-2xl text-white/80 mb-10 max-w-2xl mx-auto">
-            Siamo pronti ad aiutarti con i nostri servizi professionali
+          <p className="text-lg md:text-xl lg:text-2xl text-white/80 mb-8 md:mb-10 max-w-2xl mx-auto px-4">
+            {isFoodBusiness 
+              ? `Vieni a trovarci da ${business.name} per un'esperienza indimenticabile` 
+              : `${business.name} è a tua disposizione`
+            }
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             {business.phone && (
               <a
                 href={`tel:${business.phone}`}
-                className="inline-flex items-center gap-2 bg-white text-neutral-900 px-10 py-5 rounded-full font-bold text-lg hover:shadow-2xl transition-all transform hover:scale-105"
+                className="inline-flex items-center gap-2 bg-white text-neutral-900 px-8 md:px-10 py-4 md:py-5 rounded-full font-bold text-base md:text-lg hover:shadow-2xl transition-all transform hover:scale-105"
               >
                 <Phone size={24} />
                 {business.phone}
@@ -438,7 +642,7 @@ export default function DemoPreview() {
                 href={business.google_maps_link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-10 py-5 rounded-full font-bold text-lg hover:bg-white/30 transition-all"
+                className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-8 md:px-10 py-4 md:py-5 rounded-full font-bold text-base md:text-lg hover:bg-white/30 transition-all"
               >
                 <MapPin size={24} />
                 Come Arrivare
@@ -448,21 +652,21 @@ export default function DemoPreview() {
         </section>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-neutral-900 text-white py-12 px-6">
+      {/* Footer Pulito (NO WATERMARK) */}
+      <footer className="bg-neutral-900 text-white py-8 md:py-12 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
             <div>
               <h3 className="text-xl font-bold mb-4">{demo.business_name}</h3>
               <p className="text-neutral-400">
-                {business.category} professionale a {business.city}
+                {business.category} a {business.city}
               </p>
             </div>
             <div>
               <h4 className="font-bold mb-4">Contatti</h4>
-              <div className="space-y-2 text-neutral-400">
+              <div className="space-y-2 text-neutral-400 text-sm">
                 {business.phone && <p>{business.phone}</p>}
-                {business.address && <p className="text-sm">{business.address}</p>}
+                {business.address && <p>{business.address}</p>}
               </div>
             </div>
             <div>
@@ -478,12 +682,38 @@ export default function DemoPreview() {
             <p className="text-neutral-400 text-sm">
               © {new Date().getFullYear()} {demo.business_name}. Tutti i diritti riservati.
             </p>
-            <p className="text-neutral-600 text-xs mt-2">
-              Sito creato con LeadHunter Pro
-            </p>
           </div>
         </div>
       </footer>
+
+      {/* Sticky Bottom Bar Mobile */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t-2 border-neutral-200 shadow-2xl">
+        <div className="grid grid-cols-2 gap-0">
+          {business.phone && (
+            <a
+              href={`tel:${business.phone}`}
+              className={`flex items-center justify-center gap-2 ${style.buttonColor} text-white py-4 font-bold text-base`}
+            >
+              <Phone size={20} />
+              Chiama
+            </a>
+          )}
+          {business.google_maps_link && (
+            <a
+              href={business.google_maps_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 bg-neutral-800 text-white py-4 font-bold text-base"
+            >
+              <MapPin size={20} />
+              Indicazioni
+            </a>
+          )}
+        </div>
+      </div>
+
+      {/* Spazio per sticky bar */}
+      <div className="md:hidden h-16"></div>
     </div>
   );
 }
