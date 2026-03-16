@@ -194,7 +194,47 @@ export default function SearchLeads() {
         <Card className="p-6 lg:col-span-2" data-testid="search-results">
           <h2 className="text-2xl font-bold mb-6 tracking-tight">Risultati</h2>
 
-          {results.length === 0 && !loading && (
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border-2 border-red-500 rounded-lg" data-testid="error-banner">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white font-bold">!</div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-red-800 text-lg mb-2">{error.title}</h3>
+                  {error.statusCode && (
+                    <p className="text-sm text-red-700 mb-2">
+                      <strong>Status Code:</strong> {error.statusCode}
+                    </p>
+                  )}
+                  {error.query && (
+                    <p className="text-sm text-red-700 mb-2">
+                      <strong>Query:</strong> {error.query}
+                    </p>
+                  )}
+                  {error.details && (
+                    <details className="mt-2">
+                      <summary className="text-sm text-red-700 cursor-pointer hover:underline">
+                        Dettagli tecnici
+                      </summary>
+                      <pre className="mt-2 p-2 bg-red-100 rounded text-xs overflow-auto max-h-40">
+                        {typeof error.details === 'string' ? error.details : JSON.stringify(error.details, null, 2)}
+                      </pre>
+                    </details>
+                  )}
+                  <div className="mt-3 space-y-2">
+                    <p className="text-sm text-red-800 font-semibold">Possibili soluzioni:</p>
+                    <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
+                      <li>Verifica che Places API (New) sia abilitata su <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console</a></li>
+                      <li>Controlla che il billing sia configurato</li>
+                      <li>Verifica restrizioni API Key</li>
+                      <li>Testa l'API dalle Impostazioni → "Test Google API"</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!error && results.length === 0 && !loading && (
             <div className="text-center py-12 text-neutral-500">
               <Search size={48} className="mx-auto mb-4 opacity-50" />
               <p>Nessun risultato. Inizia una ricerca.</p>
