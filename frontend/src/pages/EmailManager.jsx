@@ -27,6 +27,47 @@ export default function EmailManager() {
     loadLeads();
   }, []);
 
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { Mail, Send, Copy, Loader2, MessageCircle, Phone } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Card } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
+
+export default function EmailManager() {
+  const [leads, setLeads] = useState([]);
+  const [selectedLead, setSelectedLead] = useState('');
+  const [selectedLeadData, setSelectedLeadData] = useState(null);
+  const [emailData, setEmailData] = useState({
+    recipient_email: '',
+    subject: '',
+    html_content: ''
+  });
+  const [whatsappMessage, setWhatsappMessage] = useState('');
+  const [demoUrl, setDemoUrl] = useState('');
+  const [loadingEmail, setLoadingEmail] = useState(false);
+  const [loadingWhatsapp, setLoadingWhatsapp] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    loadLeads();
+  }, []);
+
+  useEffect(() => {
+    if (selectedLead) {
+      const lead = leads.find(l => l.lead_id === selectedLead);
+      setSelectedLeadData(lead);
+    }
+  }, [selectedLead, leads]);
+
   const loadLeads = async () => {
     try {
       const response = await axios.get(`${API}/leads?status=demo_creata`);
@@ -42,7 +83,7 @@ export default function EmailManager() {
       return;
     }
 
-    setLoading(true);
+    setLoadingEmail(true);
     try {
       const demosResponse = await axios.get(`${API}/demos`);
       const demo = demosResponse.data.find(d => d.lead_id === selectedLead);
@@ -52,7 +93,10 @@ export default function EmailManager() {
         return;
       }
 
-      const response = await axios.post(`${API}/email/generate?lead_id=${selectedLead}&demo_url=${demo.demo_url}`);
+      const internalUrl = `${BACKEND_URL}/demo/${demo.demo_id}`;
+      setDemoUrl(internalUrl);
+
+      const response = await axios.post(`${API}/email/generate?lead_id=${selectedLead}&demo_url=${internalUrl}`);
       setEmailData({
         ...emailData,
         subject: response.data.subject,
@@ -63,7 +107,37 @@ export default function EmailManager() {
       console.error('Errore generazione email:', error);
       toast.error('Errore generazione email');
     } finally {
-      setLoading(false);
+      setLoadingEmail(false);
+    }
+  };
+
+  const handleGenerateWhatsapp = async () => {
+    if (!selectedLead) {
+      toast.error('Seleziona un lead');
+      return;
+    }
+
+    setLoadingWhatsapp(true);
+    try {
+      const demosResponse = await axios.get(`${API}/demos`);
+      const demo = demosResponse.data.find(d => d.lead_id === selectedLead);
+      
+      if (!demo) {
+        toast.error('Sito demo non trovato');
+        return;
+      }
+
+      const internalUrl = `${BACKEND_URL}/demo/${demo.demo_id}`;
+      setDemoUrl(internalUrl);
+
+      const response = await axios.post(`${API}/whatsapp/generate?lead_id=${selectedLead}&demo_url=${internalUrl}`);
+      setWhatsappMessage(response.data.message);
+      toast.success('Messaggio WhatsApp generato!');
+    } catch (error) {
+      console.error('Errore generazione WhatsApp:', error);
+      toast.error('Errore generazione messaggio');
+    } finally {
+      setLoadingWhatsapp(false);
     }
   };
 
@@ -92,9 +166,40 @@ export default function EmailManager() {
     }
   };
 
-  const copyToClipboard = () => {
+  const handleOpenWhatsapp = () => {
+    if (!selectedLeadData?.phone) {
+      toast.error('Numero di telefono non disponibile');
+      return;
+    }
+
+    if (!whatsappMessage) {
+      toast.error('Genera prima un messaggio');
+      return;
+    }
+
+    // Normalizza numero per WhatsApp (rimuovi spazi e caratteri speciali)
+    const phoneNumber = selectedLeadData.phone.replace(/[^0-9+]/g, '');
+    const encodedMessage = encodeURIComponent(whatsappMessage);
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+    
+    window.open(whatsappUrl, '_blank');
+    
+    // Aggiorna stato lead
+    if (selectedLead) {
+      axios.patch(`${API}/leads/${selectedLead}/status?status=contattato`);
+    }
+    
+    toast.success('Chat WhatsApp aperta!');
+  };
+
+  const copyWhatsappMessage = () => {
+    navigator.clipboard.writeText(whatsappMessage);
+    toast.success('Messaggio copiato!');
+  };
+
+  const copyEmail = () => {
     navigator.clipboard.writeText(emailData.html_content);
-    toast.success('Contenuto copiato!');
+    toast.success('Email copiata!');
   };
 
   return (
