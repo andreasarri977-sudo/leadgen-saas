@@ -659,7 +659,13 @@ async def search_companies(request: SearchRequest):
                                     "lng": location_data.get('longitude')
                                 } if location_data else None
                                 
-                                language = detect_language_from_country(request.country)
+                                # Determina lingua dal paese
+                                site_lang = get_site_language_from_country(request.country)
+                                
+                                # Determina booking mode automaticamente
+                                primary_type = details.get('primaryType')
+                                types_list = details.get('types', [])
+                                booking_mode = determine_booking_mode(primary_type, types_list, request.category)
                                 
                                 lead = Lead(
                                     place_id=place_id.replace('places/', ''),
@@ -677,10 +683,12 @@ async def search_companies(request: SearchRequest):
                                     location=location,
                                     google_maps_link=details.get('googleMapsUri'),
                                     website=details.get('websiteUri'),
-                                    primary_type=details.get('primaryType'),
-                                    types=details.get('types'),
+                                    primary_type=primary_type,
+                                    types=types_list,
                                     status="nuovo_lead",
-                                    language=language
+                                    language=site_lang,  # Per compatibilità
+                                    site_language=site_lang,
+                                    booking_mode=booking_mode
                                 )
                                 
                                 lead_dict = lead.model_dump()
