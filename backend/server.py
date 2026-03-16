@@ -68,10 +68,15 @@ class DemoSite(BaseModel):
     demo_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     lead_id: str
     business_name: str
-    demo_url: str
+    demo_url: str  # URL interno: /demo/{demo_id}
     logo_base64: Optional[str] = None
     content: Dict[str, Any]
+    business_data: Optional[Dict[str, Any]] = None  # Dati completi azienda per rendering
+    publish_status: str = "draft"  # draft, publishing, published, error
+    live_url: Optional[str] = None  # URL pubblico solo se published
+    publish_error: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    published_at: Optional[datetime] = None
 
 class EmailTemplate(BaseModel):
     recipient_email: str
