@@ -1,0 +1,207 @@
+import React, { useState } from 'react';
+import axios from 'axios';
+import { Search, Loader2, MapPin, Star } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
+
+const COUNTRIES = [
+  { code: 'IT', name: 'Italia' },
+  { code: 'FR', name: 'Francia' },
+  { code: 'ES', name: 'Spagna' },
+  { code: 'DE', name: 'Germania' },
+  { code: 'GB', name: 'Regno Unito' }
+];
+
+const CATEGORIES = [
+  'Parrucchiere',
+  'Ristorante',
+  'Estetista',
+  'Dentista',
+  'Palestra',
+  'Idraulico',
+  'Elettricista',
+  'Bar',
+  'Pizzeria',
+  'Meccanico'
+];
+
+export default function SearchLeads() {
+  const [formData, setFormData] = useState({
+    city: '',
+    country: 'IT',
+    category: 'Parrucchiere',
+    min_reviews: 10,
+    min_rating: 4.0
+  });
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const handleSearch = async () => {
+    if (!formData.city) {
+      toast.error('Inserisci una città');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await axios.post(`${API}/search/companies`, formData);
+      setResults(response.data);
+      toast.success(`Trovati ${response.data.length} lead potenziali`);
+    } catch (error) {
+      console.error('Errore ricerca:', error);
+      toast.error(error.response?.data?.detail || 'Errore durante la ricerca');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div data-testid="search-leads-page">
+      <h1 className="text-5xl font-bold mb-8 tracking-tight">Cerca Aziende</h1>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <Card className="p-6 h-fit" data-testid="search-form">
+          <h2 className="text-2xl font-bold mb-6 tracking-tight">Filtri di Ricerca</h2>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="city">Città *</Label>
+              <Input
+                id="city"
+                data-testid="input-city"
+                placeholder="es. Milano"
+                value={formData.city}
+                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="country">Paese</Label>
+              <select
+                id="country"
+                data-testid="select-country"
+                value={formData.country}
+                onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
+              >
+                {COUNTRIES.map((country) => (
+                  <option key={country.code} value={country.code}>
+                    {country.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <Label htmlFor="category">Categoria</Label>
+              <select
+                id="category"
+                data-testid="select-category"
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
+              >
+                {CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <Label htmlFor="min_reviews">Recensioni Minime</Label>
+              <Input
+                id="min_reviews"
+                data-testid="input-min-reviews"
+                type="number"
+                value={formData.min_reviews}
+                onChange={(e) => setFormData({ ...formData, min_reviews: parseInt(e.target.value) })}
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="min_rating">Rating Minimo</Label>
+              <Input
+                id="min_rating"
+                data-testid="input-min-rating"
+                type="number"
+                step="0.1"
+                value={formData.min_rating}
+                onChange={(e) => setFormData({ ...formData, min_rating: parseFloat(e.target.value) })}
+                className="mt-1"
+              />
+            </div>
+
+            <Button
+              data-testid="search-button"
+              onClick={handleSearch}
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 animate-spin" size={16} />
+                  Ricerca in corso...
+                </>
+              ) : (
+                <>
+                  <Search className="mr-2" size={16} />
+                  Cerca Aziende
+                </>
+              )}
+            </Button>
+          </div>
+        </Card>
+
+        <Card className="p-6 lg:col-span-2" data-testid="search-results">
+          <h2 className="text-2xl font-bold mb-6 tracking-tight">Risultati</h2>
+
+          {results.length === 0 && !loading && (
+            <div className="text-center py-12 text-neutral-500">
+              <Search size={48} className="mx-auto mb-4 opacity-50" />
+              <p>Nessun risultato. Inizia una ricerca.</p>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {results.map((lead) => (
+              <div
+                key={lead.lead_id}
+                data-testid={`lead-result-${lead.lead_id}`}
+                className="p-4 border border-neutral-200 rounded-lg hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg">{lead.name}</h3>
+                    <div className="flex items-center gap-4 mt-2 text-sm text-neutral-600">
+                      <span className="flex items-center gap-1">
+                        <MapPin size={14} />
+                        {lead.city}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Star size={14} className="text-yellow-500" />
+                        {lead.rating} ({lead.reviews_count} recensioni)
+                      </span>
+                    </div>
+                    <p className="text-sm text-neutral-500 mt-1">{lead.address}</p>
+                  </div>
+                  <Badge className="bg-green-500 text-white">Nuovo Lead</Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
