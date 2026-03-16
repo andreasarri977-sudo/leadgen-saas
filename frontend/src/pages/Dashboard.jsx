@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { TrendingUp, Users, Globe, CheckCircle, Target } from 'lucide-react';
+import { TrendingUp, Users, Globe, CheckCircle, Target, Search } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
