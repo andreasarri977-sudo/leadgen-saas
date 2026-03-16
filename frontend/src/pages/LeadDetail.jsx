@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, MapPin, Phone, Star, Globe, Loader2, Mail, MessageCircle } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Star, Globe, Loader2, Mail, MessageCircle, Languages, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +25,20 @@ const STATUS_LABELS = {
   cliente_acquisito: 'Cliente Acquisito'
 };
 
+const LANGUAGE_OPTIONS = [
+  { code: 'it', name: 'Italiano', flag: '🇮🇹' },
+  { code: 'fr', name: 'Français', flag: '🇫🇷' },
+  { code: 'en', name: 'English', flag: '🇬🇧' },
+  { code: 'es', name: 'Español', flag: '🇪🇸' },
+  { code: 'de', name: 'Deutsch', flag: '🇩🇪' }
+];
+
+const BOOKING_MODE_OPTIONS = [
+  { value: 'none', label: 'Nessuna prenotazione', icon: '❌' },
+  { value: 'appointment', label: 'Prenota Appuntamento', icon: '📅' },
+  { value: 'table', label: 'Prenota Tavolo', icon: '🍽️' }
+];
+
 export default function LeadDetail() {
   const { leadId } = useParams();
   const navigate = useNavigate();
@@ -36,6 +50,8 @@ export default function LeadDetail() {
   const [generatingWhatsapp, setGeneratingWhatsapp] = useState(false);
   const [emailContent, setEmailContent] = useState(null);
   const [whatsappMessage, setWhatsappMessage] = useState('');
+  const [updatingSettings, setUpdatingSettings] = useState(false);
+  const [externalBookingUrl, setExternalBookingUrl] = useState('');
 
   useEffect(() => {
     loadLeadData();
@@ -43,9 +59,10 @@ export default function LeadDetail() {
 
   const loadLeadData = async () => {
     try {
-      const leadsResponse = await axios.get(`${API}/leads`);
-      const foundLead = leadsResponse.data.find(l => l.lead_id === leadId);
-      setLead(foundLead);
+      // Usa endpoint singolo lead invece di cercare in tutti
+      const leadResponse = await axios.get(`${API}/leads/${leadId}`);
+      setLead(leadResponse.data);
+      setExternalBookingUrl(leadResponse.data.external_booking_url || '');
 
       const demosResponse = await axios.get(`${API}/demos`);
       const foundDemo = demosResponse.data.find(d => d.lead_id === leadId);
@@ -122,6 +139,48 @@ export default function LeadDetail() {
     }
   };
 
+  const handleUpdateLanguage = async (langCode) => {
+    setUpdatingSettings(true);
+    try {
+      await axios.patch(`${API}/leads/${leadId}/settings`, { site_language: langCode });
+      toast.success(`Lingua sito impostata: ${LANGUAGE_OPTIONS.find(l => l.code === langCode)?.name}`);
+      await loadLeadData();
+    } catch (error) {
+      console.error('Errore aggiornamento lingua:', error);
+      toast.error('Errore aggiornamento lingua');
+    } finally {
+      setUpdatingSettings(false);
+    }
+  };
+
+  const handleUpdateBookingMode = async (mode) => {
+    setUpdatingSettings(true);
+    try {
+      await axios.patch(`${API}/leads/${leadId}/settings`, { booking_mode: mode });
+      toast.success(`Modalità prenotazione: ${BOOKING_MODE_OPTIONS.find(b => b.value === mode)?.label}`);
+      await loadLeadData();
+    } catch (error) {
+      console.error('Errore aggiornamento booking mode:', error);
+      toast.error('Errore aggiornamento');
+    } finally {
+      setUpdatingSettings(false);
+    }
+  };
+
+  const handleUpdateExternalBookingUrl = async () => {
+    setUpdatingSettings(true);
+    try {
+      await axios.patch(`${API}/leads/${leadId}/settings`, { external_booking_url: externalBookingUrl });
+      toast.success('URL prenotazione esterna aggiornato');
+      await loadLeadData();
+    } catch (error) {
+      console.error('Errore aggiornamento URL:', error);
+      toast.error('Errore aggiornamento');
+    } finally {
+      setUpdatingSettings(false);
+    }
+  };
+
   if (loading) {
     return (
       <div data-testid="lead-detail-loading" className="flex items-center justify-center h-64">
@@ -133,6 +192,9 @@ export default function LeadDetail() {
   if (!lead) {
     return <div>Lead non trovato</div>;
   }
+
+  const currentLang = lead.site_language || lead.language || 'it';
+  const currentBookingMode = lead.booking_mode || 'none';
 
   return (
     <div data-testid="lead-detail-page">
