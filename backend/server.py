@@ -47,18 +47,25 @@ class SearchRequest(BaseModel):
 class Lead(BaseModel):
     model_config = ConfigDict(extra="ignore")
     lead_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    place_id: str  # Google Place ID
     name: str
     category: str
     address: str
     city: str
     country: str
     phone: Optional[str] = None
+    email: Optional[str] = None  # Email azienda per contatto
     rating: Optional[float] = None
     reviews_count: Optional[int] = None
-    hours: Optional[str] = None
-    photos: Optional[List[str]] = None
+    reviews: Optional[List[Dict[str, Any]]] = None  # Recensioni complete
+    hours: Optional[Dict[str, Any]] = None  # Orari strutturati
+    hours_text: Optional[List[str]] = None  # Orari testo
+    photos: Optional[List[Dict[str, str]]] = None  # Photos con name e costruzione URL
+    location: Optional[Dict[str, float]] = None  # lat, lng
     google_maps_link: Optional[str] = None
     website: Optional[str] = None
+    primary_type: Optional[str] = None  # Tipo principale
+    types: Optional[List[str]] = None  # Tutti i tipi
     status: str = "nuovo_lead"
     language: str = "it"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
