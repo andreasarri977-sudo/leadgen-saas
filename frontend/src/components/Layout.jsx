@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Search, Users, Globe, Mail, Menu } from 'lucide-react';
+import { LayoutDashboard, Search, Users, Globe, Mail, Settings as SettingsIcon, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
@@ -9,7 +9,8 @@ const navItems = [
   { path: '/search', icon: Search, label: 'Cerca Aziende' },
   { path: '/leads', icon: Users, label: 'Lead' },
   { path: '/demos', icon: Globe, label: 'Siti Demo' },
-  { path: '/email', icon: Mail, label: 'Email' }
+  { path: '/email', icon: Mail, label: 'Email' },
+  { path: '/settings', icon: SettingsIcon, label: 'Impostazioni API' }
 ];
 
 export default function Layout() {

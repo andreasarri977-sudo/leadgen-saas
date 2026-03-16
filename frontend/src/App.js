@@ -8,6 +8,7 @@ import LeadsList from '@/pages/LeadsList';
 import LeadDetail from '@/pages/LeadDetail';
 import DemoSites from '@/pages/DemoSites';
 import EmailManager from '@/pages/EmailManager';
+import Settings from '@/pages/Settings';
 import '@/App.css';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
             <Route path="leads/:leadId" element={<LeadDetail />} />
             <Route path="demos" element={<DemoSites />} />
             <Route path="email" element={<EmailManager />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
       </BrowserRouter>
