@@ -38,7 +38,8 @@ export default function SearchLeads() {
     country: 'IT',
     category: 'Parrucchiere',
     min_reviews: 10,
-    min_rating: 4.0
+    min_rating: 4.0,
+    only_without_website: true
   });
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
