@@ -1,72 +1,421 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone
-
+import asyncio
+import base64
+from emergentintegrations.llm.chat import LlmChat, UserMessage
+from emergentintegrations.llm.openai.image_generation import OpenAIImageGeneration
+import googlemaps
+import resend
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
 app = FastAPI()
-
-# Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
+GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+if RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-# Add your routes to the router instead of directly to app
+class SearchRequest(BaseModel):
+    city: str
+    country: str
+    category: str
+    min_reviews: int = 10
+    min_rating: float = 4.0
+
+class Lead(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    lead_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    category: str
+    address: str
+    city: str
+    country: str
+    phone: Optional[str] = None
+    rating: Optional[float] = None
+    reviews_count: Optional[int] = None
+    hours: Optional[str] = None
+    photos: Optional[List[str]] = None
+    google_maps_link: Optional[str] = None
+    website: Optional[str] = None
+    status: str = "nuovo_lead"
+    language: str = "it"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class DemoSite(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    demo_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    lead_id: str
+    business_name: str
+    demo_url: str
+    logo_base64: Optional[str] = None
+    content: Dict[str, Any]
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class EmailTemplate(BaseModel):
+    recipient_email: str
+    subject: str
+    html_content: str
+
+class GenerateDemoRequest(BaseModel):
+    lead_id: str
+
+class BatchGenerateRequest(BaseModel):
+    lead_ids: List[str]
+
+class DashboardStats(BaseModel):
+    total_leads: int
+    demos_created: int
+    contacted: int
+    clients_acquired: int
+    new_leads: int
+
+LANGUAGE_MAP = {
+    "IT": "italiano",
+    "FR": "francese",
+    "ES": "spagnolo",
+    "DE": "tedesco",
+    "GB": "inglese",
+    "UK": "inglese",
+    "US": "inglese"
+}
+
+def detect_language_from_country(country: str) -> str:
+    country_upper = country.upper()
+    return LANGUAGE_MAP.get(country_upper, "italiano")
+
+SERVICES_BY_CATEGORY = {
+    "parrucchiere": ["Taglio", "Piega", "Colore", "Balayage", "Trattamenti Capelli", "Styling"],
+    "ristorante": ["Antipasti", "Primi Piatti", "Secondi", "Dessert", "Vini", "Menu Degustazione"],
+    "estetista": ["Pulizia Viso", "Massaggi", "Trattamenti Corpo", "Manicure", "Pedicure", "Ceretta"],
+    "dentista": ["Igiene Dentale", "Sbiancamento", "Otturazioni", "Ortodonzia", "Implantologia", "Protesi"],
+    "palestra": ["Sala Pesi", "Corsi Fitness", "Personal Training", "Yoga", "Pilates", "Spinning"],
+    "idraulico": ["Riparazione Perdite", "Installazione Caldaie", "Sostituzione Rubinetti", "Spurgo", "Manutenzione"],
+    "elettricista": ["Impianti Elettrici", "Riparazione Guasti", "Domotica", "Illuminazione", "Manutenzione"]
+}
+
+async def generate_business_content(business_name: str, category: str, language: str) -> Dict[str, Any]:
+    try:
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"content_{uuid.uuid4()}",
+            system_message=f"Sei un esperto copywriter che crea contenuti professionali per siti web di attività locali in {language}."
+        ).with_model("openai", "gpt-5.2")
+
+        services = SERVICES_BY_CATEGORY.get(category.lower(), ["Servizio 1", "Servizio 2", "Servizio 3"])
+        
+        prompt = f"""Crea contenuti professionali in {language} per un sito web di: {business_name}
+Categoria: {category}
+
+Genera SOLO un oggetto JSON con questa struttura:
+{{
+  "homepage_title": "titolo accattivante",
+  "homepage_subtitle": "sottotitolo breve",
+  "about_text": "testo chi siamo (100 parole)",
+  "services_intro": "introduzione servizi (50 parole)",
+  "cta_text": "call to action"
+}}
+
+Rispondi SOLO con JSON valido, senza markdown."""
+
+        message = UserMessage(text=prompt)
+        response = await chat.send_message(message)
+        
+        import json
+        content = json.loads(response)
+        content["services"] = services
+        return content
+    except Exception as e:
+        logger.error(f"Errore generazione contenuti: {str(e)}")
+        return {
+            "homepage_title": f"Benvenuti da {business_name}",
+            "homepage_subtitle": f"Il tuo {category} di fiducia",
+            "about_text": f"{business_name} offre servizi professionali di alta qualità.",
+            "services_intro": "Scopri tutti i nostri servizi",
+            "services": SERVICES_BY_CATEGORY.get(category.lower(), ["Servizio 1", "Servizio 2", "Servizio 3"]),
+            "cta_text": "Contattaci Ora"
+        }
+
+async def generate_logo(business_name: str) -> Optional[str]:
+    try:
+        image_gen = OpenAIImageGeneration(api_key=EMERGENT_LLM_KEY)
+        prompt = f"Simple, professional logo for '{business_name}' business, minimalist design, vector style, clean, modern"
+        
+        images = await image_gen.generate_images(
+            prompt=prompt,
+            model="gpt-image-1",
+            number_of_images=1
+        )
+        
+        if images and len(images) > 0:
+            return base64.b64encode(images[0]).decode('utf-8')
+        return None
+    except Exception as e:
+        logger.error(f"Errore generazione logo: {str(e)}")
+        return None
+
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "LeadHunter Pro API", "version": "1.0.0"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
+@api_router.post("/search/companies", response_model=List[Lead])
+async def search_companies(request: SearchRequest):
+    if not GOOGLE_MAPS_API_KEY:
+        raise HTTPException(status_code=400, detail="Google Maps API key non configurata. Vai su https://console.cloud.google.com per crearla.")
     
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
+    try:
+        gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
+        query = f"{request.category} in {request.city}, {request.country}"
+        
+        places_result = gmaps.places(query=query)
+        
+        leads = []
+        for place in places_result.get('results', []):
+            rating = place.get('rating', 0)
+            reviews_count = place.get('user_ratings_total', 0)
+            
+            if reviews_count < request.min_reviews or rating < request.min_rating:
+                continue
+            
+            place_id = place.get('place_id')
+            details = gmaps.place(place_id=place_id, fields=['name', 'formatted_address', 'formatted_phone_number', 'website', 'opening_hours', 'photos', 'url'])
+            details_result = details.get('result', {})
+            
+            has_website = details_result.get('website') is not None
+            
+            if not has_website:
+                language = detect_language_from_country(request.country)
+                
+                lead = Lead(
+                    name=place.get('name', ''),
+                    category=request.category,
+                    address=place.get('vicinity', ''),
+                    city=request.city,
+                    country=request.country,
+                    phone=details_result.get('formatted_phone_number'),
+                    rating=rating,
+                    reviews_count=reviews_count,
+                    google_maps_link=details_result.get('url'),
+                    website=None,
+                    status="nuovo_lead",
+                    language=language
+                )
+                
+                lead_dict = lead.model_dump()
+                lead_dict['created_at'] = lead_dict['created_at'].isoformat()
+                await db.leads.insert_one(lead_dict)
+                leads.append(lead)
+        
+        return leads
+    except Exception as e:
+        logger.error(f"Errore ricerca: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Errore ricerca: {str(e)}")
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
+@api_router.get("/leads", response_model=List[Lead])
+async def get_leads(status: Optional[str] = None):
+    query = {} if not status else {"status": status}
+    leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
+    for lead in leads:
+        if isinstance(lead.get('created_at'), str):
+            lead['created_at'] = datetime.fromisoformat(lead['created_at'])
     
-    return status_checks
+    return leads
 
-# Include the router in the main app
+@api_router.patch("/leads/{lead_id}/status")
+async def update_lead_status(lead_id: str, status: str):
+    result = await db.leads.update_one(
+        {"lead_id": lead_id},
+        {"$set": {"status": status}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Lead non trovato")
+    
+    return {"success": True, "message": "Status aggiornato"}
+
+@api_router.post("/demo/generate", response_model=DemoSite)
+async def generate_demo_site(request: GenerateDemoRequest):
+    lead = await db.leads.find_one({"lead_id": request.lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead non trovato")
+    
+    business_name = lead['name']
+    category = lead['category']
+    language = lead.get('language', 'italiano')
+    
+    content = await generate_business_content(business_name, category, language)
+    logo_base64 = await generate_logo(business_name)
+    
+    demo_url = f"https://{business_name.lower().replace(' ', '-')}-demo.vercel.app"
+    
+    demo = DemoSite(
+        lead_id=request.lead_id,
+        business_name=business_name,
+        demo_url=demo_url,
+        logo_base64=logo_base64,
+        content=content
+    )
+    
+    demo_dict = demo.model_dump()
+    demo_dict['created_at'] = demo_dict['created_at'].isoformat()
+    await db.demo_sites.insert_one(demo_dict)
+    
+    await db.leads.update_one(
+        {"lead_id": request.lead_id},
+        {"$set": {"status": "demo_creata"}}
+    )
+    
+    return demo
+
+@api_router.post("/demo/batch")
+async def generate_batch_demos(request: BatchGenerateRequest, background_tasks: BackgroundTasks):
+    async def process_batch():
+        for lead_id in request.lead_ids:
+            try:
+                await generate_demo_site(GenerateDemoRequest(lead_id=lead_id))
+                await asyncio.sleep(2)
+            except Exception as e:
+                logger.error(f"Errore generazione demo {lead_id}: {str(e)}")
+    
+    background_tasks.add_task(process_batch)
+    return {"message": f"Generazione batch di {len(request.lead_ids)} siti demo avviata", "count": len(request.lead_ids)}
+
+@api_router.get("/demos", response_model=List[DemoSite])
+async def get_demos():
+    demos = await db.demo_sites.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    
+    for demo in demos:
+        if isinstance(demo.get('created_at'), str):
+            demo['created_at'] = datetime.fromisoformat(demo['created_at'])
+    
+    return demos
+
+@api_router.post("/email/generate")
+async def generate_email(lead_id: str, demo_url: str):
+    lead = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead non trovato")
+    
+    business_name = lead['name']
+    language = lead.get('language', 'italiano')
+    
+    chat = LlmChat(
+        api_key=EMERGENT_LLM_KEY,
+        session_id=f"email_{uuid.uuid4()}",
+        system_message=f"Sei un esperto di email marketing che scrive email professionali in {language}."
+    ).with_model("openai", "gpt-5.2")
+    
+    prompt = f"""Scrivi un'email professionale in {language} per contattare {business_name}.
+
+Obiettivo: presentare il sito web demo che abbiamo creato per loro.
+
+Includere:
+- Presentazione del servizio
+- Spiegazione del sito creato
+- Link al demo: {demo_url}
+- Invito a contattare per attivare il sito ufficiale
+
+Tono: professionale ma amichevole.
+
+Rispondi con JSON: {{"subject": "...", "body": "..."}}  """
+
+    message = UserMessage(text=prompt)
+    response = await chat.send_message(message)
+    
+    import json
+    email_data = json.loads(response)
+    
+    return email_data
+
+@api_router.post("/email/send")
+async def send_email(template: EmailTemplate):
+    if not RESEND_API_KEY:
+        raise HTTPException(status_code=400, detail="Resend API key non configurata. Vai su https://resend.com per crearla.")
+    
+    params = {
+        "from": SENDER_EMAIL,
+        "to": [template.recipient_email],
+        "subject": template.subject,
+        "html": template.html_content
+    }
+    
+    try:
+        email = await asyncio.to_thread(resend.Emails.send, params)
+        return {"success": True, "email_id": email.get("id")}
+    except Exception as e:
+        logger.error(f"Errore invio email: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Errore invio email: {str(e)}")
+
+@api_router.post("/whatsapp/generate")
+async def generate_whatsapp_message(lead_id: str, demo_url: str):
+    lead = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead non trovato")
+    
+    business_name = lead['name']
+    language = lead.get('language', 'italiano')
+    
+    chat = LlmChat(
+        api_key=EMERGENT_LLM_KEY,
+        session_id=f"whatsapp_{uuid.uuid4()}",
+        system_message=f"Sei un esperto che scrive messaggi WhatsApp professionali ma concisi in {language}."
+    ).with_model("openai", "gpt-5.2")
+    
+    prompt = f"""Scrivi un breve messaggio WhatsApp in {language} (max 150 parole) per contattare {business_name}.
+
+Obiettivo: presentare il sito web demo creato per loro.
+
+Includere:
+- Saluto
+- Breve presentazione
+- Link demo: {demo_url}
+- Call to action
+
+Tono: cordiale e diretto."""
+
+    message = UserMessage(text=prompt)
+    response = await chat.send_message(message)
+    
+    return {"message": response}
+
+@api_router.get("/stats/dashboard", response_model=DashboardStats)
+async def get_dashboard_stats():
+    total_leads = await db.leads.count_documents({})
+    demos_created = await db.demo_sites.count_documents({})
+    contacted = await db.leads.count_documents({"status": "contattato"})
+    clients = await db.leads.count_documents({"status": "cliente_acquisito"})
+    new_leads = await db.leads.count_documents({"status": "nuovo_lead"})
+    
+    return DashboardStats(
+        total_leads=total_leads,
+        demos_created=demos_created,
+        contacted=contacted,
+        clients_acquired=clients,
+        new_leads=new_leads
+    )
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -76,13 +425,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
