@@ -655,8 +655,9 @@ async def generate_demo_site(request: GenerateDemoRequest):
     business_name = lead['name']
     category = lead['category']
     language = lead.get('language', 'italiano')
+    primary_type = lead.get('primary_type')
     
-    content = await generate_business_content(business_name, category, language)
+    content = await generate_business_content(business_name, category, language, primary_type)
     logo_base64 = await generate_logo(business_name)
     
     # URL interno (non Vercel)
