@@ -198,50 +198,91 @@ async def search_companies(request: SearchRequest):
     if not api_key and not GOOGLE_MAPS_API_KEY:
         raise HTTPException(status_code=400, detail="Google Maps API key non configurata. Vai su Impostazioni API per configurarla.")
     
+    api_key = api_key or GOOGLE_MAPS_API_KEY
+    
     try:
-        gmaps = googlemaps.Client(key=api_key or GOOGLE_MAPS_API_KEY)
-        query = f"{request.category} in {request.city}, {request.country}"
+        # Mappa categorie italiane a tipi Google Places
+        category_map = {
+            "parrucchiere": "hair_salon",
+            "ristorante": "restaurant",
+            "estetista": "beauty_salon",
+            "dentista": "dentist",
+            "palestra": "gym",
+            "idraulico": "plumber",
+            "elettricista": "electrician",
+            "bar": "bar",
+            "pizzeria": "pizza_restaurant",
+            "meccanico": "car_repair"
+        }
         
-        places_result = gmaps.places(query=query)
+        place_type = category_map.get(request.category.lower(), "establishment")
         
-        leads = []
-        for place in places_result.get('results', []):
-            rating = place.get('rating', 0)
-            reviews_count = place.get('user_ratings_total', 0)
-            
-            if reviews_count < request.min_reviews or rating < request.min_rating:
-                continue
-            
-            place_id = place.get('place_id')
-            details = gmaps.place(place_id=place_id, fields=['name', 'formatted_address', 'formatted_phone_number', 'website', 'opening_hours', 'photos', 'url'])
-            details_result = details.get('result', {})
-            
-            has_website = details_result.get('website') is not None
-            
-            if not has_website:
-                language = detect_language_from_country(request.country)
+        # Text Search (New) - Places API (New)
+        search_url = "https://places.googleapis.com/v1/places:searchText"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": api_key,
+            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.types,places.websiteUri,places.nationalPhoneNumber,places.googleMapsUri"
+        }
+        
+        search_body = {
+            "textQuery": f"{request.category} in {request.city}, {request.country}",
+            "languageCode": "it",
+            "maxResultCount": 20
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(search_url, json=search_body, headers=headers) as response:
+                if response.status != 200:
+                    error_text = await response.text()
+                    logger.error(f"Google Places API error: {error_text}")
+                    raise HTTPException(status_code=500, detail=f"Errore Google Places API: {error_text}")
                 
-                lead = Lead(
-                    name=place.get('name', ''),
-                    category=request.category,
-                    address=place.get('vicinity', ''),
-                    city=request.city,
-                    country=request.country,
-                    phone=details_result.get('formatted_phone_number'),
-                    rating=rating,
-                    reviews_count=reviews_count,
-                    google_maps_link=details_result.get('url'),
-                    website=None,
-                    status="nuovo_lead",
-                    language=language
-                )
+                search_data = await response.json()
+                places = search_data.get('places', [])
                 
-                lead_dict = lead.model_dump()
-                lead_dict['created_at'] = lead_dict['created_at'].isoformat()
-                await db.leads.insert_one(lead_dict)
-                leads.append(lead)
+                leads = []
+                for place in places:
+                    rating = place.get('rating', 0)
+                    reviews_count = place.get('userRatingCount', 0)
+                    
+                    # Applica filtri
+                    if reviews_count < request.min_reviews or rating < request.min_rating:
+                        continue
+                    
+                    # Verifica se ha sito web
+                    has_website = place.get('websiteUri') is not None
+                    
+                    if not has_website:
+                        language = detect_language_from_country(request.country)
+                        
+                        display_name = place.get('displayName', {})
+                        name = display_name.get('text', 'Unknown') if isinstance(display_name, dict) else str(display_name)
+                        
+                        lead = Lead(
+                            name=name,
+                            category=request.category,
+                            address=place.get('formattedAddress', ''),
+                            city=request.city,
+                            country=request.country,
+                            phone=place.get('nationalPhoneNumber'),
+                            rating=rating,
+                            reviews_count=reviews_count,
+                            google_maps_link=place.get('googleMapsUri'),
+                            website=None,
+                            status="nuovo_lead",
+                            language=language
+                        )
+                        
+                        lead_dict = lead.model_dump()
+                        lead_dict['created_at'] = lead_dict['created_at'].isoformat()
+                        await db.leads.insert_one(lead_dict)
+                        leads.append(lead)
         
         return leads
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Errore ricerca: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Errore ricerca: {str(e)}")
