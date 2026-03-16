@@ -43,6 +43,7 @@ export default function SearchLeads() {
   });
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleSearch = async () => {
     if (!formData.city) {
@@ -51,13 +52,39 @@ export default function SearchLeads() {
     }
 
     setLoading(true);
+    setError(null);
+    setResults([]);
+    
     try {
       const response = await axios.post(`${API}/search/companies`, formData);
       setResults(response.data);
-      toast.success(`Trovati ${response.data.length} lead potenziali`);
+      
+      if (response.data.length === 0) {
+        toast.info('Nessuna azienda trovata con i criteri specificati. Prova a ridurre i filtri.');
+      } else {
+        toast.success(`Trovati ${response.data.length} lead potenziali`);
+      }
     } catch (error) {
       console.error('Errore ricerca:', error);
-      toast.error(error.response?.data?.detail || 'Errore durante la ricerca');
+      
+      // Gestisci errore dettagliato
+      const errorData = error.response?.data?.detail;
+      
+      if (typeof errorData === 'object') {
+        setError({
+          title: errorData.user_message || errorData.error || 'Errore API',
+          details: errorData.message,
+          statusCode: errorData.status_code,
+          query: errorData.query
+        });
+        toast.error(errorData.user_message || 'Errore durante la ricerca');
+      } else {
+        setError({
+          title: 'Errore durante la ricerca',
+          details: errorData || error.message
+        });
+        toast.error(errorData || 'Errore durante la ricerca');
+      }
     } finally {
       setLoading(false);
     }
