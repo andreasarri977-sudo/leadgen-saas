@@ -7,6 +7,7 @@ import SearchLeads from '@/pages/SearchLeads';
 import LeadsList from '@/pages/LeadsList';
 import LeadDetail from '@/pages/LeadDetail';
 import DemoSites from '@/pages/DemoSites';
+import DemoPreview from '@/pages/DemoPreview';
 import EmailManager from '@/pages/EmailManager';
 import Settings from '@/pages/Settings';
 import '@/App.css';
@@ -16,6 +17,7 @@ function App() {
     <div className="App">
       <BrowserRouter>
         <Routes>
+          <Route path="/demo/:demoId" element={<DemoPreview />} />
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
             <Route path="search" element={<SearchLeads />} />
