@@ -384,8 +384,62 @@ async def generate_batch_demos(request: BatchGenerateRequest, background_tasks: 
     background_tasks.add_task(process_batch)
     return {"message": f"Generazione batch di {len(request.lead_ids)} siti demo avviata", "count": len(request.lead_ids)}
 
-@api_router.get("/demos", response_model=List[DemoSite])
-async def get_demos():
+@api_router.get("/demos/{demo_id}")
+async def get_demo_by_id(demo_id: str):
+    demo = await db.demo_sites.find_one({"demo_id": demo_id}, {"_id": 0})
+    if not demo:
+        raise HTTPException(status_code=404, detail="Demo non trovato")
+    
+    if isinstance(demo.get('created_at'), str):
+        demo['created_at'] = datetime.fromisoformat(demo['created_at'])
+    
+    return demo
+
+@api_router.post("/demos/{demo_id}/publish")
+async def publish_demo(demo_id: str):
+    demo = await db.demo_sites.find_one({"demo_id": demo_id}, {"_id": 0})
+    if not demo:
+        raise HTTPException(status_code=404, detail="Demo non trovato")
+    
+    # TODO: Implementare deploy reale (Vercel API o altro)
+    # Per ora simuliamo la pubblicazione
+    
+    try:
+        # Qui andrebbe la logica di deploy reale
+        # live_url = await deploy_to_vercel(demo)
+        
+        # Simulazione
+        business_name = demo.get('business_name', 'business')
+        live_url = f"https://{business_name.lower().replace(' ', '-')}.vercel.app"
+        
+        await db.demo_sites.update_one(
+            {"demo_id": demo_id},
+            {"$set": {
+                "publish_status": "published",
+                "live_url": live_url,
+                "published_at": datetime.now(timezone.utc).isoformat(),
+                "publish_error": None
+            }}
+        )
+        
+        return {
+            "success": True,
+            "message": "Sito pubblicato con successo",
+            "live_url": live_url,
+            "note": "Deploy simulato - integrare Vercel API per deploy reale"
+        }
+    except Exception as e:
+        logger.error(f"Errore pubblicazione: {str(e)}")
+        
+        await db.demo_sites.update_one(
+            {"demo_id": demo_id},
+            {"$set": {
+                "publish_status": "error",
+                "publish_error": str(e)
+            }}
+        )
+        
+        raise HTTPException(status_code=500, detail=f"Errore pubblicazione: {str(e)}")
     demos = await db.demo_sites.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     
     for demo in demos:
