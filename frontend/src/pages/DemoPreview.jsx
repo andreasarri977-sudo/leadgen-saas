@@ -475,12 +475,12 @@ export default function DemoPreview() {
               </div>
             </div>
           )}
-          {business.rating && (
+          {business.rating > 0 && (
             <div className="flex items-start gap-3">
               <Star size={24} className="text-yellow-500 mt-1 flex-shrink-0" />
               <div>
                 <p className="text-sm text-neutral-500 font-semibold">{t('info.rating', lang)}</p>
-                <p className="font-medium text-neutral-800">{business.rating} ({business.reviews_count} {t('info.reviews', lang)})</p>
+                <p className="font-medium text-neutral-800">{business.rating} ({business.reviews_count || 0} {t('info.reviews', lang)})</p>
               </div>
             </div>
           )}
