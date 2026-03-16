@@ -54,6 +54,31 @@ export default function Settings() {
     }
   };
 
+  const handleTestGoogleAPI = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const response = await axios.post(`${API}/settings/test-google-api`);
+      setTestResult(response.data);
+      
+      if (response.data.success) {
+        toast.success(response.data.message);
+      } else {
+        toast.error(response.data.error);
+      }
+    } catch (error) {
+      console.error('Errore test API:', error);
+      setTestResult({
+        success: false,
+        error: 'Errore durante il test',
+        details: error.message
+      });
+      toast.error('Errore durante il test');
+    } finally {
+      setTesting(false);
+    }
+  };
+
   const maskKey = (key) => {
     if (!key || key.length < 8) return key;
     return key.substring(0, 8) + '*'.repeat(key.length - 8);
