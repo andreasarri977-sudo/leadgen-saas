@@ -365,8 +365,14 @@ Rispondi con JSON: {{"subject": "...", "body": "..."}}  """
 
 @api_router.post("/email/send")
 async def send_email(template: EmailTemplate):
-    if not RESEND_API_KEY:
-        raise HTTPException(status_code=400, detail="Resend API key non configurata. Vai su https://resend.com per crearla.")
+    settings = await db.api_settings.find_one({"setting_id": "api_settings"}, {"_id": 0})
+    api_key = settings.get('resend_api_key') if settings else None
+    
+    if not api_key and not RESEND_API_KEY:
+        raise HTTPException(status_code=400, detail="Resend API key non configurata. Vai su Impostazioni API per configurarla.")
+    
+    if api_key:
+        resend.api_key = api_key
     
     params = {
         "from": SENDER_EMAIL,
