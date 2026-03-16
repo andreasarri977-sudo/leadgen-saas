@@ -108,17 +108,17 @@ export default function Dashboard() {
       <Card className="mt-8 p-6" data-testid="quick-actions-card">
         <h2 className="text-2xl font-bold mb-4 tracking-tight">Azioni Rapide</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <a href="/search" className="p-4 border border-neutral-200 rounded-lg hover:shadow-md transition-shadow">
+          <a href="/search" className="p-4 border border-neutral-200 rounded-lg hover:shadow-md hover:border-blue-300 transition-all cursor-pointer">
             <Search className="mb-2" size={24} />
             <h3 className="font-bold mb-1">Cerca Nuove Aziende</h3>
             <p className="text-sm text-neutral-600">Trova aziende senza sito web nella tua zona</p>
           </a>
-          <a href="/leads" className="p-4 border border-neutral-200 rounded-lg hover:shadow-md transition-shadow">
+          <a href="/leads" className="p-4 border border-neutral-200 rounded-lg hover:shadow-md hover:border-blue-300 transition-all cursor-pointer">
             <Users className="mb-2" size={24} />
             <h3 className="font-bold mb-1">Gestisci Lead</h3>
             <p className="text-sm text-neutral-600">Visualizza e gestisci i tuoi lead attivi</p>
           </a>
-          <a href="/demos" className="p-4 border border-neutral-200 rounded-lg hover:shadow-md transition-shadow">
+          <a href="/demos" className="p-4 border border-neutral-200 rounded-lg hover:shadow-md hover:border-blue-300 transition-all cursor-pointer">
             <Globe className="mb-2" size={24} />
             <h3 className="font-bold mb-1">Siti Demo</h3>
             <p className="text-sm text-neutral-600">Visualizza i siti demo generati</p>
