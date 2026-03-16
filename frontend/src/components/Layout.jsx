@@ -51,21 +51,23 @@ export default function Layout() {
         <SidebarContent />
       </aside>
 
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button
-            data-testid="mobile-menu-button"
-            variant="ghost"
-            size="icon"
-            className="md:hidden fixed top-4 left-4 z-50"
-          >
-            <Menu size={24} />
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="w-64 p-0 sidebar">
-          <SidebarContent />
-        </SheetContent>
-      </Sheet>
+      <div className="md:hidden">
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button
+              data-testid="mobile-menu-button"
+              variant="ghost"
+              size="icon"
+              className="fixed top-4 left-4 z-50 bg-white shadow-md"
+            >
+              <Menu size={24} />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-64 p-0 sidebar">
+            <SidebarContent />
+          </SheetContent>
+        </Sheet>
+      </div>
 
       <main className="flex-1 overflow-auto">
         <div className="container mx-auto p-6 md:p-8 lg:p-12">
