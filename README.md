@@ -128,7 +128,7 @@ sudo supervisorctl status
 ```
 
 ### 6. Accedi all'applicazione
-Apri il browser su: `https://web-pitch-generator.preview.emergentagent.com`
+Apri il browser su: `https://saas-demo-builder.preview.emergentagent.com`
 
 ---
 
@@ -273,10 +273,10 @@ yarn test
 ### Test API con cURL
 ```bash
 # Test health check
-curl https://web-pitch-generator.preview.emergentagent.com/api/
+curl https://saas-demo-builder.preview.emergentagent.com/api/
 
 # Test statistiche
-curl https://web-pitch-generator.preview.emergentagent.com/api/stats/dashboard
+curl https://saas-demo-builder.preview.emergentagent.com/api/stats/dashboard
 ```
 
 ---

@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://web-pitch-generator.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://saas-demo-builder.preview.emergentagent.com')
 
 class TestHealthAndRoot:
     """Test basic API health"""
