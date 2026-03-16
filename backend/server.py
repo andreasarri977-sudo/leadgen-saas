@@ -436,6 +436,50 @@ async def get_dashboard_stats():
         new_leads=new_leads
     )
 
+@api_router.get("/settings/api", response_model=ApiSettings)
+async def get_api_settings():
+    settings = await db.api_settings.find_one({"setting_id": "api_settings"}, {"_id": 0})
+    
+    if not settings:
+        default_settings = ApiSettings()
+        settings_dict = default_settings.model_dump()
+        settings_dict['updated_at'] = settings_dict['updated_at'].isoformat()
+        await db.api_settings.insert_one(settings_dict)
+        return default_settings
+    
+    if isinstance(settings.get('updated_at'), str):
+        settings['updated_at'] = datetime.fromisoformat(settings['updated_at'])
+    
+    return ApiSettings(**settings)
+
+@api_router.put("/settings/api")
+async def update_api_settings(settings_update: ApiSettingsUpdate):
+    settings = await db.api_settings.find_one({"setting_id": "api_settings"})
+    
+    update_data = {}
+    if settings_update.google_maps_api_key is not None:
+        update_data['google_maps_api_key'] = settings_update.google_maps_api_key
+    if settings_update.resend_api_key is not None:
+        update_data['resend_api_key'] = settings_update.resend_api_key
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    if not settings:
+        new_settings = ApiSettings(
+            google_maps_api_key=settings_update.google_maps_api_key,
+            resend_api_key=settings_update.resend_api_key
+        )
+        settings_dict = new_settings.model_dump()
+        settings_dict['updated_at'] = settings_dict['updated_at'].isoformat()
+        await db.api_settings.insert_one(settings_dict)
+    else:
+        await db.api_settings.update_one(
+            {"setting_id": "api_settings"},
+            {"$set": update_data}
+        )
+    
+    return {"success": True, "message": "Impostazioni API aggiornate con successo"}
+
 app.include_router(api_router)
 
 app.add_middleware(
