@@ -86,18 +86,21 @@ export default function Dashboard() {
           label="Nuovi Lead"
           value={stats.new_leads}
           color="bg-blue-600"
+          href="/leads"
         />
         <StatCard
           icon={Users}
           label="Lead Totali"
           value={stats.total_leads}
           color="bg-neutral-800"
+          href="/leads"
         />
         <StatCard
           icon={Globe}
           label="Siti Demo Creati"
           value={stats.demos_created}
           color="bg-blue-500"
+          href="/demos"
         />
         <StatCard
           icon={CheckCircle}
@@ -105,6 +108,7 @@ export default function Dashboard() {
           value={stats.clients_acquired}
           trend={`${conversionRate}%`}
           color="bg-green-500"
+          href="/leads"
         />
       </div>
 
