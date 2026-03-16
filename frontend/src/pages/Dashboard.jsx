@@ -125,6 +125,16 @@ export default function Dashboard() {
           </a>
         </div>
       </Card>
+
+      <Card className="mt-6 p-6 bg-blue-50 border-blue-200" data-testid="api-setup-notice">
+        <h3 className="font-bold text-lg mb-2">📋 Configurazione API Keys</h3>
+        <p className="text-sm text-neutral-700 mb-3">Per utilizzare tutte le funzionalità, configura le seguenti API keys:</p>
+        <div className="space-y-2 text-sm">
+          <p><strong>✅ Emergent LLM Key:</strong> Già configurata per generazione contenuti e loghi</p>
+          <p><strong>⚠️ Google Maps API Key:</strong> Necessaria per ricerca aziende. <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Ottienila qui</a></p>
+          <p><strong>⚠️ Resend API Key:</strong> Necessaria per invio email. <a href="https://resend.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Ottienila qui</a></p>
+        </div>
+      </Card>
     </div>
   );
 }
