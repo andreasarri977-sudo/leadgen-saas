@@ -129,34 +129,76 @@ def detect_language_from_country(country: str) -> str:
     return LANGUAGE_MAP.get(country_upper, "italiano")
 
 SERVICES_BY_CATEGORY = {
-    "parrucchiere": ["Taglio", "Piega", "Colore", "Balayage", "Trattamenti Capelli", "Styling"],
-    "ristorante": ["Antipasti", "Primi Piatti", "Secondi", "Dessert", "Vini", "Menu Degustazione"],
-    "estetista": ["Pulizia Viso", "Massaggi", "Trattamenti Corpo", "Manicure", "Pedicure", "Ceretta"],
-    "dentista": ["Igiene Dentale", "Sbiancamento", "Otturazioni", "Ortodonzia", "Implantologia", "Protesi"],
+    "parrucchiere": ["Taglio Donna", "Taglio Uomo", "Piega", "Colore", "Balayage", "Trattamenti Ristrutturanti"],
+    "hair_salon": ["Taglio Donna", "Taglio Uomo", "Piega", "Colore", "Balayage", "Trattamenti Ristrutturanti"],
+    "ristorante": ["Antipasti", "Primi Piatti", "Secondi di Carne", "Secondi di Pesce", "Contorni", "Dessert"],
+    "restaurant": ["Antipasti", "Primi Piatti", "Secondi di Carne", "Secondi di Pesce", "Contorni", "Dessert"],
+    "bar": ["Caffetteria", "Aperitivi", "Cocktail", "Panini", "Dolci", "Birre Artigianali"],
+    "estetista": ["Pulizia Viso", "Trattamenti Anti-età", "Massaggi", "Manicure", "Pedicure", "Epilazione"],
+    "beauty_salon": ["Pulizia Viso", "Trattamenti Anti-età", "Massaggi", "Manicure", "Pedicure", "Epilazione"],
+    "dentista": ["Igiene Dentale", "Sbiancamento", "Otturazioni", "Ortodonzia", "Implantologia", "Estrazioni"],
+    "dentist": ["Igiene Dentale", "Sbiancamento", "Otturazioni", "Ortodonzia", "Implantologia", "Estrazioni"],
     "palestra": ["Sala Pesi", "Corsi Fitness", "Personal Training", "Yoga", "Pilates", "Spinning"],
-    "idraulico": ["Riparazione Perdite", "Installazione Caldaie", "Sostituzione Rubinetti", "Spurgo", "Manutenzione"],
-    "elettricista": ["Impianti Elettrici", "Riparazione Guasti", "Domotica", "Illuminazione", "Manutenzione"]
+    "gym": ["Sala Pesi", "Corsi Fitness", "Personal Training", "Yoga", "Pilates", "Spinning"],
+    "idraulico": ["Riparazione Perdite", "Installazione Caldaie", "Manutenzione Impianti", "Spurgo", "Pronto Intervento"],
+    "plumber": ["Riparazione Perdite", "Installazione Caldaie", "Manutenzione Impianti", "Spurgo", "Pronto Intervento"],
+    "elettricista": ["Impianti Elettrici", "Riparazione Guasti", "Domotica", "Illuminazione LED", "Certificazioni"],
+    "electrician": ["Impianti Elettrici", "Riparazione Guasti", "Domotica", "Illuminazione LED", "Certificazioni"]
 }
 
-async def generate_business_content(business_name: str, category: str, language: str) -> Dict[str, Any]:
+async def generate_business_content(business_name: str, category: str, language: str, primary_type: str = None) -> Dict[str, Any]:
     try:
+        # Determina se è ristorante/bar per generare menu
+        is_food_business = primary_type in ["restaurant", "bar", "cafe", "pizza_restaurant"] or category.lower() in ["ristorante", "bar", "pizzeria", "café"]
+        
         chat = LlmChat(
             api_key=EMERGENT_LLM_KEY,
             session_id=f"content_{uuid.uuid4()}",
             system_message=f"Sei un esperto copywriter che crea contenuti professionali per siti web di attività locali in {language}."
         ).with_model("openai", "gpt-5.2")
 
-        services = SERVICES_BY_CATEGORY.get(category.lower(), ["Servizio 1", "Servizio 2", "Servizio 3"])
+        # Ottieni servizi base dalla categoria
+        category_key = primary_type or category.lower()
+        base_services = SERVICES_BY_CATEGORY.get(category_key, ["Servizio Professionale", "Consulenza Specializzata", "Assistenza Clienti"])
         
-        prompt = f"""Crea contenuti professionali in {language} per un sito web di: {business_name}
+        if is_food_business:
+            prompt = f"""Crea contenuti professionali in {language} per un ristorante/bar: {business_name}
 Categoria: {category}
 
 Genera SOLO un oggetto JSON con questa struttura:
 {{
   "homepage_title": "titolo accattivante",
   "homepage_subtitle": "sottotitolo breve",
-  "about_text": "testo chi siamo (100 parole)",
-  "services_intro": "introduzione servizi (50 parole)",
+  "about_text": "testo chi siamo (80 parole)",
+  "menu_categories": [
+    {{
+      "name": "Colazione",
+      "items": ["Cornetto", "Cappuccino", "Spremuta d'arancia", "Toast"]
+    }},
+    {{
+      "name": "Pranzo",
+      "items": ["Pasta al pomodoro", "Insalata Caesar", "Panino gourmet", "Zuppa del giorno"]
+    }},
+    {{
+      "name": "Aperitivo",
+      "items": ["Spritz", "Prosecco", "Stuzzichini misti", "Taglieri"]
+    }}
+  ],
+  "cta_text": "call to action"
+}}
+
+Rispondi SOLO con JSON valido, senza markdown."""
+        else:
+            services_list = ', '.join(base_services)
+            prompt = f"""Crea contenuti professionali in {language} per: {business_name}
+Categoria: {category}
+
+Genera SOLO un oggetto JSON con questa struttura:
+{{
+  "homepage_title": "titolo accattivante",
+  "homepage_subtitle": "sottotitolo breve",
+  "about_text": "testo chi siamo (80 parole)",
+  "services_intro": "introduzione servizi (40 parole)",
   "cta_text": "call to action"
 }}
 
@@ -167,18 +209,36 @@ Rispondi SOLO con JSON valido, senza markdown."""
         
         import json
         content = json.loads(response)
-        content["services"] = services
+        
+        # Se non è food business, aggiungi servizi dalla lista
+        if not is_food_business:
+            content["services"] = base_services
+        
         return content
     except Exception as e:
         logger.error(f"Errore generazione contenuti: {str(e)}")
-        return {
-            "homepage_title": f"Benvenuti da {business_name}",
-            "homepage_subtitle": f"Il tuo {category} di fiducia",
-            "about_text": f"{business_name} offre servizi professionali di alta qualità.",
-            "services_intro": "Scopri tutti i nostri servizi",
-            "services": SERVICES_BY_CATEGORY.get(category.lower(), ["Servizio 1", "Servizio 2", "Servizio 3"]),
-            "cta_text": "Contattaci Ora"
-        }
+        # Fallback
+        if primary_type in ["restaurant", "bar", "cafe"] or category.lower() in ["ristorante", "bar"]:
+            return {
+                "homepage_title": f"Benvenuti da {business_name}",
+                "homepage_subtitle": f"Il tuo {category} di fiducia",
+                "about_text": f"{business_name} offre un'esperienza culinaria autentica con ingredienti freschi e di qualità.",
+                "menu_categories": [
+                    {"name": "Antipasti", "items": ["Bruschette miste", "Salumi e formaggi", "Insalata caprese"]},
+                    {"name": "Primi", "items": ["Pasta al pomodoro", "Risotto ai funghi", "Gnocchi al pesto"]},
+                    {"name": "Secondi", "items": ["Bistecca alla griglia", "Pesce del giorno", "Pollo arrosto"]}
+                ],
+                "cta_text": "Prenota Ora"
+            }
+        else:
+            return {
+                "homepage_title": f"Benvenuti da {business_name}",
+                "homepage_subtitle": f"Il tuo {category} di fiducia",
+                "about_text": f"{business_name} offre servizi professionali di alta qualità.",
+                "services_intro": "Scopri tutti i nostri servizi",
+                "services": SERVICES_BY_CATEGORY.get(category.lower(), ["Servizio 1", "Servizio 2", "Servizio 3"]),
+                "cta_text": "Contattaci Ora"
+            }
 
 async def generate_logo(business_name: str) -> Optional[str]:
     try:
