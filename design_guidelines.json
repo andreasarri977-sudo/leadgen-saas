@@ -1,0 +1,180 @@
+{
+  "design_system": {
+    "identity": {
+      "name": "LeadHunter Pro",
+      "archetype": "The Performance Pro (Archetype 2) x Swiss High-Contrast (Archetype 4)",
+      "vibe": "Precision, Automation, Authority, Italian Elegance",
+      "principles": [
+        "Fusion over Imitation: Mix Swiss precision with Italian warmth.",
+        "Data Density: Dashboards must be scanable, not decorative.",
+        "Contrast is King: Use deep obsidian against stark white for hierarchy.",
+        "Motion with Purpose: Only animate what changes state."
+      ]
+    },
+    "typography": {
+      "headings": {
+        "family": "Barlow Condensed, sans-serif",
+        "weights": ["600", "700", "800"],
+        "usage": "All section headers, modal titles, and metric values.",
+        "letterSpacing": "tracking-tight"
+      },
+      "body": {
+        "family": "Inter, sans-serif",
+        "weights": ["400", "500"],
+        "usage": "Table data, form labels, paragraphs.",
+        "letterSpacing": "tracking-normal"
+      },
+      "mono": {
+        "family": "JetBrains Mono, monospace",
+        "usage": "API keys, code snippets, ID tags."
+      }
+    },
+    "colors": {
+      "palette": {
+        "primary": {
+          "name": "Volt Blue",
+          "hex": "#007AFF",
+          "tailwind": "bg-blue-600",
+          "usage": "Primary actions, active states, key metrics."
+        },
+        "secondary": {
+          "name": "Deep Obsidian",
+          "hex": "#0A0A0A",
+          "tailwind": "bg-neutral-950",
+          "usage": "Sidebars, headers, modal backdrops."
+        },
+        "accent": {
+          "name": "Signal Green",
+          "hex": "#34C759",
+          "tailwind": "bg-green-500",
+          "usage": "Success states, 'Lead Found' indicators."
+        },
+        "background": {
+          "light": "#FFFFFF",
+          "dark": "#0A0A0A",
+          "subtle": "#F5F5F7"
+        },
+        "text": {
+          "primary": "#111827",
+          "secondary": "#6B7280",
+          "inverse": "#FFFFFF"
+        }
+      },
+      "gradients": {
+        "hero": "bg-gradient-to-r from-neutral-900 to-neutral-800",
+        "glass": "bg-white/70 backdrop-blur-xl border-white/20"
+      }
+    },
+    "layout": {
+      "spacing": {
+        "base": "0.25rem",
+        "container_padding": "p-6 md:p-8 lg:p-12",
+        "section_gap": "gap-8"
+      },
+      "grids": {
+        "dashboard": "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4",
+        "marketing": "grid grid-cols-1 md:grid-cols-12 gap-8"
+      },
+      "containers": {
+        "card": "bg-white border border-neutral-200 rounded-lg shadow-sm hover:shadow-md transition-shadow",
+        "panel": "bg-neutral-50 border-r border-neutral-200"
+      }
+    },
+    "components": {
+      "buttons": {
+        "primary": "bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-md shadow-sm transition-all active:scale-95",
+        "secondary": "bg-white border border-neutral-200 text-neutral-900 hover:bg-neutral-50 px-4 py-2 rounded-md transition-all",
+        "ghost": "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 px-3 py-1.5 rounded-md"
+      },
+      "inputs": {
+        "default": "h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+        "search": "pl-10"
+      },
+      "cards": {
+        "stat": "p-6 flex flex-col gap-2 bg-white border border-neutral-100 shadow-sm rounded-xl",
+        "lead": "p-4 flex items-center justify-between bg-white border-b border-neutral-100 last:border-0 hover:bg-neutral-50 transition-colors"
+      }
+    },
+    "visual_enhancers": {
+      "shadows": {
+        "soft": "shadow-[0_2px_8px_rgba(0,0,0,0.04)]",
+        "lifted": "shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
+      },
+      "borders": {
+        "subtle": "border border-neutral-200",
+        "active": "border-blue-500 ring-1 ring-blue-500"
+      },
+      "radius": {
+        "default": "rounded-lg",
+        "pill": "rounded-full"
+      }
+    },
+    "assets": {
+      "images": {
+        "office_hero": {
+          "url": "https://images.unsplash.com/photo-1718220216044-006f43e3a9b1",
+          "alt": "Modern open plan office workspace",
+          "usage": "Landing page hero, login background"
+        },
+        "abstract_tech": {
+          "url": "https://images.unsplash.com/photo-1750969185331-e03829f72c7d",
+          "alt": "Abstract blue network lines",
+          "usage": "Feature backgrounds, empty states"
+        },
+        "italian_street": {
+          "url": "https://images.unsplash.com/photo-1705102960797-4920e1c86f6d",
+          "alt": "Italian city street architecture",
+          "usage": "Local business context, demo site placeholder"
+        },
+        "agency_team": {
+          "url": "https://images.unsplash.com/photo-1758873271902-a63ecd5b5235",
+          "alt": "Creative team working in office",
+          "usage": "About page, team section"
+        }
+      },
+      "icons": {
+        "library": "lucide-react",
+        "style": "Stroke width 1.5px, size 16px-20px for UI, 24px for nav"
+      }
+    },
+    "motion": {
+      "transitions": "transition-all duration-200 ease-out",
+      "hover": "hover:-translate-y-0.5 hover:shadow-md",
+      "loading": "animate-pulse bg-neutral-100"
+    },
+    "accessibility": {
+      "contrast": "Ensure 4.5:1 for normal text, 3:1 for large text.",
+      "focus": "Visible focus ring on all interactive elements.",
+      "aria": "Use aria-label for icon-only buttons."
+    }
+  },
+  "instructions_to_main_agent": {
+    "general": [
+      "Use the 'Barlow Condensed' font for all headings to give a distinct 'Pro' feel.",
+      "Implement a 'Bento Grid' layout for the main dashboard overview.",
+      "Use 'Deep Obsidian' (#0A0A0A) for the sidebar to create high contrast with the white content area.",
+      "Ensure all tables have sticky headers and hover effects on rows.",
+      "Use 'Volt Blue' (#007AFF) sparingly for primary actions to maintain visual hierarchy.",
+      "All interactive elements MUST have a `data-testid` attribute."
+    ],
+    "pages": {
+      "dashboard": "High density data view. Use small charts (sparklines) and big numbers.",
+      "lead_search": "Split view: Search filters on left (or top), results list on right (or bottom).",
+      "demo_generator": "Step-by-step wizard with progress bar. Use 'abstract_tech' image as background for the loading state."
+    },
+    "components": {
+      "LeadCard": "Compact card showing Company Name, Category, City, and Status Badge.",
+      "StatusBadge": "Pill shaped, color coded (New=Blue, Contacted=Yellow, Client=Green).",
+      "StatCard": "Simple card with Icon, Label, Value, and Trend Indicator."
+    }
+  },
+  "universal_guidelines": [
+    "Do not use generic centered layouts.",
+    "Create depth through layered design elements.",
+    "Use glass-morphism effects for overlays.",
+    "Never use 'transition: all'.",
+    "Every interaction needs micro-animations.",
+    "Use 2-3x more spacing than feels comfortable.",
+    "Prioritize using pre-existing components from src/components/ui."
+  ]
+}
