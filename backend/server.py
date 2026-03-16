@@ -298,10 +298,17 @@ async def search_companies(request: SearchRequest):
                                 logger.warning(f"Posto {idx+1} senza place_id, skip")
                                 continue
                             
-                            logger.info(f"Recupero dettagli per: {place_id}")
+                            # Costruisci URL corretto Place Details
+                            # Se place_id non inizia con "places/", aggiungilo
+                            if not place_id.startswith('places/'):
+                                place_details_id = f"places/{place_id}"
+                            else:
+                                place_details_id = place_id
+                            
+                            logger.info(f"Recupero dettagli per: {place_details_id}")
                             
                             # Chiama Place Details
-                            details_url = f"https://places.googleapis.com/v1/{place_id}"
+                            details_url = f"https://places.googleapis.com/v1/{place_details_id}"
                             details_headers = {
                                 "X-Goog-Api-Key": api_key,
                                 "X-Goog-FieldMask": "id,displayName,formattedAddress,location,primaryType,types,regularOpeningHours,internationalPhoneNumber,websiteUri,googleMapsUri,rating,userRatingCount,reviews,photos"
