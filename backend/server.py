@@ -761,10 +761,18 @@ async def generate_demo_site(request: GenerateDemoRequest):
     
     business_name = lead['name']
     category = lead['category']
-    language = lead.get('language', 'italiano')
-    primary_type = lead.get('primary_type')
+    # Usa site_language (codice) invece di language (nome)
+    site_language = lead.get('site_language', lead.get('language', 'it'))
+    # Normalizza: se è un nome lingua, converti a codice
+    if site_language in ['italiano', 'francese', 'inglese', 'spagnolo', 'tedesco']:
+        lang_to_code = {'italiano': 'it', 'francese': 'fr', 'inglese': 'en', 'spagnolo': 'es', 'tedesco': 'de'}
+        site_language = lang_to_code.get(site_language, 'it')
     
-    content = await generate_business_content(business_name, category, language, primary_type)
+    primary_type = lead.get('primary_type')
+    booking_mode = lead.get('booking_mode', 'none')
+    external_booking_url = lead.get('external_booking_url')
+    
+    content = await generate_business_content(business_name, category, site_language, primary_type)
     logo_base64 = await generate_logo(business_name)
     
     # URL interno (non Vercel)
@@ -791,7 +799,9 @@ async def generate_demo_site(request: GenerateDemoRequest):
         "website": lead.get('website'),
         "primary_type": lead.get('primary_type'),
         "types": lead.get('types', []),
-        "language": language
+        "site_language": site_language,
+        "booking_mode": booking_mode,
+        "external_booking_url": external_booking_url
     }
     
     demo = DemoSite(
