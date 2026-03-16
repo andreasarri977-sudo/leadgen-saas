@@ -213,29 +213,13 @@ async def search_companies(request: SearchRequest):
     api_key = api_key or GOOGLE_MAPS_API_KEY
     
     try:
-        # Mappa categorie italiane a tipi Google Places
-        category_map = {
-            "parrucchiere": "hair_salon",
-            "ristorante": "restaurant",
-            "estetista": "beauty_salon",
-            "dentista": "dentist",
-            "palestra": "gym",
-            "idraulico": "plumber",
-            "elettricista": "electrician",
-            "bar": "bar",
-            "pizzeria": "pizza_restaurant",
-            "meccanico": "car_repair"
-        }
-        
-        place_type = category_map.get(request.category.lower(), "establishment")
-        
-        # Text Search (New) - Places API (New)
+        # Text Search (New)
         search_url = "https://places.googleapis.com/v1/places:searchText"
         
         headers = {
             "Content-Type": "application/json",
             "X-Goog-Api-Key": api_key,
-            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.types,places.websiteUri,places.nationalPhoneNumber,places.googleMapsUri"
+            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.primaryType,places.rating,places.userRatingCount,places.websiteUri,places.internationalPhoneNumber,places.googleMapsUri"
         }
         
         search_body = {
@@ -263,34 +247,88 @@ async def search_companies(request: SearchRequest):
                     if reviews_count < request.min_reviews or rating < request.min_rating:
                         continue
                     
-                    # Verifica se ha sito web
                     has_website = place.get('websiteUri') is not None
                     
                     if not has_website:
-                        language = detect_language_from_country(request.country)
+                        place_id = place.get('id')
                         
-                        display_name = place.get('displayName', {})
-                        name = display_name.get('text', 'Unknown') if isinstance(display_name, dict) else str(display_name)
+                        # Chiama Place Details per dati completi
+                        details_url = f"https://places.googleapis.com/v1/{place_id}"
+                        details_headers = {
+                            "X-Goog-Api-Key": api_key,
+                            "X-Goog-FieldMask": "displayName,formattedAddress,location,primaryType,types,regularOpeningHours,internationalPhoneNumber,websiteUri,googleMapsUri,rating,userRatingCount,reviews,photos"
+                        }
                         
-                        lead = Lead(
-                            name=name,
-                            category=request.category,
-                            address=place.get('formattedAddress', ''),
-                            city=request.city,
-                            country=request.country,
-                            phone=place.get('nationalPhoneNumber'),
-                            rating=rating,
-                            reviews_count=reviews_count,
-                            google_maps_link=place.get('googleMapsUri'),
-                            website=None,
-                            status="nuovo_lead",
-                            language=language
-                        )
-                        
-                        lead_dict = lead.model_dump()
-                        lead_dict['created_at'] = lead_dict['created_at'].isoformat()
-                        await db.leads.insert_one(lead_dict)
-                        leads.append(lead)
+                        async with session.get(details_url, headers=details_headers) as details_response:
+                            if details_response.status == 200:
+                                details = await details_response.json()
+                                
+                                display_name = details.get('displayName', {})
+                                name = display_name.get('text', 'Unknown') if isinstance(display_name, dict) else str(display_name)
+                                
+                                # Processa foto
+                                photos_data = []
+                                photos_raw = details.get('photos', [])
+                                for photo in photos_raw[:10]:  # Max 10 foto
+                                    photo_name = photo.get('name', '')
+                                    if photo_name:
+                                        photos_data.append({
+                                            "name": photo_name,
+                                            "url": f"https://places.googleapis.com/v1/{photo_name}/media?maxHeightPx=1200&maxWidthPx=1200&key={api_key}"
+                                        })
+                                
+                                # Processa orari
+                                opening_hours = details.get('regularOpeningHours', {})
+                                hours_text = opening_hours.get('weekdayDescriptions', [])
+                                
+                                # Processa recensioni
+                                reviews_raw = details.get('reviews', [])
+                                reviews_data = []
+                                for review in reviews_raw[:5]:  # Max 5 recensioni
+                                    author = review.get('authorAttribution', {})
+                                    text_obj = review.get('text', {})
+                                    reviews_data.append({
+                                        "author": author.get('displayName', 'Anonimo'),
+                                        "rating": review.get('rating', 0),
+                                        "text": text_obj.get('text', '') if isinstance(text_obj, dict) else str(text_obj),
+                                        "time": review.get('relativePublishTimeDescription', '')
+                                    })
+                                
+                                # Location
+                                location_data = details.get('location', {})
+                                location = {
+                                    "lat": location_data.get('latitude'),
+                                    "lng": location_data.get('longitude')
+                                } if location_data else None
+                                
+                                language = detect_language_from_country(request.country)
+                                
+                                lead = Lead(
+                                    place_id=place_id.replace('places/', ''),
+                                    name=name,
+                                    category=request.category,
+                                    address=details.get('formattedAddress', ''),
+                                    city=request.city,
+                                    country=request.country,
+                                    phone=details.get('internationalPhoneNumber'),
+                                    rating=rating,
+                                    reviews_count=reviews_count,
+                                    reviews=reviews_data if reviews_data else None,
+                                    hours_text=hours_text if hours_text else None,
+                                    photos=photos_data if photos_data else None,
+                                    location=location,
+                                    google_maps_link=details.get('googleMapsUri'),
+                                    website=details.get('websiteUri'),
+                                    primary_type=details.get('primaryType'),
+                                    types=details.get('types'),
+                                    status="nuovo_lead",
+                                    language=language
+                                )
+                                
+                                lead_dict = lead.model_dump()
+                                lead_dict['created_at'] = lead_dict['created_at'].isoformat()
+                                await db.leads.insert_one(lead_dict)
+                                leads.append(lead)
         
         return leads
     except HTTPException:
