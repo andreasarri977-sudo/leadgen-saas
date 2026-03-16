@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { TrendingUp, Users, Globe, CheckCircle, Target, Search } from 'lucide-react';
 import { Card } from '@/components/ui/card';
