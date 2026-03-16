@@ -379,17 +379,24 @@ async def generate_demo_site(request: GenerateDemoRequest):
     
     # Salva dati completi azienda per rendering
     business_data = {
+        "place_id": lead.get('place_id'),
         "name": lead.get('name'),
         "category": lead.get('category'),
         "address": lead.get('address'),
         "city": lead.get('city'),
         "country": lead.get('country'),
         "phone": lead.get('phone'),
+        "email": lead.get('email'),
         "rating": lead.get('rating'),
         "reviews_count": lead.get('reviews_count'),
-        "hours": lead.get('hours'),
+        "reviews": lead.get('reviews', []),
+        "hours_text": lead.get('hours_text', []),
         "photos": lead.get('photos', []),
+        "location": lead.get('location'),
         "google_maps_link": lead.get('google_maps_link'),
+        "website": lead.get('website'),
+        "primary_type": lead.get('primary_type'),
+        "types": lead.get('types', []),
         "language": language
     }
     
