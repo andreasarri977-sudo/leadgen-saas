@@ -753,6 +753,167 @@ async def update_lead_status(lead_id: str, status: str):
     
     return {"success": True, "message": "Status aggiornato"}
 
+class LeadSettingsUpdate(BaseModel):
+    site_language: Optional[str] = None
+    booking_mode: Optional[str] = None
+    external_booking_url: Optional[str] = None
+
+@api_router.patch("/leads/{lead_id}/settings")
+async def update_lead_settings(lead_id: str, settings: LeadSettingsUpdate):
+    """Aggiorna site_language, booking_mode o external_booking_url del lead"""
+    update_data = {}
+    
+    if settings.site_language is not None:
+        if settings.site_language not in ['it', 'fr', 'en', 'es', 'de']:
+            raise HTTPException(status_code=400, detail="Lingua non supportata. Usa: it, fr, en, es, de")
+        update_data['site_language'] = settings.site_language
+        update_data['language'] = settings.site_language  # Per compatibilità
+    
+    if settings.booking_mode is not None:
+        if settings.booking_mode not in ['none', 'appointment', 'table']:
+            raise HTTPException(status_code=400, detail="booking_mode non valido. Usa: none, appointment, table")
+        update_data['booking_mode'] = settings.booking_mode
+    
+    if settings.external_booking_url is not None:
+        update_data['external_booking_url'] = settings.external_booking_url if settings.external_booking_url else None
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="Nessun campo da aggiornare")
+    
+    result = await db.leads.update_one(
+        {"lead_id": lead_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Lead non trovato")
+    
+    return {"success": True, "message": "Impostazioni lead aggiornate", "updated": update_data}
+
+@api_router.get("/leads/{lead_id}")
+async def get_lead_by_id(lead_id: str):
+    """Ottiene un singolo lead per ID"""
+    lead = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead non trovato")
+    
+    if isinstance(lead.get('created_at'), str):
+        lead['created_at'] = datetime.fromisoformat(lead['created_at'])
+    
+    return lead
+
+# Modello per prenotazioni
+class BookingRequest(BaseModel):
+    demo_id: str
+    booking_type: str  # 'table' o 'appointment'
+    date: str
+    time: str
+    name: str
+    phone: str
+    email: Optional[str] = None
+    number_of_people: Optional[int] = None  # Solo per table
+    notes: Optional[str] = None
+
+class Booking(BaseModel):
+    booking_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    demo_id: str
+    lead_id: str
+    business_name: str
+    booking_type: str
+    date: str
+    time: str
+    customer_name: str
+    customer_phone: str
+    customer_email: Optional[str] = None
+    number_of_people: Optional[int] = None
+    notes: Optional[str] = None
+    status: str = "pending"  # pending, confirmed, cancelled
+    notification_sent: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+@api_router.post("/bookings")
+async def create_booking(request: BookingRequest):
+    """Crea una nuova prenotazione"""
+    # Trova il demo per ottenere lead_id e business_name
+    demo = await db.demo_sites.find_one({"demo_id": request.demo_id}, {"_id": 0})
+    if not demo:
+        raise HTTPException(status_code=404, detail="Demo non trovato")
+    
+    lead = await db.leads.find_one({"lead_id": demo['lead_id']}, {"_id": 0})
+    
+    booking = Booking(
+        demo_id=request.demo_id,
+        lead_id=demo['lead_id'],
+        business_name=demo['business_name'],
+        booking_type=request.booking_type,
+        date=request.date,
+        time=request.time,
+        customer_name=request.name,
+        customer_phone=request.phone,
+        customer_email=request.email,
+        number_of_people=request.number_of_people,
+        notes=request.notes
+    )
+    
+    booking_dict = booking.model_dump()
+    booking_dict['created_at'] = booking_dict['created_at'].isoformat()
+    await db.bookings.insert_one(booking_dict)
+    
+    # Prova a inviare notifica email se l'azienda ha email
+    notification_sent = False
+    business_email = lead.get('email') if lead else None
+    
+    if business_email and RESEND_API_KEY:
+        try:
+            # Prepara email di notifica
+            booking_type_label = "Prenotazione Tavolo" if request.booking_type == "table" else "Prenotazione Appuntamento"
+            people_info = f"<p><strong>Persone:</strong> {request.number_of_people}</p>" if request.number_of_people else ""
+            
+            html_content = f"""
+            <h2>Nuova {booking_type_label}</h2>
+            <p><strong>Cliente:</strong> {request.name}</p>
+            <p><strong>Telefono:</strong> {request.phone}</p>
+            {f'<p><strong>Email:</strong> {request.email}</p>' if request.email else ''}
+            <p><strong>Data:</strong> {request.date}</p>
+            <p><strong>Ora:</strong> {request.time}</p>
+            {people_info}
+            {f'<p><strong>Note:</strong> {request.notes}</p>' if request.notes else ''}
+            <hr>
+            <p>Contatta il cliente per confermare la prenotazione.</p>
+            """
+            
+            params = {
+                "from": SENDER_EMAIL,
+                "to": [business_email],
+                "subject": f"Nuova {booking_type_label} - {request.name}",
+                "html": html_content
+            }
+            
+            await asyncio.to_thread(resend.Emails.send, params)
+            notification_sent = True
+            
+            # Aggiorna booking con notifica inviata
+            await db.bookings.update_one(
+                {"booking_id": booking.booking_id},
+                {"$set": {"notification_sent": True}}
+            )
+        except Exception as e:
+            logger.error(f"Errore invio notifica prenotazione: {str(e)}")
+    
+    return {
+        "success": True,
+        "booking_id": booking.booking_id,
+        "notification_sent": notification_sent,
+        "message": "Prenotazione registrata" + (" e notifica inviata" if notification_sent else "")
+    }
+
+@api_router.get("/bookings")
+async def get_bookings(lead_id: Optional[str] = None):
+    """Ottiene le prenotazioni, opzionalmente filtrate per lead_id"""
+    query = {"lead_id": lead_id} if lead_id else {}
+    bookings = await db.bookings.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return bookings
+
 @api_router.post("/demo/generate", response_model=DemoSite)
 async def generate_demo_site(request: GenerateDemoRequest):
     lead = await db.leads.find_one({"lead_id": request.lead_id}, {"_id": 0})
