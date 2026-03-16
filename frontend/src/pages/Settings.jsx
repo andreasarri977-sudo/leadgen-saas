@@ -17,6 +17,8 @@ export default function Settings() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState(null);
   const [showGoogleKey, setShowGoogleKey] = useState(false);
   const [showResendKey, setShowResendKey] = useState(false);
 
