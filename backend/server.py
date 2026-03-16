@@ -403,7 +403,22 @@ async def search_companies(request: SearchRequest):
                         logger.error(f"Errore processing posto {idx+1}: {str(e)}")
                         continue
                 
-                logger.info(f"Totale lead creati: {len(leads)}")
+                logger.info(f"RIEPILOGO RICERCA:")
+                logger.info(f"- Totale posti trovati: {len(places)}")
+                logger.info(f"- Filtrati per reviews/rating: {filtered_by_reviews}")
+                logger.info(f"- Filtrati perché hanno sito: {filtered_by_website}")
+                logger.info(f"- Lead creati: {len(leads)}")
+                
+                if len(leads) == 0 and filtered_by_website > 0:
+                    # Tutte le aziende hanno già un sito
+                    raise HTTPException(status_code=200, detail={
+                        "info": "Tutte le aziende trovate hanno già un sito web",
+                        "total_found": len(places),
+                        "filtered_by_reviews": filtered_by_reviews,
+                        "filtered_by_website": filtered_by_website,
+                        "suggestion": "Prova con una città diversa o categoria meno comune"
+                    })
+                
                 return leads
     
     except HTTPException:
