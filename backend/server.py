@@ -202,8 +202,203 @@ async def generate_logo(business_name: str) -> Optional[str]:
 async def root():
     return {"message": "LeadHunter Pro API", "version": "1.0.0"}
 
-@api_router.post("/search/companies", response_model=List[Lead])
+@api_router.post("/search/companies")
 async def search_companies(request: SearchRequest):
+    settings = await db.api_settings.find_one({"setting_id": "api_settings"}, {"_id": 0})
+    api_key = settings.get('google_maps_api_key') if settings else None
+    
+    if not api_key and not GOOGLE_MAPS_API_KEY:
+        raise HTTPException(status_code=400, detail="Google Maps API key non configurata. Vai su Impostazioni API per configurarla.")
+    
+    api_key = api_key or GOOGLE_MAPS_API_KEY
+    
+    try:
+        # Text Search (New) - NON serve geocoding, gestiamo città + paese direttamente
+        search_url = "https://places.googleapis.com/v1/places:searchText"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": api_key,
+            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.websiteUri"
+        }
+        
+        search_body = {
+            "textQuery": f"{request.category} in {request.city}, {request.country}",
+            "languageCode": "it"
+        }
+        
+        logger.info(f"Ricerca Google Places: {search_body['textQuery']}")
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(search_url, json=search_body, headers=headers) as response:
+                status_code = response.status
+                response_text = await response.text()
+                
+                logger.info(f"Google API Response Status: {status_code}")
+                logger.info(f"Google API Response: {response_text[:500]}")
+                
+                if status_code != 200:
+                    error_detail = {
+                        "error": "Errore Google Places API",
+                        "status_code": status_code,
+                        "message": response_text,
+                        "query": search_body['textQuery']
+                    }
+                    logger.error(f"Google Places API Error: {error_detail}")
+                    
+                    # Determina tipo errore
+                    if status_code == 403:
+                        error_detail["user_message"] = "API Key non valida o Places API (New) non abilitata. Verifica su Google Cloud Console."
+                    elif status_code == 429:
+                        error_detail["user_message"] = "Quota API superata. Controlla limiti su Google Cloud Console."
+                    elif "BILLING" in response_text.upper():
+                        error_detail["user_message"] = "Billing non configurato. Abilita fatturazione su Google Cloud Console."
+                    elif "PERMISSION" in response_text.upper():
+                        error_detail["user_message"] = "Permessi insufficienti. Verifica restrizioni API Key."
+                    else:
+                        error_detail["user_message"] = f"Errore API (Status {status_code}). Vedi dettagli."
+                    
+                    raise HTTPException(status_code=500, detail=error_detail)
+                
+                try:
+                    search_data = await response.json()
+                except:
+                    raise HTTPException(status_code=500, detail={
+                        "error": "Risposta Google API non valida",
+                        "message": "La risposta non è JSON valido",
+                        "response": response_text[:200]
+                    })
+                
+                places = search_data.get('places', [])
+                logger.info(f"Trovati {len(places)} posti da Google")
+                
+                if len(places) == 0:
+                    # 0 risultati REALI (non errore)
+                    return []
+                
+                leads = []
+                for idx, place in enumerate(places):
+                    try:
+                        rating = place.get('rating', 0)
+                        reviews_count = place.get('userRatingCount', 0)
+                        
+                        logger.info(f"Posto {idx+1}: rating={rating}, reviews={reviews_count}")
+                        
+                        # Applica filtri
+                        if reviews_count < request.min_reviews or rating < request.min_rating:
+                            logger.info(f"Posto {idx+1} filtrato (reviews o rating)")
+                            continue
+                        
+                        has_website = place.get('websiteUri') is not None
+                        
+                        if not has_website:
+                            place_id = place.get('id')
+                            
+                            if not place_id:
+                                logger.warning(f"Posto {idx+1} senza place_id, skip")
+                                continue
+                            
+                            logger.info(f"Recupero dettagli per: {place_id}")
+                            
+                            # Chiama Place Details
+                            details_url = f"https://places.googleapis.com/v1/{place_id}"
+                            details_headers = {
+                                "X-Goog-Api-Key": api_key,
+                                "X-Goog-FieldMask": "id,displayName,formattedAddress,location,primaryType,types,regularOpeningHours,internationalPhoneNumber,websiteUri,googleMapsUri,rating,userRatingCount,reviews,photos"
+                            }
+                            
+                            async with session.get(details_url, headers=details_headers) as details_response:
+                                if details_response.status != 200:
+                                    logger.error(f"Errore Place Details per {place_id}: {details_response.status}")
+                                    continue
+                                
+                                details = await details_response.json()
+                                
+                                display_name = details.get('displayName', {})
+                                name = display_name.get('text', 'Unknown') if isinstance(display_name, dict) else str(display_name)
+                                
+                                # Processa foto
+                                photos_data = []
+                                photos_raw = details.get('photos', [])
+                                for photo in photos_raw[:10]:
+                                    photo_name = photo.get('name', '')
+                                    if photo_name:
+                                        photos_data.append({
+                                            "name": photo_name,
+                                            "url": f"https://places.googleapis.com/v1/{photo_name}/media?maxHeightPx=1200&maxWidthPx=1200&key={api_key}"
+                                        })
+                                
+                                # Processa orari
+                                opening_hours = details.get('regularOpeningHours', {})
+                                hours_text = opening_hours.get('weekdayDescriptions', [])
+                                
+                                # Processa recensioni
+                                reviews_raw = details.get('reviews', [])
+                                reviews_data = []
+                                for review in reviews_raw[:5]:
+                                    author = review.get('authorAttribution', {})
+                                    text_obj = review.get('text', {})
+                                    reviews_data.append({
+                                        "author": author.get('displayName', 'Anonimo'),
+                                        "rating": review.get('rating', 0),
+                                        "text": text_obj.get('text', '') if isinstance(text_obj, dict) else str(text_obj),
+                                        "time": review.get('relativePublishTimeDescription', '')
+                                    })
+                                
+                                # Location
+                                location_data = details.get('location', {})
+                                location = {
+                                    "lat": location_data.get('latitude'),
+                                    "lng": location_data.get('longitude')
+                                } if location_data else None
+                                
+                                language = detect_language_from_country(request.country)
+                                
+                                lead = Lead(
+                                    place_id=place_id.replace('places/', ''),
+                                    name=name,
+                                    category=request.category,
+                                    address=details.get('formattedAddress', ''),
+                                    city=request.city,
+                                    country=request.country,
+                                    phone=details.get('internationalPhoneNumber'),
+                                    rating=rating,
+                                    reviews_count=reviews_count,
+                                    reviews=reviews_data if reviews_data else None,
+                                    hours_text=hours_text if hours_text else None,
+                                    photos=photos_data if photos_data else None,
+                                    location=location,
+                                    google_maps_link=details.get('googleMapsUri'),
+                                    website=details.get('websiteUri'),
+                                    primary_type=details.get('primaryType'),
+                                    types=details.get('types'),
+                                    status="nuovo_lead",
+                                    language=language
+                                )
+                                
+                                lead_dict = lead.model_dump()
+                                lead_dict['created_at'] = lead_dict['created_at'].isoformat()
+                                await db.leads.insert_one(lead_dict)
+                                leads.append(lead)
+                                
+                                logger.info(f"Lead creato: {name}")
+                    
+                    except Exception as e:
+                        logger.error(f"Errore processing posto {idx+1}: {str(e)}")
+                        continue
+                
+                logger.info(f"Totale lead creati: {len(leads)}")
+                return leads
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Errore generale ricerca: {str(e)}")
+        raise HTTPException(status_code=500, detail={
+            "error": "Errore imprevisto",
+            "message": str(e),
+            "type": type(e).__name__
+        })
     settings = await db.api_settings.find_one({"setting_id": "api_settings"}, {"_id": 0})
     api_key = settings.get('google_maps_api_key') if settings else None
     
