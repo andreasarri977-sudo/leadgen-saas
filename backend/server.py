@@ -377,27 +377,98 @@ Rispondi SOLO con JSON valido, senza markdown."""
         return content
     except Exception as e:
         logger.error(f"Errore generazione contenuti: {str(e)}")
-        # Fallback
-        if primary_type in ["restaurant", "bar", "cafe"] or category.lower() in ["ristorante", "bar"]:
-            return {
-                "homepage_title": f"Benvenuti da {business_name}",
-                "homepage_subtitle": f"Il tuo {category} di fiducia",
-                "about_text": f"{business_name} offre un'esperienza culinaria autentica con ingredienti freschi e di qualità.",
-                "menu_categories": [
+        # Fallback multilingua
+        fallback_content = {
+            "it": {
+                "welcome": "Benvenuti da",
+                "trust": "di fiducia",
+                "food_about": "offre un'esperienza culinaria autentica con ingredienti freschi e di qualità.",
+                "service_about": "offre servizi professionali di alta qualità.",
+                "services_intro": "Scopri tutti i nostri servizi",
+                "cta_food": "Prenota Ora",
+                "cta_service": "Contattaci Ora",
+                "menu": [
                     {"name": "Antipasti", "items": ["Bruschette miste", "Salumi e formaggi", "Insalata caprese"]},
                     {"name": "Primi", "items": ["Pasta al pomodoro", "Risotto ai funghi", "Gnocchi al pesto"]},
                     {"name": "Secondi", "items": ["Bistecca alla griglia", "Pesce del giorno", "Pollo arrosto"]}
-                ],
-                "cta_text": "Prenota Ora"
+                ]
+            },
+            "fr": {
+                "welcome": "Bienvenue chez",
+                "trust": "de confiance",
+                "food_about": "vous offre une expérience culinaire authentique avec des ingrédients frais et de qualité.",
+                "service_about": "offre des services professionnels de haute qualité.",
+                "services_intro": "Découvrez tous nos services",
+                "cta_food": "Réserver",
+                "cta_service": "Nous Contacter",
+                "menu": [
+                    {"name": "Entrées", "items": ["Charcuterie", "Fromages", "Salade mixte"]},
+                    {"name": "Plats", "items": ["Plat du jour", "Steak-frites", "Poisson grillé"]},
+                    {"name": "Desserts", "items": ["Crème brûlée", "Tarte du jour", "Mousse au chocolat"]}
+                ]
+            },
+            "en": {
+                "welcome": "Welcome to",
+                "trust": "you can trust",
+                "food_about": "offers an authentic culinary experience with fresh, quality ingredients.",
+                "service_about": "offers high quality professional services.",
+                "services_intro": "Discover all our services",
+                "cta_food": "Book Now",
+                "cta_service": "Contact Us",
+                "menu": [
+                    {"name": "Starters", "items": ["Mixed appetizers", "Seasonal salad", "Soup of the day"]},
+                    {"name": "Mains", "items": ["Daily special", "Grilled steak", "Fresh fish"]},
+                    {"name": "Desserts", "items": ["Cheesecake", "Ice cream", "Chocolate cake"]}
+                ]
+            },
+            "es": {
+                "welcome": "Bienvenidos a",
+                "trust": "de confianza",
+                "food_about": "ofrece una experiencia culinaria auténtica con ingredientes frescos y de calidad.",
+                "service_about": "ofrece servicios profesionales de alta calidad.",
+                "services_intro": "Descubre todos nuestros servicios",
+                "cta_food": "Reservar",
+                "cta_service": "Contáctenos",
+                "menu": [
+                    {"name": "Entrantes", "items": ["Tapas variadas", "Jamón ibérico", "Ensalada mixta"]},
+                    {"name": "Principales", "items": ["Paella", "Carne a la brasa", "Pescado del día"]},
+                    {"name": "Postres", "items": ["Flan", "Tarta de queso", "Helado"]}
+                ]
+            },
+            "de": {
+                "welcome": "Willkommen bei",
+                "trust": "Ihres Vertrauens",
+                "food_about": "bietet ein authentisches kulinarisches Erlebnis mit frischen, hochwertigen Zutaten.",
+                "service_about": "bietet professionelle Dienstleistungen höchster Qualität.",
+                "services_intro": "Entdecken Sie alle unsere Dienstleistungen",
+                "cta_food": "Reservieren",
+                "cta_service": "Kontaktieren Sie uns",
+                "menu": [
+                    {"name": "Vorspeisen", "items": ["Gemischte Antipasti", "Tagessuppe", "Salat"]},
+                    {"name": "Hauptgerichte", "items": ["Tagesgericht", "Schnitzel", "Fisch"]},
+                    {"name": "Nachspeisen", "items": ["Kuchen", "Eis", "Obstsalat"]}
+                ]
+            }
+        }
+        
+        fb = fallback_content.get(site_language, fallback_content["it"])
+        
+        if primary_type in ["restaurant", "bar", "cafe"] or category.lower() in ["ristorante", "bar", "restaurant"]:
+            return {
+                "homepage_title": f"{fb['welcome']} {business_name}",
+                "homepage_subtitle": f"{category} {fb['trust']}",
+                "about_text": f"{business_name} {fb['food_about']}",
+                "menu_categories": fb["menu"],
+                "cta_text": fb["cta_food"]
             }
         else:
             return {
-                "homepage_title": f"Benvenuti da {business_name}",
-                "homepage_subtitle": f"Il tuo {category} di fiducia",
-                "about_text": f"{business_name} offre servizi professionali di alta qualità.",
-                "services_intro": "Scopri tutti i nostri servizi",
-                "services": SERVICES_BY_CATEGORY.get(category.lower(), ["Servizio 1", "Servizio 2", "Servizio 3"]),
-                "cta_text": "Contattaci Ora"
+                "homepage_title": f"{fb['welcome']} {business_name}",
+                "homepage_subtitle": f"{category} {fb['trust']}",
+                "about_text": f"{business_name} {fb['service_about']}",
+                "services_intro": fb["services_intro"],
+                "services": base_services,
+                "cta_text": fb["cta_service"]
             }
 
 async def generate_logo(business_name: str) -> Optional[str]:
