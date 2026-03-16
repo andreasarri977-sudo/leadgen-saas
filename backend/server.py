@@ -120,19 +120,122 @@ class ApiSettingsUpdate(BaseModel):
     google_maps_api_key: Optional[str] = None
     resend_api_key: Optional[str] = None
 
-LANGUAGE_MAP = {
-    "IT": "italiano",
-    "FR": "francese",
-    "ES": "spagnolo",
-    "DE": "tedesco",
-    "GB": "inglese",
-    "UK": "inglese",
-    "US": "inglese"
+# Mapping paese → codice lingua ISO per i siti generati
+COUNTRY_TO_LANG_CODE = {
+    # Italia
+    "IT": "it", "ITALIA": "it", "ITALY": "it",
+    # Francia
+    "FR": "fr", "FRANCIA": "fr", "FRANCE": "fr",
+    # Spagna
+    "ES": "es", "SPAGNA": "es", "SPAIN": "es", "ESPAÑA": "es",
+    # Germania
+    "DE": "de", "GERMANIA": "de", "GERMANY": "de", "DEUTSCHLAND": "de",
+    # Austria (tedesco)
+    "AT": "de", "AUSTRIA": "de", "ÖSTERREICH": "de",
+    # Svizzera (default tedesco, ma può essere fr)
+    "CH": "de", "SVIZZERA": "de", "SWITZERLAND": "de", "SCHWEIZ": "de", "SUISSE": "fr",
+    # Belgio (francese)
+    "BE": "fr", "BELGIO": "fr", "BELGIUM": "fr", "BELGIQUE": "fr",
+    # UK / Irlanda
+    "GB": "en", "UK": "en", "REGNO UNITO": "en", "UNITED KINGDOM": "en",
+    "IE": "en", "IRLANDA": "en", "IRELAND": "en",
+    # USA
+    "US": "en", "USA": "en", "STATI UNITI": "en", "UNITED STATES": "en",
+    # Portogallo (fallback spagnolo)
+    "PT": "es", "PORTOGALLO": "es", "PORTUGAL": "es",
+    # Paesi Bassi (fallback inglese)
+    "NL": "en", "PAESI BASSI": "en", "NETHERLANDS": "en", "OLANDA": "en"
 }
 
-def detect_language_from_country(country: str) -> str:
-    country_upper = country.upper()
-    return LANGUAGE_MAP.get(country_upper, "italiano")
+# Mapping codice lingua → nome lingua per prompt LLM
+LANG_CODE_TO_NAME = {
+    "it": "italiano",
+    "fr": "francese", 
+    "en": "inglese",
+    "es": "spagnolo",
+    "de": "tedesco"
+}
+
+def get_site_language_from_country(country: str) -> str:
+    """Ottiene il codice lingua (it, fr, en, es, de) dal paese"""
+    if not country:
+        return "it"
+    country_upper = country.upper().strip()
+    return COUNTRY_TO_LANG_CODE.get(country_upper, "it")
+
+def get_language_name(lang_code: str) -> str:
+    """Ottiene il nome della lingua dal codice"""
+    return LANG_CODE_TO_NAME.get(lang_code, "italiano")
+
+# Categorie che richiedono prenotazione appuntamento
+APPOINTMENT_CATEGORIES = [
+    "hair_salon", "parrucchiere", "coiffeur", "friseur", "peluquería",
+    "beauty_salon", "estetista", "esthéticienne", "kosmetikstudio", "centro de belleza",
+    "dentist", "dentista", "dentiste", "zahnarzt",
+    "doctor", "medico", "médecin", "arzt",
+    "physiotherapist", "fisioterapista", "kinésithérapeute", "physiotherapeut",
+    "spa", "wellness_center", "centro_benessere",
+    "nail_salon", "manicure", "massage", "massaggio",
+    "tattoo_shop", "tatuatore",
+    "veterinarian", "veterinario", "vétérinaire", "tierarzt",
+    "psychologist", "psicologo", "psychologue",
+    "lawyer", "avvocato", "avocat", "rechtsanwalt",
+    "accountant", "commercialista", "comptable",
+    "consultant", "consulente",
+    "car_repair", "meccanico", "officina", "garage", "autowerkstatt",
+    "optician", "ottico", "opticien"
+]
+
+# Categorie che richiedono prenotazione tavolo
+TABLE_CATEGORIES = [
+    "restaurant", "ristorante", "pizzeria", "trattoria", "osteria",
+    "steakhouse", "seafood_restaurant", "italian_restaurant", "french_restaurant",
+    "japanese_restaurant", "chinese_restaurant", "indian_restaurant", "mexican_restaurant",
+    "thai_restaurant", "greek_restaurant", "mediterranean_restaurant",
+    "fine_dining_restaurant", "bistro", "brasserie", "gasthaus"
+]
+
+# Categorie ESCLUSE da prenotazione (bar, caffè, pub)
+NO_BOOKING_CATEGORIES = [
+    "bar", "cafe", "coffee_shop", "caffè", "café", "pub", "birreria",
+    "wine_bar", "cocktail_bar", "lounge", "nightclub", "discoteca",
+    "fast_food_restaurant", "bakery", "panetteria", "boulangerie",
+    "ice_cream_shop", "gelateria", "pasticceria", "pâtisserie"
+]
+
+def determine_booking_mode(primary_type: str, types: List[str] = None, category: str = None) -> str:
+    """
+    Determina automaticamente il booking_mode basato su categoria/tipo.
+    Returns: 'none', 'appointment', 'table'
+    """
+    # Normalizza tutti i valori in lowercase
+    check_values = []
+    if primary_type:
+        check_values.append(primary_type.lower())
+    if types:
+        check_values.extend([t.lower() for t in types])
+    if category:
+        check_values.append(category.lower())
+    
+    # Prima controlla se è escluso (bar, caffè, etc.)
+    for val in check_values:
+        for excluded in NO_BOOKING_CATEGORIES:
+            if excluded in val or val in excluded:
+                return "none"
+    
+    # Poi controlla se è ristorante (tavolo)
+    for val in check_values:
+        for table_cat in TABLE_CATEGORIES:
+            if table_cat in val or val in table_cat:
+                return "table"
+    
+    # Infine controlla se è servizio su appuntamento
+    for val in check_values:
+        for appt_cat in APPOINTMENT_CATEGORIES:
+            if appt_cat in val or val in appt_cat:
+                return "appointment"
+    
+    return "none"
 
 SERVICES_BY_CATEGORY = {
     "parrucchiere": ["Taglio Donna", "Taglio Uomo", "Piega", "Colore", "Balayage", "Trattamenti Ristrutturanti"],
