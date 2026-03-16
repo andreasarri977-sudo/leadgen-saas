@@ -385,6 +385,88 @@ export default function LeadDetail() {
         </Card>
 
         <div className="space-y-4">
+          {/* Card Impostazioni Sito */}
+          <Card className="p-6">
+            <h2 className="text-xl font-bold mb-4 tracking-tight flex items-center gap-2">
+              <Languages size={20} />
+              Impostazioni Sito
+            </h2>
+            
+            {/* Lingua Sito */}
+            <div className="mb-6">
+              <p className="text-sm text-neutral-600 mb-2 font-medium">Lingua del sito generato:</p>
+              <div className="grid grid-cols-5 gap-2">
+                {LANGUAGE_OPTIONS.map((lang) => (
+                  <button
+                    key={lang.code}
+                    data-testid={`lang-button-${lang.code}`}
+                    onClick={() => handleUpdateLanguage(lang.code)}
+                    disabled={updatingSettings}
+                    className={`p-2 rounded-lg border-2 text-center transition-all ${
+                      currentLang === lang.code 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-neutral-200 hover:border-blue-300'
+                    }`}
+                  >
+                    <span className="text-xl">{lang.flag}</span>
+                    <p className="text-xs mt-1">{lang.code.toUpperCase()}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Modalità Prenotazione */}
+            <div className="mb-4">
+              <p className="text-sm text-neutral-600 mb-2 font-medium flex items-center gap-1">
+                <Calendar size={14} />
+                Modalità prenotazione:
+              </p>
+              <div className="space-y-2">
+                {BOOKING_MODE_OPTIONS.map((mode) => (
+                  <button
+                    key={mode.value}
+                    data-testid={`booking-mode-${mode.value}`}
+                    onClick={() => handleUpdateBookingMode(mode.value)}
+                    disabled={updatingSettings}
+                    className={`w-full p-3 rounded-lg border-2 text-left transition-all flex items-center gap-3 ${
+                      currentBookingMode === mode.value 
+                        ? 'border-green-500 bg-green-50' 
+                        : 'border-neutral-200 hover:border-green-300'
+                    }`}
+                  >
+                    <span className="text-xl">{mode.icon}</span>
+                    <span className="text-sm font-medium">{mode.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* URL Prenotazione Esterna */}
+            {currentBookingMode !== 'none' && (
+              <div className="mt-4 pt-4 border-t border-neutral-200">
+                <p className="text-sm text-neutral-600 mb-2 font-medium">URL prenotazione esterna (opzionale):</p>
+                <p className="text-xs text-neutral-500 mb-2">TheFork, Treatwell, Fresha, Doctolib, Calendly...</p>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={externalBookingUrl}
+                    onChange={(e) => setExternalBookingUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="flex-1 px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                  <Button
+                    onClick={handleUpdateExternalBookingUrl}
+                    disabled={updatingSettings}
+                    size="sm"
+                  >
+                    Salva
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Card>
+
+          {/* Card Stato Lead */}
           <Card className="p-6">
             <h2 className="text-xl font-bold mb-4 tracking-tight">Aggiorna Stato</h2>
             <div className="space-y-2">
