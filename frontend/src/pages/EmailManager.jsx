@@ -204,6 +204,254 @@ export default function EmailManager() {
 
   return (
     <div data-testid="email-manager-page">
+      <h1 className="text-5xl font-bold mb-8 tracking-tight">Gestione Comunicazioni</h1>
+
+      <div className="grid grid-cols-1 gap-6">
+        {/* Selezione Lead */}
+        <Card className="p-6">
+          <h2 className="text-2xl font-bold mb-4 tracking-tight">Seleziona Lead</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="lead-select">Lead con Demo Creata</Label>
+              <Select value={selectedLead} onValueChange={setSelectedLead}>
+                <SelectTrigger data-testid="select-lead" className="mt-1">
+                  <SelectValue placeholder="Scegli un lead..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {leads.map((lead) => (
+                    <SelectItem key={lead.lead_id} value={lead.lead_id}>
+                      {lead.name} - {lead.city}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedLeadData && (
+              <div className="bg-neutral-50 p-4 rounded-lg">
+                <p className="text-sm text-neutral-600 mb-2"><strong>Contatti Disponibili:</strong></p>
+                <div className="space-y-1 text-sm">
+                  <p>📧 Email: {selectedLeadData.email || 'Non disponibile'}</p>
+                  <p>📱 WhatsApp: {selectedLeadData.phone ? 'Disponibile' : 'Non disponibile'}</p>
+                  <p>📞 Telefono: {selectedLeadData.phone || 'Non disponibile'}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Tabs Email / WhatsApp */}
+        <Card className="p-6">
+          <Tabs defaultValue="email" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="email" className="flex items-center gap-2">
+                <Mail size={16} />
+                Email
+              </TabsTrigger>
+              <TabsTrigger value="whatsapp" className="flex items-center gap-2">
+                <MessageCircle size={16} />
+                WhatsApp
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Tab Email */}
+            <TabsContent value="email" className="space-y-6">
+              <div>
+                <Button
+                  data-testid="generate-email-template-button"
+                  onClick={handleGenerateEmail}
+                  disabled={loadingEmail || !selectedLead}
+                  className="w-full bg-blue-600 hover:bg-blue-700 mb-4"
+                >
+                  {loadingEmail ? (
+                    <>
+                      <Loader2 className="mr-2 animate-spin" size={16} />
+                      Generazione AI...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="mr-2" size={16} />
+                      Genera Email Professionale con AI
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <div>
+                <Label htmlFor="recipient">Email Destinatario *</Label>
+                <Input
+                  id="recipient"
+                  data-testid="input-recipient-email"
+                  type="email"
+                  placeholder="email@esempio.com"
+                  value={emailData.recipient_email}
+                  onChange={(e) => setEmailData({ ...emailData, recipient_email: e.target.value })}
+                  className="mt-1"
+                />
+                {selectedLeadData && !selectedLeadData.email && (
+                  <p className="text-sm text-amber-600 mt-1">⚠️ Email azienda non disponibile - inserisci manualmente</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="subject">Oggetto</Label>
+                <Input
+                  id="subject"
+                  data-testid="input-subject"
+                  value={emailData.subject}
+                  onChange={(e) => setEmailData({ ...emailData, subject: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <Label htmlFor="content">Contenuto</Label>
+                  {emailData.html_content && (
+                    <Button
+                      onClick={copyEmail}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      <Copy size={14} className="mr-1" />
+                      Copia
+                    </Button>
+                  )}
+                </div>
+                <Textarea
+                  id="content"
+                  data-testid="textarea-email-content"
+                  rows={12}
+                  value={emailData.html_content}
+                  onChange={(e) => setEmailData({ ...emailData, html_content: e.target.value })}
+                  className="mt-1 font-mono text-sm"
+                />
+              </div>
+
+              <Button
+                data-testid="send-email-button"
+                onClick={handleSendEmail}
+                disabled={sending}
+                className="w-full bg-green-600 hover:bg-green-700"
+              >
+                {sending ? (
+                  <>
+                    <Loader2 className="mr-2 animate-spin" size={16} />
+                    Invio in corso...
+                  </>
+                ) : (
+                  <>
+                    <Send className="mr-2" size={16} />
+                    Invia Email
+                  </>
+                )}
+              </Button>
+            </TabsContent>
+
+            {/* Tab WhatsApp */}
+            <TabsContent value="whatsapp" className="space-y-6">
+              {!selectedLeadData?.phone ? (
+                <div className="p-6 bg-amber-50 border-2 border-amber-200 rounded-lg text-center">
+                  <Phone size={48} className="mx-auto mb-4 text-amber-600" />
+                  <p className="text-amber-800 font-semibold mb-2">Numero di telefono non disponibile</p>
+                  <p className="text-sm text-amber-700">Questo lead non ha un numero di telefono. Usa l'email o cerca il contatto manualmente.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+                    <p className="text-sm text-green-800 mb-2">
+                      <strong>✅ WhatsApp Disponibile</strong>
+                    </p>
+                    <p className="text-green-700">
+                      Numero: <strong>{selectedLeadData.phone}</strong>
+                    </p>
+                  </div>
+
+                  <div>
+                    <Button
+                      data-testid="generate-whatsapp-button"
+                      onClick={handleGenerateWhatsapp}
+                      disabled={loadingWhatsapp || !selectedLead}
+                      className="w-full bg-green-600 hover:bg-green-700 mb-4"
+                    >
+                      {loadingWhatsapp ? (
+                        <>
+                          <Loader2 className="mr-2 animate-spin" size={16} />
+                          Generazione AI...
+                        </>
+                      ) : (
+                        <>
+                          <MessageCircle className="mr-2" size={16} />
+                          Genera Messaggio WhatsApp con AI
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {whatsappMessage && (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <Label htmlFor="whatsapp-message">Messaggio</Label>
+                          <Button
+                            onClick={copyWhatsappMessage}
+                            variant="ghost"
+                            size="sm"
+                          >
+                            <Copy size={14} className="mr-1" />
+                            Copia
+                          </Button>
+                        </div>
+                        <Textarea
+                          id="whatsapp-message"
+                          data-testid="textarea-whatsapp-message"
+                          rows={10}
+                          value={whatsappMessage}
+                          onChange={(e) => setWhatsappMessage(e.target.value)}
+                          className="mt-1"
+                        />
+                      </div>
+
+                      <Button
+                        data-testid="open-whatsapp-button"
+                        onClick={handleOpenWhatsapp}
+                        className="w-full bg-green-600 hover:bg-green-700"
+                      >
+                        <MessageCircle className="mr-2" size={16} />
+                        Apri Chat WhatsApp
+                      </Button>
+
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <p className="text-sm text-blue-800">
+                          <strong>ℹ️ Come funziona:</strong>
+                        </p>
+                        <p className="text-sm text-blue-700 mt-2">
+                          Cliccando "Apri Chat WhatsApp" si aprirà WhatsApp Web o l'app (se su mobile) con il messaggio già precompilato. 
+                          Potrai rivederlo prima di inviare.
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
+        </Card>
+
+        {/* Info Demo URL */}
+        {demoUrl && (
+          <Card className="p-4 bg-neutral-50">
+            <p className="text-sm text-neutral-600 mb-1">Link demo incluso nei messaggi:</p>
+            <a href={demoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm font-mono">
+              {demoUrl}
+            </a>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
+    <div data-testid="email-manager-page">
       <h1 className="text-5xl font-bold mb-8 tracking-tight">Gestione Email</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
