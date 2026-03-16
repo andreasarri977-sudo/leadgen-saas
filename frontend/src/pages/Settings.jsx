@@ -157,6 +157,80 @@ export default function Settings() {
                 </p>
               </div>
             </div>
+
+            {/* Test API Button */}
+            <div className="mt-4">
+              <Button
+                data-testid="test-google-api-button"
+                onClick={handleTestGoogleAPI}
+                disabled={!settings.google_maps_api_key || testing}
+                variant="outline"
+                className="w-full"
+              >
+                {testing ? (
+                  <>
+                    <Loader2 className="mr-2 animate-spin" size={16} />
+                    Test in corso...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="mr-2" size={16} />
+                    Test Google API
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Test Result */}
+            {testResult && (
+              <div className={`mt-4 p-4 rounded-lg border-2 ${testResult.success ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-500'}`} data-testid="test-result">
+                <div className="flex items-start gap-2">
+                  {testResult.success ? (
+                    <CheckCircle size={20} className="text-green-600 flex-shrink-0 mt-1" />
+                  ) : (
+                    <div className="flex-shrink-0 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold mt-1">!</div>
+                  )}
+                  <div className="flex-1">
+                    <p className={`font-semibold ${testResult.success ? 'text-green-800' : 'text-red-800'}`}>
+                      {testResult.success ? 'Test Riuscito!' : 'Test Fallito'}
+                    </p>
+                    {testResult.message && (
+                      <p className={`text-sm mt-1 ${testResult.success ? 'text-green-700' : 'text-red-700'}`}>
+                        {testResult.message}
+                      </p>
+                    )}
+                    {testResult.error && (
+                      <p className="text-sm mt-1 text-red-700">
+                        <strong>Errore:</strong> {testResult.error}
+                      </p>
+                    )}
+                    {testResult.status_code && (
+                      <p className="text-sm mt-1 text-red-700">
+                        <strong>Status Code:</strong> {testResult.status_code}
+                      </p>
+                    )}
+                    {testResult.places_found !== undefined && (
+                      <p className="text-sm mt-1 text-green-700">
+                        <strong>Luoghi trovati:</strong> {testResult.places_found}
+                      </p>
+                    )}
+                    {testResult.response && (
+                      <details className="mt-2">
+                        <summary className="text-xs cursor-pointer hover:underline">Dettagli risposta</summary>
+                        <pre className="mt-2 p-2 bg-white rounded text-xs overflow-auto max-h-32">
+                          {testResult.response}
+                        </pre>
+                      </details>
+                    )}
+                    {testResult.instructions && (
+                      <p className="text-sm mt-2 text-red-700">
+                        📋 {testResult.instructions}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </Card>
 
