@@ -47,7 +47,7 @@ class SearchRequest(BaseModel):
 class Lead(BaseModel):
     model_config = ConfigDict(extra="ignore")
     lead_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    place_id: str  # Google Place ID
+    place_id: Optional[str] = None  # Opzionale per compatibilità con lead vecchi
     name: str
     category: str
     address: str
