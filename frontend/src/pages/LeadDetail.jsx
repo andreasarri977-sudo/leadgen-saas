@@ -217,16 +217,27 @@ export default function LeadDetail() {
               ) : (
                 <div data-testid="demo-info">
                   <div className="bg-neutral-50 p-4 rounded-lg mb-4">
-                    <p className="text-sm text-neutral-600 mb-2">URL Demo:</p>
-                    <a
-                      href={demo.demo_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <p className="text-sm text-neutral-600 mb-2">Demo Interno:</p>
+                    <button
+                      onClick={() => navigate(`/demo/${demo.demo_id}`)}
                       className="text-blue-600 hover:underline font-medium"
                     >
-                      {demo.demo_url}
-                    </a>
+                      Visualizza Demo Interno
+                    </button>
                   </div>
+                  {demo.publish_status === 'published' && demo.live_url && (
+                    <div className="bg-green-50 p-4 rounded-lg mb-4">
+                      <p className="text-sm text-neutral-600 mb-2">Sito Pubblicato:</p>
+                      <a
+                        href={demo.live_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-green-600 hover:underline font-medium"
+                      >
+                        {demo.live_url}
+                      </a>
+                    </div>
+                  )}
                   {demo.logo_base64 && (
                     <div className="mb-4">
                       <p className="text-sm text-neutral-600 mb-2">Logo Generato:</p>
