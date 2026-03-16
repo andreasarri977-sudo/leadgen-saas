@@ -71,13 +71,24 @@ export default function SearchLeads() {
       const errorData = error.response?.data?.detail;
       
       if (typeof errorData === 'object') {
-        setError({
-          title: errorData.user_message || errorData.error || 'Errore API',
-          details: errorData.message,
-          statusCode: errorData.status_code,
-          query: errorData.query
-        });
-        toast.error(errorData.user_message || 'Errore durante la ricerca');
+        // Check se è un info message (tutte hanno sito)
+        if (errorData.info) {
+          setError({
+            title: errorData.info,
+            isInfo: true,
+            details: `Trovati ${errorData.total_found} posti, ma ${errorData.filtered_by_website} hanno già un sito web e ${errorData.filtered_by_reviews} non rispettano i filtri.`,
+            suggestion: errorData.suggestion
+          });
+          toast.info(errorData.info);
+        } else {
+          setError({
+            title: errorData.user_message || errorData.error || 'Errore API',
+            details: errorData.message,
+            statusCode: errorData.status_code,
+            query: errorData.query
+          });
+          toast.error(errorData.user_message || 'Errore durante la ricerca');
+        }
       } else {
         setError({
           title: 'Errore durante la ricerca',
