@@ -119,10 +119,16 @@ export default function Settings() {
               <ol className="text-sm text-neutral-600 space-y-1 list-decimal list-inside">
                 <li>Vai su <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Google Cloud Console</a></li>
                 <li>Crea un progetto o selezionane uno esistente</li>
-                <li>Abilita "Places API"</li>
+                <li><strong>Abilita "Places API (New)"</strong> (NON la versione legacy)</li>
                 <li>Vai su Credenziali → Crea credenziali → Chiave API</li>
                 <li>Copia e incolla qui la chiave generata</li>
               </ol>
+              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-300 rounded-md">
+                <p className="text-xs text-yellow-800">
+                  <strong>⚠️ IMPORTANTE:</strong> Assicurati di abilitare "Places API (New)" e NON "Places API" (legacy). 
+                  La versione legacy non è supportata.
+                </p>
+              </div>
             </div>
           </div>
         </Card>
