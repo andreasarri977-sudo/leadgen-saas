@@ -70,7 +70,10 @@ class Lead(BaseModel):
     primary_type: Optional[str] = None  # Tipo principale
     types: Optional[List[str]] = None  # Tutti i tipi
     status: str = "nuovo_lead"
-    language: str = "it"
+    language: str = "it"  # Deprecated, use site_language
+    site_language: str = "it"  # Lingua del sito (it, fr, en, es, de)
+    booking_mode: str = "none"  # none, appointment, table
+    external_booking_url: Optional[str] = None  # URL prenotazione esterna (TheFork, Treatwell, etc.)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class DemoSite(BaseModel):
