@@ -237,78 +237,129 @@ def determine_booking_mode(primary_type: str, types: List[str] = None, category:
     
     return "none"
 
-SERVICES_BY_CATEGORY = {
-    "parrucchiere": ["Taglio Donna", "Taglio Uomo", "Piega", "Colore", "Balayage", "Trattamenti Ristrutturanti"],
-    "hair_salon": ["Taglio Donna", "Taglio Uomo", "Piega", "Colore", "Balayage", "Trattamenti Ristrutturanti"],
-    "ristorante": ["Antipasti", "Primi Piatti", "Secondi di Carne", "Secondi di Pesce", "Contorni", "Dessert"],
-    "restaurant": ["Antipasti", "Primi Piatti", "Secondi di Carne", "Secondi di Pesce", "Contorni", "Dessert"],
-    "bar": ["Caffetteria", "Aperitivi", "Cocktail", "Panini", "Dolci", "Birre Artigianali"],
-    "estetista": ["Pulizia Viso", "Trattamenti Anti-età", "Massaggi", "Manicure", "Pedicure", "Epilazione"],
-    "beauty_salon": ["Pulizia Viso", "Trattamenti Anti-età", "Massaggi", "Manicure", "Pedicure", "Epilazione"],
-    "dentista": ["Igiene Dentale", "Sbiancamento", "Otturazioni", "Ortodonzia", "Implantologia", "Estrazioni"],
-    "dentist": ["Igiene Dentale", "Sbiancamento", "Otturazioni", "Ortodonzia", "Implantologia", "Estrazioni"],
-    "palestra": ["Sala Pesi", "Corsi Fitness", "Personal Training", "Yoga", "Pilates", "Spinning"],
-    "gym": ["Sala Pesi", "Corsi Fitness", "Personal Training", "Yoga", "Pilates", "Spinning"],
-    "idraulico": ["Riparazione Perdite", "Installazione Caldaie", "Manutenzione Impianti", "Spurgo", "Pronto Intervento"],
-    "plumber": ["Riparazione Perdite", "Installazione Caldaie", "Manutenzione Impianti", "Spurgo", "Pronto Intervento"],
-    "elettricista": ["Impianti Elettrici", "Riparazione Guasti", "Domotica", "Illuminazione LED", "Certificazioni"],
-    "electrician": ["Impianti Elettrici", "Riparazione Guasti", "Domotica", "Illuminazione LED", "Certificazioni"]
+# Servizi per categoria e lingua
+SERVICES_BY_CATEGORY_LANG = {
+    "it": {
+        "hair_salon": ["Taglio Donna", "Taglio Uomo", "Piega", "Colore", "Balayage", "Trattamenti Ristrutturanti"],
+        "beauty_salon": ["Pulizia Viso", "Trattamenti Anti-età", "Massaggi", "Manicure", "Pedicure", "Epilazione"],
+        "dentist": ["Igiene Dentale", "Sbiancamento", "Otturazioni", "Ortodonzia", "Implantologia", "Estrazioni"],
+        "gym": ["Sala Pesi", "Corsi Fitness", "Personal Training", "Yoga", "Pilates", "Spinning"],
+        "plumber": ["Riparazione Perdite", "Installazione Caldaie", "Manutenzione Impianti", "Spurgo", "Pronto Intervento"],
+        "electrician": ["Impianti Elettrici", "Riparazione Guasti", "Domotica", "Illuminazione LED", "Certificazioni"],
+        "default": ["Servizio Professionale", "Consulenza Specializzata", "Assistenza Clienti"]
+    },
+    "fr": {
+        "hair_salon": ["Coupe Femme", "Coupe Homme", "Brushing", "Coloration", "Balayage", "Soins Capillaires"],
+        "beauty_salon": ["Soin du Visage", "Soins Anti-âge", "Massages", "Manucure", "Pédicure", "Épilation"],
+        "dentist": ["Détartrage", "Blanchiment", "Soins Dentaires", "Orthodontie", "Implants", "Extractions"],
+        "gym": ["Musculation", "Cours Collectifs", "Coaching Personnel", "Yoga", "Pilates", "Spinning"],
+        "plumber": ["Réparation Fuites", "Installation Chaudières", "Entretien", "Débouchage", "Urgences"],
+        "electrician": ["Installations Électriques", "Dépannage", "Domotique", "Éclairage LED", "Certifications"],
+        "default": ["Service Professionnel", "Conseil Spécialisé", "Assistance Client"]
+    },
+    "en": {
+        "hair_salon": ["Women's Cut", "Men's Cut", "Blow Dry", "Color", "Balayage", "Hair Treatments"],
+        "beauty_salon": ["Facial", "Anti-aging Treatments", "Massage", "Manicure", "Pedicure", "Waxing"],
+        "dentist": ["Dental Cleaning", "Whitening", "Fillings", "Orthodontics", "Implants", "Extractions"],
+        "gym": ["Weight Room", "Fitness Classes", "Personal Training", "Yoga", "Pilates", "Spinning"],
+        "plumber": ["Leak Repair", "Boiler Installation", "Maintenance", "Drain Cleaning", "Emergency Service"],
+        "electrician": ["Electrical Installations", "Repairs", "Smart Home", "LED Lighting", "Certifications"],
+        "default": ["Professional Service", "Specialized Consulting", "Customer Support"]
+    },
+    "es": {
+        "hair_salon": ["Corte Mujer", "Corte Hombre", "Peinado", "Color", "Balayage", "Tratamientos Capilares"],
+        "beauty_salon": ["Limpieza Facial", "Tratamientos Anti-edad", "Masajes", "Manicura", "Pedicura", "Depilación"],
+        "dentist": ["Limpieza Dental", "Blanqueamiento", "Empastes", "Ortodoncia", "Implantes", "Extracciones"],
+        "gym": ["Sala de Pesas", "Clases Colectivas", "Entrenamiento Personal", "Yoga", "Pilates", "Spinning"],
+        "plumber": ["Reparación de Fugas", "Instalación Calderas", "Mantenimiento", "Desatascos", "Urgencias"],
+        "electrician": ["Instalaciones Eléctricas", "Reparaciones", "Domótica", "Iluminación LED", "Certificaciones"],
+        "default": ["Servicio Profesional", "Asesoría Especializada", "Atención al Cliente"]
+    },
+    "de": {
+        "hair_salon": ["Damenhaarschnitt", "Herrenhaarschnitt", "Föhnen", "Färben", "Balayage", "Haarpflege"],
+        "beauty_salon": ["Gesichtsbehandlung", "Anti-Aging", "Massage", "Maniküre", "Pediküre", "Enthaarung"],
+        "dentist": ["Zahnreinigung", "Bleaching", "Füllungen", "Kieferorthopädie", "Implantate", "Extraktionen"],
+        "gym": ["Kraftraum", "Fitnesskurse", "Personal Training", "Yoga", "Pilates", "Spinning"],
+        "plumber": ["Leckagereparatur", "Kesselinstallation", "Wartung", "Rohrreinigung", "Notdienst"],
+        "electrician": ["Elektroinstallationen", "Reparaturen", "Smart Home", "LED-Beleuchtung", "Zertifizierungen"],
+        "default": ["Professioneller Service", "Fachberatung", "Kundenbetreuung"]
+    }
 }
 
-async def generate_business_content(business_name: str, category: str, language: str, primary_type: str = None) -> Dict[str, Any]:
+def get_services_for_category(category: str, primary_type: str, lang_code: str) -> List[str]:
+    """Ottiene i servizi nella lingua corretta per la categoria"""
+    lang_services = SERVICES_BY_CATEGORY_LANG.get(lang_code, SERVICES_BY_CATEGORY_LANG["it"])
+    
+    # Cerca prima per primary_type, poi per category
+    for key in [primary_type, category.lower() if category else None]:
+        if key:
+            for service_key in lang_services.keys():
+                if service_key != "default" and (service_key in key or key in service_key):
+                    return lang_services[service_key]
+    
+    return lang_services["default"]
+
+async def generate_business_content(business_name: str, category: str, site_language: str, primary_type: str = None) -> Dict[str, Any]:
+    """
+    Genera contenuti per il sito nella lingua specificata.
+    site_language: codice lingua (it, fr, en, es, de)
+    """
     try:
         # Determina se è ristorante/bar per generare menu
-        is_food_business = primary_type in ["restaurant", "bar", "cafe", "pizza_restaurant"] or category.lower() in ["ristorante", "bar", "pizzeria", "café"]
+        is_food_business = primary_type in ["restaurant", "bar", "cafe", "pizza_restaurant"] or category.lower() in ["ristorante", "bar", "pizzeria", "café", "restaurant"]
+        
+        # Nome lingua per il prompt
+        language_name = get_language_name(site_language)
         
         chat = LlmChat(
             api_key=EMERGENT_LLM_KEY,
             session_id=f"content_{uuid.uuid4()}",
-            system_message=f"Sei un esperto copywriter che crea contenuti professionali per siti web di attività locali in {language}."
+            system_message=f"Sei un esperto copywriter. SCRIVI ESCLUSIVAMENTE in {language_name}. Non usare MAI parole di altre lingue."
         ).with_model("openai", "gpt-5.2")
 
-        # Ottieni servizi base dalla categoria
-        category_key = primary_type or category.lower()
-        base_services = SERVICES_BY_CATEGORY.get(category_key, ["Servizio Professionale", "Consulenza Specializzata", "Assistenza Clienti"])
+        # Ottieni servizi nella lingua corretta
+        base_services = get_services_for_category(category, primary_type, site_language)
         
         if is_food_business:
-            prompt = f"""Crea contenuti professionali in {language} per un ristorante/bar: {business_name}
+            # Prompt specifico per lingua per ristoranti
+            menu_examples = {
+                "it": '{"name": "Colazione", "items": ["Cornetto", "Cappuccino", "Spremuta d\'arancia"]}, {"name": "Pranzo", "items": ["Pasta al pomodoro", "Insalata", "Panino"]}, {"name": "Aperitivo", "items": ["Spritz", "Prosecco", "Stuzzichini"]}',
+                "fr": '{"name": "Petit-déjeuner", "items": ["Croissant", "Café au lait", "Jus d\'orange"]}, {"name": "Déjeuner", "items": ["Plat du jour", "Salade", "Sandwich"]}, {"name": "Apéritif", "items": ["Kir", "Vin blanc", "Tapas"]}',
+                "en": '{"name": "Breakfast", "items": ["Pastry", "Cappuccino", "Fresh juice"]}, {"name": "Lunch", "items": ["Daily special", "Salad", "Sandwich"]}, {"name": "Happy Hour", "items": ["Cocktails", "Wine", "Appetizers"]}',
+                "es": '{"name": "Desayuno", "items": ["Tostada", "Café con leche", "Zumo de naranja"]}, {"name": "Almuerzo", "items": ["Menú del día", "Ensalada", "Bocadillo"]}, {"name": "Aperitivo", "items": ["Vermut", "Vino", "Tapas"]}',
+                "de": '{"name": "Frühstück", "items": ["Croissant", "Kaffee", "Orangensaft"]}, {"name": "Mittagessen", "items": ["Tagesgericht", "Salat", "Sandwich"]}, {"name": "Aperitif", "items": ["Cocktails", "Wein", "Snacks"]}'
+            }
+            
+            prompt = f"""Crea contenuti professionali ESCLUSIVAMENTE in {language_name} per: {business_name}
 Categoria: {category}
 
-Genera SOLO un oggetto JSON con questa struttura:
+IMPORTANTE: Tutto deve essere in {language_name}. Nessuna parola in altre lingue.
+
+Genera SOLO un oggetto JSON:
 {{
-  "homepage_title": "titolo accattivante",
-  "homepage_subtitle": "sottotitolo breve",
-  "about_text": "testo chi siamo (80 parole)",
-  "menu_categories": [
-    {{
-      "name": "Colazione",
-      "items": ["Cornetto", "Cappuccino", "Spremuta d'arancia", "Toast"]
-    }},
-    {{
-      "name": "Pranzo",
-      "items": ["Pasta al pomodoro", "Insalata Caesar", "Panino gourmet", "Zuppa del giorno"]
-    }},
-    {{
-      "name": "Aperitivo",
-      "items": ["Spritz", "Prosecco", "Stuzzichini misti", "Taglieri"]
-    }}
-  ],
-  "cta_text": "call to action"
+  "homepage_title": "titolo accattivante in {language_name}",
+  "homepage_subtitle": "sottotitolo breve in {language_name}",
+  "about_text": "testo chi siamo (80 parole) in {language_name}",
+  "menu_categories": [{menu_examples.get(site_language, menu_examples["it"])}],
+  "cta_text": "call to action in {language_name}"
 }}
 
 Rispondi SOLO con JSON valido, senza markdown."""
         else:
             services_list = ', '.join(base_services)
-            prompt = f"""Crea contenuti professionali in {language} per: {business_name}
+            prompt = f"""Crea contenuti professionali ESCLUSIVAMENTE in {language_name} per: {business_name}
 Categoria: {category}
+Servizi suggeriti: {services_list}
 
-Genera SOLO un oggetto JSON con questa struttura:
+IMPORTANTE: Tutto deve essere in {language_name}. Nessuna parola in altre lingue.
+
+Genera SOLO un oggetto JSON:
 {{
-  "homepage_title": "titolo accattivante",
-  "homepage_subtitle": "sottotitolo breve",
-  "about_text": "testo chi siamo (80 parole)",
-  "services_intro": "introduzione servizi (40 parole)",
-  "cta_text": "call to action"
+  "homepage_title": "titolo accattivante in {language_name}",
+  "homepage_subtitle": "sottotitolo breve in {language_name}",
+  "about_text": "testo chi siamo (80 parole) in {language_name}",
+  "services_intro": "introduzione servizi (40 parole) in {language_name}",
+  "cta_text": "call to action in {language_name}"
 }}
 
 Rispondi SOLO con JSON valido, senza markdown."""
