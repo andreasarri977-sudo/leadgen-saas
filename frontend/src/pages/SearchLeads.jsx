@@ -206,40 +206,44 @@ export default function SearchLeads() {
           <h2 className="text-2xl font-bold mb-6 tracking-tight">Risultati</h2>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border-2 border-red-500 rounded-lg" data-testid="error-banner">
+            <div className={`mb-6 p-4 ${error.isInfo ? 'bg-blue-50 border-2 border-blue-500' : 'bg-red-50 border-2 border-red-500'} rounded-lg`} data-testid="error-banner">
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white font-bold">!</div>
+                <div className={`flex-shrink-0 w-6 h-6 ${error.isInfo ? 'bg-blue-500' : 'bg-red-500'} rounded-full flex items-center justify-center text-white font-bold`}>
+                  {error.isInfo ? 'ℹ' : '!'}
+                </div>
                 <div className="flex-1">
-                  <h3 className="font-bold text-red-800 text-lg mb-2">{error.title}</h3>
+                  <h3 className={`font-bold ${error.isInfo ? 'text-blue-800' : 'text-red-800'} text-lg mb-2`}>{error.title}</h3>
                   {error.statusCode && (
-                    <p className="text-sm text-red-700 mb-2">
+                    <p className={`text-sm ${error.isInfo ? 'text-blue-700' : 'text-red-700'} mb-2`}>
                       <strong>Status Code:</strong> {error.statusCode}
                     </p>
                   )}
                   {error.query && (
-                    <p className="text-sm text-red-700 mb-2">
+                    <p className={`text-sm ${error.isInfo ? 'text-blue-700' : 'text-red-700'} mb-2`}>
                       <strong>Query:</strong> {error.query}
                     </p>
                   )}
                   {error.details && (
-                    <details className="mt-2">
-                      <summary className="text-sm text-red-700 cursor-pointer hover:underline">
-                        Dettagli tecnici
-                      </summary>
-                      <pre className="mt-2 p-2 bg-red-100 rounded text-xs overflow-auto max-h-40">
-                        {typeof error.details === 'string' ? error.details : JSON.stringify(error.details, null, 2)}
-                      </pre>
-                    </details>
+                    <p className={`text-sm ${error.isInfo ? 'text-blue-700' : 'text-red-700'} mb-2`}>
+                      {error.details}
+                    </p>
                   )}
-                  <div className="mt-3 space-y-2">
-                    <p className="text-sm text-red-800 font-semibold">Possibili soluzioni:</p>
-                    <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
-                      <li>Verifica che Places API (New) sia abilitata su <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console</a></li>
-                      <li>Controlla che il billing sia configurato</li>
-                      <li>Verifica restrizioni API Key</li>
-                      <li>Testa l'API dalle Impostazioni → "Test Google API"</li>
-                    </ul>
-                  </div>
+                  {error.suggestion && (
+                    <p className={`text-sm ${error.isInfo ? 'text-blue-800' : 'text-red-800'} font-semibold mt-3`}>
+                      💡 Suggerimento: {error.suggestion}
+                    </p>
+                  )}
+                  {!error.isInfo && (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-sm text-red-800 font-semibold">Possibili soluzioni:</p>
+                      <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
+                        <li>Verifica che Places API (New) sia abilitata su <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console</a></li>
+                        <li>Controlla che il billing sia configurato</li>
+                        <li>Verifica restrizioni API Key</li>
+                        <li>Testa l'API dalle Impostazioni → "Test Google API"</li>
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
