@@ -621,14 +621,22 @@ async def search_companies(request: SearchRequest):
                             
                             logger.info(f"Recupero dettagli per: {place_details_id}")
                             
-                            # Chiama Place Details
+                            # Chiama Place Details con lingua locale
                             details_url = f"https://places.googleapis.com/v1/{place_details_id}"
+                            
+                            # Determina lingua per la richiesta dettagli
+                            request_lang = get_site_language_from_country(request.country)
+                            
                             details_headers = {
                                 "X-Goog-Api-Key": api_key,
-                                "X-Goog-FieldMask": "id,displayName,formattedAddress,location,primaryType,types,regularOpeningHours,internationalPhoneNumber,websiteUri,googleMapsUri,rating,userRatingCount,reviews,photos"
+                                "X-Goog-FieldMask": "id,displayName,formattedAddress,location,primaryType,types,regularOpeningHours,internationalPhoneNumber,websiteUri,googleMapsUri,rating,userRatingCount,reviews,photos",
+                                "X-Goog-FieldMask-Language": request_lang  # Richiedi contenuti nella lingua locale
                             }
                             
-                            async with session.get(details_url, headers=details_headers) as details_response:
+                            # Aggiungi languageCode come query param per ottenere contenuti localizzati
+                            details_url_with_lang = f"{details_url}?languageCode={request_lang}"
+                            
+                            async with session.get(details_url_with_lang, headers=details_headers) as details_response:
                                 if details_response.status != 200:
                                     logger.error(f"Errore Place Details per {place_id}: {details_response.status}")
                                     continue
@@ -1263,6 +1271,58 @@ async def update_api_settings(settings_update: ApiSettingsUpdate):
 # Import HTML generator
 from html_generator import generate_static_html, STATIC_TRANSLATIONS
 
+# Nomi delle lingue per prompt LLM
+LANG_NAMES_FOR_TRANSLATION = {
+    "it": "italiano",
+    "fr": "francese",
+    "es": "spagnolo",
+    "de": "tedesco",
+    "en": "inglese"
+}
+
+async def translate_reviews(reviews: List[Dict], target_lang: str) -> List[Dict]:
+    """Traduce le recensioni nella lingua target usando LLM"""
+    if not reviews or target_lang == 'en':
+        return reviews
+    
+    lang_name = LANG_NAMES_FOR_TRANSLATION.get(target_lang, "italiano")
+    
+    try:
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"translate_reviews_{uuid.uuid4()}",
+            system_message=f"Sei un traduttore. Traduci SOLO il testo in {lang_name}. Restituisci SOLO il JSON tradotto senza spiegazioni."
+        ).with_model("openai", "gpt-5.2")
+        
+        # Prepara testi da tradurre
+        texts_to_translate = [r.get('text', '')[:200] for r in reviews[:4]]
+        
+        prompt = f"""Traduci queste recensioni in {lang_name}. Mantieni lo stile naturale delle recensioni.
+
+Recensioni da tradurre:
+{json.dumps(texts_to_translate, ensure_ascii=False)}
+
+Rispondi SOLO con un array JSON di stringhe tradotte, stesso ordine:"""
+        
+        message = UserMessage(text=prompt)
+        response = await chat.send_message(message)
+        
+        # Parse risposta
+        translated_texts = json.loads(response.strip())
+        
+        # Ricostruisci recensioni con testo tradotto
+        translated_reviews = []
+        for i, review in enumerate(reviews[:4]):
+            translated_reviews.append({
+                **review,
+                'text': translated_texts[i] if i < len(translated_texts) else review.get('text', '')
+            })
+        
+        return translated_reviews
+    except Exception as e:
+        logger.error(f"Errore traduzione recensioni: {str(e)}")
+        return reviews  # Ritorna originali se traduzione fallisce
+
 def run_quality_check(demo: Dict, locale_lang: str) -> Dict:
     """Esegue quality check pre-deploy"""
     errors = []
@@ -1322,9 +1382,17 @@ async def deploy_to_vercel(demo: Dict, demo_id: str) -> Dict:
     business = demo.get('business_data', {})
     locale_lang = business.get('site_language', 'it')
     
+    # Traduci le recensioni se necessario (solo per la lingua locale, non EN)
+    if locale_lang != 'en' and business.get('reviews'):
+        translated_reviews = await translate_reviews(business.get('reviews', []), locale_lang)
+        # Crea una copia del demo con recensioni tradotte per la lingua locale
+        demo_locale = {**demo, 'business_data': {**business, 'reviews': translated_reviews}}
+    else:
+        demo_locale = demo
+    
     # Genera HTML per entrambe le lingue
-    html_locale = generate_static_html(demo, locale_lang)
-    html_en = generate_static_html(demo, 'en')
+    html_locale = generate_static_html(demo_locale, locale_lang)
+    html_en = generate_static_html(demo, 'en')  # EN usa recensioni originali (già in inglese)
     
     # Crea nome progetto (slug)
     business_name = demo.get('business_name', 'site')

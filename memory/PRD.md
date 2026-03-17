@@ -135,6 +135,13 @@ Booking(
 
 ## Changelog
 
+### 2025-03-17: Fix Recensioni e Orari - Coerenza Lingua
+- ✅ Traduzione automatica orari (giorni della settimana) nella lingua del sito
+- ✅ Formato orario 24h invece di AM/PM per lingue non inglesi
+- ✅ Traduzione recensioni via LLM GPT-5.2 nella lingua locale
+- ✅ API Google Places ora richiede contenuti nella lingua del paese
+- ✅ Versione EN mantiene contenuti originali in inglese
+
 ### 2025-03-17: Pubblicazione Vercel Completa
 - ✅ Deploy su Vercel funzionante con API v13
 - ✅ Siti pubblici (fix encoding base64)

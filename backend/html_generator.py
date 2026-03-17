@@ -4,6 +4,53 @@ from typing import Dict, List, Optional
 import re
 from urllib.parse import quote
 
+# Traduzioni giorni della settimana (da inglese a lingua locale)
+DAYS_TRANSLATIONS = {
+    "it": {
+        "Monday": "Lunedì", "Tuesday": "Martedì", "Wednesday": "Mercoledì",
+        "Thursday": "Giovedì", "Friday": "Venerdì", "Saturday": "Sabato", "Sunday": "Domenica",
+        "Closed": "Chiuso", "Open 24 hours": "Aperto 24 ore"
+    },
+    "fr": {
+        "Monday": "Lundi", "Tuesday": "Mardi", "Wednesday": "Mercredi",
+        "Thursday": "Jeudi", "Friday": "Vendredi", "Saturday": "Samedi", "Sunday": "Dimanche",
+        "Closed": "Fermé", "Open 24 hours": "Ouvert 24h"
+    },
+    "es": {
+        "Monday": "Lunes", "Tuesday": "Martes", "Wednesday": "Miércoles",
+        "Thursday": "Jueves", "Friday": "Viernes", "Saturday": "Sábado", "Sunday": "Domingo",
+        "Closed": "Cerrado", "Open 24 hours": "Abierto 24 horas"
+    },
+    "de": {
+        "Monday": "Montag", "Tuesday": "Dienstag", "Wednesday": "Mittwoch",
+        "Thursday": "Donnerstag", "Friday": "Freitag", "Saturday": "Samstag", "Sunday": "Sonntag",
+        "Closed": "Geschlossen", "Open 24 hours": "24 Stunden geöffnet"
+    },
+    "en": {}  # Nessuna traduzione necessaria per inglese
+}
+
+def translate_hours(hours_list: List[str], lang: str) -> List[str]:
+    """Traduce gli orari nella lingua specificata"""
+    if not hours_list or lang == "en":
+        return hours_list
+    
+    translations = DAYS_TRANSLATIONS.get(lang, {})
+    if not translations:
+        return hours_list
+    
+    translated = []
+    for h in hours_list:
+        text = h
+        for en_word, local_word in translations.items():
+            text = text.replace(en_word, local_word)
+        # Converti formato orario AM/PM in 24h se non è inglese
+        text = re.sub(r'(\d{1,2}):(\d{2})\s*AM', lambda m: f"{int(m.group(1)):02d}:{m.group(2)}", text)
+        text = re.sub(r'(\d{1,2}):(\d{2})\s*PM', lambda m: f"{(int(m.group(1)) + 12) if int(m.group(1)) < 12 else 12}:{m.group(2)}", text)
+        # Rimuovi "12:00 PM" -> "12:00" e "12:00 AM" -> "00:00"
+        text = text.replace(' – ', ' - ')  # Normalizza dash
+        translated.append(text)
+    return translated
+
 # Traduzioni
 STATIC_TRANSLATIONS = {
     "it": {
@@ -83,7 +130,9 @@ def generate_static_html(demo: Dict, lang: str) -> str:
     reviews_count = business.get('reviews_count', 0) or 0
     photos = business.get('photos', []) or []
     reviews = business.get('reviews', []) or []
-    hours_text = business.get('hours_text', []) or []
+    hours_text_raw = business.get('hours_text', []) or []
+    # Traduci gli orari nella lingua del sito
+    hours_text = translate_hours(hours_text_raw, lang)
     location = business.get('location', {}) or {}
     google_maps_link = business.get('google_maps_link', '')
     city = business.get('city', '')
