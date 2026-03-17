@@ -1339,13 +1339,14 @@ async def deploy_to_vercel(demo: Dict, demo_id: str) -> Dict:
             "routes": [
                 {"src": "/en", "dest": "/en.html"},
                 {"src": "/", "dest": "/index.html"}
-            ]
+            ],
+            "public": True
         }).encode()).decode()}
     ]
     
     try:
         async with aiohttp.ClientSession() as session:
-            # Deploy
+            # Deploy con target production per evitare protection
             deploy_response = await session.post(
                 "https://api.vercel.com/v13/deployments",
                 headers={
@@ -1356,7 +1357,8 @@ async def deploy_to_vercel(demo: Dict, demo_id: str) -> Dict:
                     "name": project_name,
                     "files": files,
                     "projectSettings": {
-                        "framework": None
+                        "framework": None,
+                        "skipGitConnectDuringLink": True
                     },
                     "target": "production"
                 }
@@ -1368,11 +1370,29 @@ async def deploy_to_vercel(demo: Dict, demo_id: str) -> Dict:
                 return {"success": False, "error": f"Errore Vercel: {error_text[:200]}"}
             
             deploy_data = await deploy_response.json()
+            project_id = deploy_data.get('projectId')
+            
+            # Prova a disabilitare la deployment protection
+            if project_id:
+                try:
+                    await session.patch(
+                        f"https://api.vercel.com/v9/projects/{project_id}",
+                        headers={
+                            "Authorization": f"Bearer {VERCEL_TOKEN}",
+                            "Content-Type": "application/json"
+                        },
+                        json={
+                            "ssoProtection": None,
+                            "passwordProtection": None
+                        }
+                    )
+                except:
+                    pass  # Ignora errori di settings
             
             return {
                 "success": True,
                 "url": f"https://{deploy_data.get('url', '')}",
-                "project_id": deploy_data.get('projectId'),
+                "project_id": project_id,
                 "deployment_id": deploy_data.get('id'),
                 "project_name": project_name
             }
