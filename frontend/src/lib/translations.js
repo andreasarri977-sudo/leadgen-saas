@@ -142,7 +142,8 @@ const translations = {
       hours: 'Horaires',
       location: 'Nous Trouver',
       contact: 'Contact',
-      booking: 'Réserver'
+      booking: 'Réserver',
+      language: 'Langue'
     },
     // Hero & CTA
     hero: {
@@ -152,7 +153,14 @@ const translations = {
       bookTable: 'Réserver une Table',
       bookAppointment: 'Prendre Rendez-vous',
       contactUs: 'Nous Contacter',
-      whatsapp: 'WhatsApp'
+      whatsapp: 'WhatsApp',
+      writeUs: 'Écrivez-nous'
+    },
+    // WhatsApp
+    whatsapp: {
+      message: 'Bonjour ! J\'ai vu votre site et j\'aimerais avoir des informations.',
+      buttonText: 'Écrivez-nous sur WhatsApp',
+      buttonShort: 'WhatsApp'
     },
     // Sezioni
     sections: {
@@ -184,7 +192,8 @@ const translations = {
       send: 'Envoyer',
       book: 'Réserver',
       confirm: 'Confirmer',
-      cancel: 'Annuler'
+      cancel: 'Annuler',
+      viewAll: 'Voir tout'
     },
     // Form prenotazione
     booking: {
