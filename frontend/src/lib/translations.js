@@ -16,17 +16,25 @@ const translations = {
       hours: 'Orari',
       location: 'Dove Siamo',
       contact: 'Contatti',
-      booking: 'Prenota'
+      booking: 'Prenota',
+      language: 'Lingua'
     },
     // Hero & CTA
     hero: {
-      callNow: 'Chiama Ora',
+      callNow: 'Chiama',
       directions: 'Indicazioni',
       bookOnline: 'Prenota Online',
       bookTable: 'Prenota un Tavolo',
       bookAppointment: 'Prenota Appuntamento',
       contactUs: 'Contattaci',
-      whatsapp: 'WhatsApp'
+      whatsapp: 'WhatsApp',
+      writeUs: 'Scrivici'
+    },
+    // WhatsApp
+    whatsapp: {
+      message: 'Ciao! Ho visto il vostro sito e vorrei informazioni.',
+      buttonText: 'Scrivici su WhatsApp',
+      buttonShort: 'WhatsApp'
     },
     // Sezioni
     sections: {
@@ -58,7 +66,8 @@ const translations = {
       send: 'Invia',
       book: 'Prenota',
       confirm: 'Conferma',
-      cancel: 'Annulla'
+      cancel: 'Annulla',
+      viewAll: 'Vedi tutto'
     },
     // Form prenotazione
     booking: {
