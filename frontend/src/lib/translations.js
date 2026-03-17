@@ -394,17 +394,25 @@ const translations = {
       hours: 'Horarios',
       location: 'Ubicación',
       contact: 'Contacto',
-      booking: 'Reservar'
+      booking: 'Reservar',
+      language: 'Idioma'
     },
     // Hero & CTA
     hero: {
-      callNow: 'Llamar Ahora',
+      callNow: 'Llamar',
       directions: 'Cómo Llegar',
       bookOnline: 'Reservar Online',
       bookTable: 'Reservar Mesa',
       bookAppointment: 'Reservar Cita',
       contactUs: 'Contáctenos',
-      whatsapp: 'WhatsApp'
+      whatsapp: 'WhatsApp',
+      writeUs: 'Escríbenos'
+    },
+    // WhatsApp
+    whatsapp: {
+      message: '¡Hola! Vi su sitio web y me gustaría obtener información.',
+      buttonText: 'Escríbenos en WhatsApp',
+      buttonShort: 'WhatsApp'
     },
     // Sezioni
     sections: {
@@ -436,7 +444,8 @@ const translations = {
       send: 'Enviar',
       book: 'Reservar',
       confirm: 'Confirmar',
-      cancel: 'Cancelar'
+      cancel: 'Cancelar',
+      viewAll: 'Ver todo'
     },
     // Form prenotazione
     booking: {
