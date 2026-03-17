@@ -88,10 +88,21 @@ class DemoSite(BaseModel):
     logo_base64: Optional[str] = None
     content: Dict[str, Any]
     business_data: Optional[Dict[str, Any]] = None  # Dati completi azienda per rendering
-    publish_status: str = "draft"  # draft, publishing, published, error
-    live_url: Optional[str] = None  # URL pubblico solo se published
-    publish_error: Optional[str] = None
+    # Publishing
+    publish_status: str = "draft"  # draft, approved, publishing, published, error
+    production_url: Optional[str] = None  # URL Vercel (es: sitename.vercel.app)
+    vercel_project_id: Optional[str] = None
+    vercel_deployment_id: Optional[str] = None
+    # Custom Domain
+    custom_domain: Optional[str] = None  # es: www.nomeattivita.it
+    domain_status: str = "not_connected"  # not_connected, verifying, active, error
+    domain_verification: Optional[Dict[str, Any]] = None  # DNS records to set
+    # Quality Check
+    quality_check_passed: bool = False
+    quality_check_errors: Optional[List[str]] = None
+    # Timestamps
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    approved_at: Optional[datetime] = None
     published_at: Optional[datetime] = None
 
 class EmailTemplate(BaseModel):
