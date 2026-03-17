@@ -672,7 +672,8 @@ async def search_companies(request: SearchRequest):
                                         "author": author.get('displayName', 'Anonimo'),
                                         "rating": review.get('rating', 0),
                                         "text": text_obj.get('text', '') if isinstance(text_obj, dict) else str(text_obj),
-                                        "time": review.get('relativePublishTimeDescription', '')
+                                        "time": review.get('publishTime', ''),
+                                        "relative_time_description": review.get('relativePublishTimeDescription', '')
                                     })
                                 
                                 # Location
@@ -1301,41 +1302,140 @@ async def translate_reviews(reviews: List[Dict], target_lang: str) -> List[Dict]
     
     lang_name = LANG_NAMES_FOR_TRANSLATION.get(target_lang, "italiano")
     
+    # Traduzioni per il tempo relativo
+    time_translations = {
+        "it": {
+            "year": "anno", "years": "anni", 
+            "month": "mese", "months": "mesi",
+            "week": "settimana", "weeks": "settimane",
+            "day": "giorno", "days": "giorni",
+            "hour": "ora", "hours": "ore",
+            "ago": "fa", "a": "un"
+        },
+        "fr": {
+            "year": "an", "years": "ans",
+            "month": "mois", "months": "mois",
+            "week": "semaine", "weeks": "semaines",
+            "day": "jour", "days": "jours",
+            "hour": "heure", "hours": "heures",
+            "ago": "", "a": "il y a un"
+        },
+        "es": {
+            "year": "año", "years": "años",
+            "month": "mes", "months": "meses",
+            "week": "semana", "weeks": "semanas",
+            "day": "día", "days": "días",
+            "hour": "hora", "hours": "horas",
+            "ago": "", "a": "hace un"
+        },
+        "de": {
+            "year": "Jahr", "years": "Jahren",
+            "month": "Monat", "months": "Monaten",
+            "week": "Woche", "weeks": "Wochen",
+            "day": "Tag", "days": "Tagen",
+            "hour": "Stunde", "hours": "Stunden",
+            "ago": "", "a": "vor einem"
+        }
+    }
+    
+    def translate_relative_time(time_str: str, lang: str) -> str:
+        """Traduce '3 years ago' in '3 anni fa'"""
+        if not time_str or lang == 'en':
+            return time_str
+        
+        trans = time_translations.get(lang, {})
+        if not trans:
+            return time_str
+        
+        result = time_str
+        # Pattern: "X years/months/weeks/days/hours ago" o "a year/month ago"
+        
+        # Gestisci "a year ago" -> "un anno fa"
+        if result.startswith("a "):
+            for en, local in [("a year", f"un {trans.get('year', 'anno')}"),
+                              ("a month", f"un {trans.get('month', 'mese')}"),
+                              ("a week", f"una {trans.get('week', 'settimana')}"),
+                              ("a day", f"un {trans.get('day', 'giorno')}"),
+                              ("a hour", f"un'{trans.get('hour', 'ora')}")]:
+                result = result.replace(en, local)
+        
+        # Gestisci numeri: "3 years ago" -> "3 anni fa"
+        for en, local in [("years", trans.get('years', 'anni')),
+                          ("year", trans.get('year', 'anno')),
+                          ("months", trans.get('months', 'mesi')),
+                          ("month", trans.get('month', 'mese')),
+                          ("weeks", trans.get('weeks', 'settimane')),
+                          ("week", trans.get('week', 'settimana')),
+                          ("days", trans.get('days', 'giorni')),
+                          ("day", trans.get('day', 'giorno')),
+                          ("hours", trans.get('hours', 'ore')),
+                          ("hour", trans.get('hour', 'ora'))]:
+            result = result.replace(en, local)
+        
+        result = result.replace(" ago", f" {trans.get('ago', 'fa')}")
+        return result.strip()
+    
     try:
         chat = LlmChat(
             api_key=EMERGENT_LLM_KEY,
             session_id=f"translate_reviews_{uuid.uuid4()}",
-            system_message=f"Sei un traduttore. Traduci SOLO il testo in {lang_name}. Restituisci SOLO il JSON tradotto senza spiegazioni."
+            system_message=f"Sei un traduttore esperto. Traduci il testo in {lang_name} mantenendo un tono naturale da recensione cliente. Rispondi SOLO con il JSON."
         ).with_model("openai", "gpt-5.2")
         
-        # Prepara testi da tradurre
-        texts_to_translate = [r.get('text', '')[:200] for r in reviews[:4]]
+        # Ordina per data più recente (se disponibile) e prendi le prime 4
+        sorted_reviews = sorted(reviews, key=lambda r: r.get('time', '') or r.get('publishTime', '') or '', reverse=True)[:4]
         
-        prompt = f"""Traduci queste recensioni in {lang_name}. Mantieni lo stile naturale delle recensioni.
+        # Prepara testi da tradurre
+        texts_to_translate = [r.get('text', '')[:250] for r in sorted_reviews if r.get('text')]
+        
+        if not texts_to_translate:
+            return sorted_reviews
+        
+        prompt = f"""Traduci queste recensioni clienti in {lang_name}. Mantieni lo stile naturale e colloquiale.
 
-Recensioni da tradurre:
+Testi da tradurre:
 {json.dumps(texts_to_translate, ensure_ascii=False)}
 
-Rispondi SOLO con un array JSON di stringhe tradotte, stesso ordine:"""
+Rispondi SOLO con un array JSON di stringhe tradotte nello stesso ordine:"""
         
         message = UserMessage(text=prompt)
         response = await chat.send_message(message)
         
+        # Pulisci la risposta (rimuovi markdown se presente)
+        clean_response = response.strip()
+        if clean_response.startswith("```"):
+            clean_response = re.sub(r'^```(?:json)?\s*', '', clean_response)
+            clean_response = re.sub(r'\s*```$', '', clean_response)
+        
         # Parse risposta
-        translated_texts = json.loads(response.strip())
+        translated_texts = json.loads(clean_response)
         
-        # Ricostruisci recensioni con testo tradotto
+        # Ricostruisci recensioni con testo tradotto e tempo tradotto
         translated_reviews = []
-        for i, review in enumerate(reviews[:4]):
-            translated_reviews.append({
-                **review,
-                'text': translated_texts[i] if i < len(translated_texts) else review.get('text', '')
-            })
+        for i, review in enumerate(sorted_reviews):
+            new_review = {**review}
+            if i < len(translated_texts):
+                new_review['text'] = translated_texts[i]
+            # Traduci anche il tempo relativo (supporta entrambi i formati)
+            time_desc = review.get('relative_time_description') or review.get('time', '')
+            if time_desc and any(word in time_desc.lower() for word in ['ago', 'year', 'month', 'week', 'day', 'hour']):
+                new_review['relative_time_description'] = translate_relative_time(time_desc, target_lang)
+            translated_reviews.append(new_review)
         
+        logger.info(f"Tradotte {len(translated_reviews)} recensioni in {lang_name}")
         return translated_reviews
+        
     except Exception as e:
         logger.error(f"Errore traduzione recensioni: {str(e)}")
-        return reviews  # Ritorna originali se traduzione fallisce
+        # Traduci almeno il tempo relativo anche se la traduzione del testo fallisce
+        fallback_reviews = []
+        for review in sorted(reviews, key=lambda r: r.get('time', '') or '', reverse=True)[:4]:
+            new_review = {**review}
+            time_desc = review.get('relative_time_description') or review.get('time', '')
+            if time_desc and any(word in time_desc.lower() for word in ['ago', 'year', 'month', 'week', 'day', 'hour']):
+                new_review['relative_time_description'] = translate_relative_time(time_desc, target_lang)
+            fallback_reviews.append(new_review)
+        return fallback_reviews
 
 def run_quality_check(demo: Dict, locale_lang: str) -> Dict:
     """Esegue quality check pre-deploy"""

@@ -40,15 +40,32 @@ def translate_hours(hours_list: List[str], lang: str) -> List[str]:
     
     translated = []
     for h in hours_list:
-        text = h
+        # Normalizza spazi Unicode speciali
+        text = h.replace('\u202f', ' ').replace('\u2009', ' ').replace('\u00a0', ' ')
+        
+        # Traduci giorni e parole chiave
         for en_word, local_word in translations.items():
             text = text.replace(en_word, local_word)
+        
         # Converti formato orario AM/PM in 24h se non è inglese
-        text = re.sub(r'(\d{1,2}):(\d{2})\s*AM', lambda m: f"{int(m.group(1)):02d}:{m.group(2)}", text)
-        text = re.sub(r'(\d{1,2}):(\d{2})\s*PM', lambda m: f"{(int(m.group(1)) + 12) if int(m.group(1)) < 12 else 12}:{m.group(2)}", text)
-        # Rimuovi "12:00 PM" -> "12:00" e "12:00 AM" -> "00:00"
-        text = text.replace(' – ', ' - ')  # Normalizza dash
-        translated.append(text)
+        def convert_am(m):
+            hour = int(m.group(1))
+            return f"{hour:02d}:{m.group(2)}"
+        
+        def convert_pm(m):
+            hour = int(m.group(1))
+            if hour < 12:
+                hour += 12
+            return f"{hour:02d}:{m.group(2)}"
+        
+        text = re.sub(r'(\d{1,2}):(\d{2})\s*AM', convert_am, text)
+        text = re.sub(r'(\d{1,2}):(\d{2})\s*PM', convert_pm, text)
+        
+        # Normalizza dash e spazi multipli
+        text = re.sub(r'\s*[–—-]\s*', ' – ', text)
+        text = re.sub(r'\s+', ' ', text)
+        
+        translated.append(text.strip())
     return translated
 
 # Traduzioni
@@ -169,7 +186,10 @@ def generate_static_html(demo: Dict, lang: str) -> str:
         reviews_items = ""
         for review in good_reviews:
             stars = '★' * int(review.get('rating', 5)) + '☆' * (5 - int(review.get('rating', 5)))
-            reviews_items += '<div class="review-card"><div class="stars">' + stars + '</div><p>"' + review.get('text', '')[:200] + '"</p><span class="author">— ' + review.get('author', 'Cliente') + '</span></div>'
+            # Usa relative_time_description o time come fallback
+            time_ago = review.get('relative_time_description') or review.get('time', '')
+            time_html = f'<span class="review-time">{time_ago}</span>' if time_ago else ''
+            reviews_items += '<div class="review-card"><div class="stars">' + stars + '</div><p>"' + review.get('text', '')[:200] + '"</p><div class="review-footer"><span class="author">— ' + review.get('author', 'Cliente') + '</span>' + time_html + '</div></div>'
         reviews_link = '<p style="margin-top:24px;text-align:center"><a href="' + google_maps_link + '" target="_blank" style="color:#2563eb">' + t["buttons"]["all_reviews"] + ' →</a></p>' if google_maps_link else ''
         reviews_section = '<section id="reviews" style="background:#f9fafb"><div class="container"><h2>' + t["sections"]["reviews"] + '</h2><div class="reviews-grid">' + reviews_items + '</div>' + reviews_link + '</div></section>'
     
@@ -286,7 +306,9 @@ section h2{font-size:2rem;font-weight:700;margin-bottom:32px}
 .review-card{background:#fff;border:1px solid #e5e7eb;padding:24px;border-radius:16px}
 .review-card .stars{color:#fbbf24;margin-bottom:12px;font-size:1.1rem}
 .review-card p{color:#4b5563;margin-bottom:12px;font-style:italic}
+.review-footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
 .review-card .author{font-weight:600;color:#111}
+.review-card .review-time{font-size:0.85rem;color:#9ca3af}
 .hours-box{background:#f9fafb;padding:32px;border-radius:16px;display:inline-block}
 .hours-box p{margin-bottom:8px}
 .map-wrapper{border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1)}

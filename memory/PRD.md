@@ -135,6 +135,14 @@ Booking(
 
 ## Changelog
 
+### 2025-03-17: Fix Completo Lingua Recensioni e Orari
+- ✅ Traduzione recensioni via LLM (GPT-5.2) nella lingua del sito
+- ✅ Traduzione tempo relativo ("3 years ago" → "3 anni fa")
+- ✅ Traduzione "Closed" → "Chiuso" (normalizzazione caratteri Unicode)
+- ✅ Recensioni ordinate per data (più recenti prima)
+- ✅ Supporto campo `time` come fallback per `relative_time_description`
+- ✅ Formato orario 24h per lingue non inglesi
+
 ### 2025-03-17: Fix Recensioni e Orari - Coerenza Lingua
 - ✅ Traduzione automatica orari (giorni della settimana) nella lingua del sito
 - ✅ Formato orario 24h invece di AM/PM per lingue non inglesi
