@@ -96,7 +96,7 @@ class DemoSite(BaseModel):
     # Custom Domain
     custom_domain: Optional[str] = None  # es: www.nomeattivita.it
     domain_status: str = "not_connected"  # not_connected, verifying, active, error
-    domain_verification: Optional[Dict[str, Any]] = None  # DNS records to set
+    domain_verification: Optional[List[Dict[str, Any]]] = None  # DNS records to set
     # Quality Check
     quality_check_passed: bool = False
     quality_check_errors: Optional[List[str]] = None
@@ -1310,8 +1310,8 @@ def run_quality_check(demo: Dict, locale_lang: str) -> Dict:
         "warnings": warnings,
         "locale_lang": locale_lang,
         "has_whatsapp": bool(phone),
-        "has_photos": len(business.get('photos', [])) > 0,
-        "has_reviews": len(business.get('reviews', [])) > 0
+        "has_photos": len(business.get('photos') or []) > 0,
+        "has_reviews": len(business.get('reviews') or []) > 0
     }
 
 async def deploy_to_vercel(demo: Dict, demo_id: str) -> Dict:
@@ -1331,17 +1331,29 @@ async def deploy_to_vercel(demo: Dict, demo_id: str) -> Dict:
     project_name = re.sub(r'[^a-z0-9-]', '', business_name.lower().replace(' ', '-'))[:50]
     project_name = f"{project_name}-{demo_id[:8]}"
     
-    # Prepara i file per Vercel
+    # Prepara i file per Vercel (con encoding base64 esplicito)
     files = [
-        {"file": "index.html", "data": base64.b64encode(html_locale.encode()).decode()},
-        {"file": "en.html", "data": base64.b64encode(html_en.encode()).decode()},
-        {"file": "vercel.json", "data": base64.b64encode(json.dumps({
-            "routes": [
-                {"src": "/en", "dest": "/en.html"},
-                {"src": "/", "dest": "/index.html"}
-            ],
-            "public": True
-        }).encode()).decode()}
+        {
+            "file": "index.html",
+            "data": base64.b64encode(html_locale.encode()).decode(),
+            "encoding": "base64"
+        },
+        {
+            "file": "en.html",
+            "data": base64.b64encode(html_en.encode()).decode(),
+            "encoding": "base64"
+        },
+        {
+            "file": "vercel.json",
+            "data": base64.b64encode(json.dumps({
+                "routes": [
+                    {"src": "/en", "dest": "/en.html"},
+                    {"src": "/", "dest": "/index.html"}
+                ],
+                "public": True
+            }).encode()).decode(),
+            "encoding": "base64"
+        }
     ]
     
     try:
@@ -1527,7 +1539,8 @@ async def publish_demo(demo_id: str, background_tasks: BackgroundTasks):
                 "production_url": result['url'],
                 "vercel_project_id": result['project_id'],
                 "vercel_deployment_id": result['deployment_id'],
-                "published_at": datetime.now(timezone.utc).isoformat()
+                "published_at": datetime.now(timezone.utc).isoformat(),
+                "quality_check_errors": []  # Pulisci vecchi errori dopo successo
             }}
         )
         

@@ -31,6 +31,18 @@ Piattaforma SaaS avanzata in italiano per automatizzare il processo di ricerca d
 11. **Gestione API Keys** - Pagina Settings per configurare Google Maps e Resend
 12. **Impostazioni Lead Avanzate** - Override manuale per site_language e booking_mode
 
+13. **Pubblicazione su Vercel** ✅ COMPLETATO
+    - Deploy automatico su Vercel con API v13
+    - Siti pubblici (no login richiesto)
+    - URL formato: `nomeprogetto-demoID.vercel.app`
+    - Supporto multilingua (index.html + en.html)
+    - Quality check pre-deploy
+    - UI per gestione deploy e ripubblicazione
+14. **Collegamento Dominio Custom** ✅ PRONTO
+    - Endpoint `/api/demos/{demo_id}/domain`
+    - Mostra istruzioni DNS per configurazione
+    - Verifica stato dominio
+
 ### Funzionalità Parzialmente Implementate 🟡
 - **Contact Discovery** - Scraping email da siti web (in corso)
 - **Contenuti Ristoranti** - Menu realistici generati via AI
@@ -40,7 +52,6 @@ Piattaforma SaaS avanzata in italiano per automatizzare il processo di ricerca d
 - **P1**: Generazione massiva siti demo (batch fino a 500)
 - **P1**: Scansione giornaliera automatica per nuovi lead
 - **P2**: CRM avanzato (tracciamento conversioni completo)
-- **P2**: Esportazione sito + dominio personalizzato
 - **P2**: SEO avanzato (OpenGraph, Schema LocalBusiness, sitemap)
 
 ## Architettura Tecnica
@@ -118,8 +129,19 @@ Booking(
 - `GET /api/demos/{id}` - Dati demo per rendering
 - `POST /api/bookings` - Crea prenotazione
 - `GET /api/bookings` - Lista prenotazioni
+- `POST /api/demos/{id}/publish` - Pubblica su Vercel
+- `POST /api/demos/{id}/domain` - Collega dominio custom
+- `GET /api/demos/{id}/domain-status` - Verifica stato dominio
 
 ## Changelog
+
+### 2025-03-17: Pubblicazione Vercel Completa
+- ✅ Deploy su Vercel funzionante con API v13
+- ✅ Siti pubblici (fix encoding base64)
+- ✅ Language switcher IT/EN funzionante anche su Vercel
+- ✅ Fix warning UI "Token Vercel non configurato"
+- ✅ Endpoint collegamento dominio custom pronto
+- ✅ Quality check pre-deploy con pulizia errori post-successo
 
 ### 2025-03-17: White-Label PRO + WhatsApp + i18n Completo
 - ✅ Implementato WhatsApp come CTA principale con messaggio precompilato tradotto
