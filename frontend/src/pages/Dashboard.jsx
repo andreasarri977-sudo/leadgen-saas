@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { TrendingUp, Users, Globe, CheckCircle, Target, Search } from 'lucide-react';
+import { TrendingUp, Users, Globe, CheckCircle, Target, Search, Mail } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -35,7 +35,8 @@ export default function Dashboard() {
     demos_created: 0,
     contacted: 0,
     clients_acquired: 0,
-    new_leads: 0
+    new_leads: 0,
+    emails_sent: 0
   });
   const [loading, setLoading] = useState(true);
 
@@ -114,7 +115,7 @@ export default function Dashboard() {
 
       <Card className="mt-8 p-6" data-testid="quick-actions-card">
         <h2 className="text-2xl font-bold mb-4 tracking-tight">Azioni Rapide</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <a href="/search" className="p-4 border border-neutral-200 rounded-lg hover:shadow-md hover:border-blue-300 transition-all cursor-pointer">
             <Search className="mb-2" size={24} />
             <h3 className="font-bold mb-1">Cerca Nuove Aziende</h3>
@@ -124,6 +125,11 @@ export default function Dashboard() {
             <Users className="mb-2" size={24} />
             <h3 className="font-bold mb-1">Gestisci Lead</h3>
             <p className="text-sm text-neutral-600">Visualizza e gestisci i tuoi lead attivi</p>
+          </a>
+          <a href="/email" className="p-4 border-2 border-purple-300 rounded-lg hover:shadow-md hover:border-purple-400 transition-all cursor-pointer bg-purple-50">
+            <Mail className="mb-2 text-purple-600" size={24} />
+            <h3 className="font-bold mb-1 text-purple-900">Email & WhatsApp</h3>
+            <p className="text-sm text-purple-700">Invia messaggi AI ai tuoi lead</p>
           </a>
           <a href="/demos" className="p-4 border border-neutral-200 rounded-lg hover:shadow-md hover:border-blue-300 transition-all cursor-pointer">
             <Globe className="mb-2" size={24} />

@@ -122,6 +122,7 @@ class DashboardStats(BaseModel):
     contacted: int
     clients_acquired: int
     new_leads: int
+    emails_sent: int = 0
 
 class ApiSettings(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -1101,6 +1102,17 @@ async def send_email(template: EmailTemplate):
     
     try:
         email = await asyncio.to_thread(resend.Emails.send, params)
+        
+        # Salva record email inviata
+        email_record = {
+            "email_id": email.get("id"),
+            "recipient": template.recipient_email,
+            "subject": template.subject,
+            "sent_at": datetime.now(timezone.utc).isoformat(),
+            "status": "sent"
+        }
+        await db.emails_sent.insert_one(email_record)
+        
         return {"success": True, "email_id": email.get("id")}
     except Exception as e:
         logger.error(f"Errore invio email: {str(e)}")
@@ -1145,13 +1157,15 @@ async def get_dashboard_stats():
     contacted = await db.leads.count_documents({"status": "contattato"})
     clients = await db.leads.count_documents({"status": "cliente_acquisito"})
     new_leads = await db.leads.count_documents({"status": "nuovo_lead"})
+    emails_sent = await db.emails_sent.count_documents({})
     
     return DashboardStats(
         total_leads=total_leads,
         demos_created=demos_created,
         contacted=contacted,
         clients_acquired=clients,
-        new_leads=new_leads
+        new_leads=new_leads,
+        emails_sent=emails_sent
     )
 
 @api_router.get("/settings/api", response_model=ApiSettings)
