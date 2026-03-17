@@ -268,17 +268,25 @@ const translations = {
       hours: 'Hours',
       location: 'Location',
       contact: 'Contact',
-      booking: 'Book'
+      booking: 'Book',
+      language: 'Language'
     },
     // Hero & CTA
     hero: {
-      callNow: 'Call Now',
+      callNow: 'Call',
       directions: 'Directions',
       bookOnline: 'Book Online',
       bookTable: 'Book a Table',
       bookAppointment: 'Book Appointment',
       contactUs: 'Contact Us',
-      whatsapp: 'WhatsApp'
+      whatsapp: 'WhatsApp',
+      writeUs: 'Write Us'
+    },
+    // WhatsApp
+    whatsapp: {
+      message: 'Hi! I saw your website and I\'d like some information.',
+      buttonText: 'Write us on WhatsApp',
+      buttonShort: 'WhatsApp'
     },
     // Sezioni
     sections: {
@@ -310,7 +318,8 @@ const translations = {
       send: 'Send',
       book: 'Book',
       confirm: 'Confirm',
-      cancel: 'Cancel'
+      cancel: 'Cancel',
+      viewAll: 'View all'
     },
     // Form prenotazione
     booking: {
