@@ -31,9 +31,9 @@ function App() {
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
+        <PWAInstallPrompt />
       </BrowserRouter>
       <Toaster position="top-right" />
-      <PWAInstallPrompt />
     </div>
   );
 }
