@@ -1498,8 +1498,18 @@ async def deploy_to_vercel(demo: Dict, demo_id: str) -> Dict:
     business = demo.get('business_data', {}) or {}
     locale_lang = business.get('site_language') or 'it'  # Fallback se None
     
-    # Skip review translation for now - use original reviews
-    demo_locale = demo
+    # Traduci le recensioni nella lingua locale se non è inglese
+    demo_locale = demo.copy()
+    if locale_lang != 'en':
+        reviews = business.get('reviews', []) or []
+        if reviews:
+            try:
+                translated_reviews = await translate_reviews(reviews, locale_lang)
+                demo_locale['business_data'] = {**business, 'reviews': translated_reviews}
+                logger.info(f"Recensioni tradotte in {locale_lang}")
+            except Exception as e:
+                logger.error(f"Errore traduzione recensioni: {e}")
+                # Usa recensioni originali se traduzione fallisce
     
     # Genera HTML per entrambe le lingue
     html_locale = generate_static_html(demo_locale, locale_lang)

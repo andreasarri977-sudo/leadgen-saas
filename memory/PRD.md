@@ -157,6 +157,12 @@ Booking(
 
 ## Changelog
 
+### 2025-03-18: Fix Traduzione Recensioni su Deploy
+- ✅ Riattivata traduzione recensioni via GPT-5.2 durante deploy su Vercel
+- ✅ Recensioni tradotte nella lingua locale del sito (IT/FR/ES/DE)
+- ✅ Tempo relativo tradotto ("3 years ago" → "3 anni fa")
+- ✅ Versione EN mantiene recensioni originali in inglese
+
 ### 2025-03-18: Editor Manuale Siti MVP ✅ COMPLETATO
 - ✅ Creato `/app/frontend/src/pages/SiteEditor.jsx` con 7 tab complete
 - ✅ Tab Logo: anteprima logo, carica da URL, carica da file (max 2MB), rimuovi
