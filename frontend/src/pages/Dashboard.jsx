@@ -1,11 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { TrendingUp, Users, Globe, CheckCircle, Target, Search, Mail } from 'lucide-react';
+import { TrendingUp, Users, Globe, CheckCircle, Target, Search, Mail, RefreshCw, WifiOff, Wifi } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// Log URL in production for debugging
+console.log('[LeadHunter] API_BASE_URL:', API);
 
 const StatCard = ({ icon: Icon, label, value, trend, color, href }) => (
   <Link to={href}>
@@ -29,6 +33,45 @@ const StatCard = ({ icon: Icon, label, value, trend, color, href }) => (
   </Link>
 );
 
+// Backend Status Indicator
+function BackendStatus({ status, lastCheck, onRetry }) {
+  if (status === 'checking') {
+    return (
+      <div className="flex items-center gap-2 text-sm text-neutral-500">
+        <RefreshCw size={14} className="animate-spin" />
+        <span>Connessione al server...</span>
+      </div>
+    );
+  }
+  
+  if (status === 'offline') {
+    return (
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 text-sm text-red-600">
+          <WifiOff size={14} />
+          <span>Server non raggiungibile</span>
+        </div>
+        <Button size="sm" variant="outline" onClick={onRetry} className="h-7 text-xs">
+          <RefreshCw size={12} className="mr-1" />
+          Riprova
+        </Button>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="flex items-center gap-2 text-sm text-green-600">
+      <Wifi size={14} />
+      <span>Online</span>
+      {lastCheck && (
+        <span className="text-neutral-400 text-xs">
+          • Ultimo check: {new Date(lastCheck).toLocaleTimeString('it-IT')}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [stats, setStats] = useState({
     total_leads: 0,
@@ -39,26 +82,166 @@ export default function Dashboard() {
     emails_sent: 0
   });
   const [loading, setLoading] = useState(true);
+  const [backendStatus, setBackendStatus] = useState('checking');
+  const [lastHealthCheck, setLastHealthCheck] = useState(null);
+  const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  useEffect(() => {
-    loadStats();
+  // Health check con timeout
+  const checkHealth = useCallback(async () => {
+    setBackendStatus('checking');
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000); // 8 sec timeout
+      
+      const response = await axios.get(`${API}/health`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+      
+      if (response.data.status === 'ok') {
+        setBackendStatus('online');
+        setLastHealthCheck(new Date().toISOString());
+        console.log('[LeadHunter] Health check OK:', response.data);
+        return true;
+      }
+    } catch (err) {
+      console.error('[LeadHunter] Health check failed:', err.message);
+      setBackendStatus('offline');
+      return false;
+    }
+    return false;
   }, []);
 
-  const loadStats = async () => {
+  // Load stats con retry
+  const loadStats = useCallback(async (isRetry = false) => {
+    if (isRetry) {
+      setRetryCount(prev => prev + 1);
+    }
+    setLoading(true);
+    setError(null);
+    
     try {
-      const response = await axios.get(`${API}/stats/dashboard`);
+      // First check health
+      const isHealthy = await checkHealth();
+      
+      if (!isHealthy) {
+        setError('Il server non è raggiungibile. Riprova tra qualche secondo.');
+        setLoading(false);
+        return;
+      }
+      
+      // Then load stats with timeout
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10 sec timeout
+      
+      const response = await axios.get(`${API}/stats/dashboard`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+      
       setStats(response.data);
-    } catch (error) {
-      console.error('Errore caricamento statistiche:', error);
+      setError(null);
+      console.log('[LeadHunter] Stats loaded:', response.data);
+    } catch (err) {
+      console.error('[LeadHunter] Error loading stats:', err.message);
+      
+      if (err.name === 'AbortError' || err.code === 'ECONNABORTED') {
+        setError('Timeout: il server sta impiegando troppo tempo. Riprova.');
+      } else if (err.response?.status === 500) {
+        setError('Errore interno del server. Riprova.');
+      } else {
+        setError('Impossibile caricare i dati. Verifica la connessione.');
+      }
+      setBackendStatus('offline');
     } finally {
       setLoading(false);
     }
+  }, [checkHealth]);
+
+  useEffect(() => {
+    loadStats();
+    
+    // Keep-alive ping ogni 4 minuti per mantenere il backend attivo
+    const keepAliveInterval = setInterval(() => {
+      checkHealth();
+    }, 4 * 60 * 1000);
+    
+    return () => clearInterval(keepAliveInterval);
+  }, [loadStats, checkHealth]);
+
+  const handleRetry = () => {
+    loadStats(true);
   };
 
+  // Error state
+  if (error && !loading) {
+    return (
+      <div data-testid="dashboard-error">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-5xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-neutral-600 mt-2 text-lg">Panoramica delle tue attività di lead generation</p>
+          </div>
+          <BackendStatus status={backendStatus} lastCheck={lastHealthCheck} onRetry={handleRetry} />
+        </div>
+        
+        <Card className="p-8 text-center border-red-200 bg-red-50">
+          <WifiOff size={48} className="mx-auto mb-4 text-red-400" />
+          <h2 className="text-xl font-bold text-red-800 mb-2">Connessione al Server</h2>
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button onClick={handleRetry} className="bg-red-600 hover:bg-red-700">
+            <RefreshCw size={16} className="mr-2" />
+            Riprova Connessione
+          </Button>
+          {retryCount > 2 && (
+            <p className="text-sm text-neutral-500 mt-4">
+              Se il problema persiste, attendi qualche secondo e riprova.
+            </p>
+          )}
+        </Card>
+        
+        {/* Quick actions sempre visibili */}
+        <Card className="mt-8 p-6" data-testid="quick-actions-card">
+          <h2 className="text-2xl font-bold mb-4 tracking-tight">Azioni Rapide</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 opacity-60">
+            <a href="/search" className="p-4 border border-neutral-200 rounded-lg">
+              <Search className="mb-2" size={24} />
+              <h3 className="font-bold mb-1">Cerca Nuove Aziende</h3>
+              <p className="text-sm text-neutral-600">Trova aziende senza sito web</p>
+            </a>
+            <a href="/leads" className="p-4 border border-neutral-200 rounded-lg">
+              <Users className="mb-2" size={24} />
+              <h3 className="font-bold mb-1">Gestisci Lead</h3>
+              <p className="text-sm text-neutral-600">Visualizza i tuoi lead</p>
+            </a>
+            <a href="/email" className="p-4 border border-neutral-200 rounded-lg">
+              <Mail className="mb-2" size={24} />
+              <h3 className="font-bold mb-1">Email & WhatsApp</h3>
+              <p className="text-sm text-neutral-600">Invia messaggi ai lead</p>
+            </a>
+            <a href="/demos" className="p-4 border border-neutral-200 rounded-lg">
+              <Globe className="mb-2" size={24} />
+              <h3 className="font-bold mb-1">Siti Demo</h3>
+              <p className="text-sm text-neutral-600">Visualizza i siti demo</p>
+            </a>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Loading state
   if (loading) {
     return (
       <div data-testid="dashboard-loading">
-        <h1 className="text-5xl font-bold mb-8 tracking-tight">Dashboard</h1>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-5xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-neutral-600 mt-2 text-lg">Panoramica delle tue attività di lead generation</p>
+          </div>
+          <BackendStatus status={backendStatus} lastCheck={lastHealthCheck} onRetry={handleRetry} />
+        </div>
         <div className="bento-grid">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i} className="stat-card animate-pulse">
@@ -76,9 +259,12 @@ export default function Dashboard() {
 
   return (
     <div data-testid="dashboard-page">
-      <div className="mb-8">
-        <h1 className="text-5xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-neutral-600 mt-2 text-lg">Panoramica delle tue attività di lead generation</p>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-5xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-neutral-600 mt-2 text-lg">Panoramica delle tue attività di lead generation</p>
+        </div>
+        <BackendStatus status={backendStatus} lastCheck={lastHealthCheck} onRetry={handleRetry} />
       </div>
 
       <div className="bento-grid">
@@ -142,10 +328,10 @@ export default function Dashboard() {
       <Card className="mt-6 p-6 bg-blue-50 border-blue-200" data-testid="api-setup-notice">
         <div className="flex items-start justify-between">
           <div>
-            <h3 className="font-bold text-lg mb-2">🔑 Configurazione API</h3>
+            <h3 className="font-bold text-lg mb-2">Configurazione API</h3>
             <p className="text-sm text-neutral-700 mb-3">Configura le tue API keys per utilizzare tutte le funzionalità della piattaforma.</p>
             <a href="/settings" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
-              Vai alle Impostazioni API →
+              Vai alle Impostazioni API
             </a>
           </div>
         </div>

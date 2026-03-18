@@ -510,6 +510,23 @@ async def generate_logo(business_name: str) -> Optional[str]:
 async def root():
     return {"message": "LeadHunter Pro API", "version": "1.0.0"}
 
+@api_router.get("/health")
+async def health_check():
+    """Health check endpoint - sempre disponibile, no auth, no DB required"""
+    try:
+        # Quick DB ping to verify connection
+        await db.command("ping")
+        db_status = "connected"
+    except Exception:
+        db_status = "disconnected"
+    
+    return {
+        "status": "ok",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "db": db_status,
+        "version": "1.0.0"
+    }
+
 @api_router.post("/search/companies")
 async def search_companies(request: SearchRequest):
     settings = await db.api_settings.find_one({"setting_id": "api_settings"}, {"_id": 0})
