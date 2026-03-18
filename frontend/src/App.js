@@ -11,6 +11,7 @@ import DemoPreview from '@/pages/DemoPreview';
 import SiteEditor from '@/pages/SiteEditor';
 import EmailManager from '@/pages/EmailManager';
 import Settings from '@/pages/Settings';
+import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import '@/App.css';
 
 function App() {
@@ -32,6 +33,7 @@ function App() {
         </Routes>
       </BrowserRouter>
       <Toaster position="top-right" />
+      <PWAInstallPrompt />
     </div>
   );
 }
