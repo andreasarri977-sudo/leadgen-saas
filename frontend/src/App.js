@@ -8,6 +8,7 @@ import LeadsList from '@/pages/LeadsList';
 import LeadDetail from '@/pages/LeadDetail';
 import DemoSites from '@/pages/DemoSites';
 import DemoPreview from '@/pages/DemoPreview';
+import SiteEditor from '@/pages/SiteEditor';
 import EmailManager from '@/pages/EmailManager';
 import Settings from '@/pages/Settings';
 import '@/App.css';
@@ -24,6 +25,7 @@ function App() {
             <Route path="leads" element={<LeadsList />} />
             <Route path="leads/:leadId" element={<LeadDetail />} />
             <Route path="demos" element={<DemoSites />} />
+            <Route path="site-editor/:demoId" element={<SiteEditor />} />
             <Route path="email" element={<EmailManager />} />
             <Route path="settings" element={<Settings />} />
           </Route>

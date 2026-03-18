@@ -21,6 +21,8 @@ import resend
 import json
 import hashlib
 
+# Note: site_content.py and ai_editor.py are deprecated, using direct DB updates now
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -1493,16 +1495,11 @@ async def deploy_to_vercel(demo: Dict, demo_id: str) -> Dict:
     if not VERCEL_TOKEN:
         return {"success": False, "error": "Token Vercel non configurato"}
     
-    business = demo.get('business_data', {})
-    locale_lang = business.get('site_language', 'it')
+    business = demo.get('business_data', {}) or {}
+    locale_lang = business.get('site_language') or 'it'  # Fallback se None
     
-    # Traduci le recensioni se necessario (solo per la lingua locale, non EN)
-    if locale_lang != 'en' and business.get('reviews'):
-        translated_reviews = await translate_reviews(business.get('reviews', []), locale_lang)
-        # Crea una copia del demo con recensioni tradotte per la lingua locale
-        demo_locale = {**demo, 'business_data': {**business, 'reviews': translated_reviews}}
-    else:
-        demo_locale = demo
+    # Skip review translation for now - use original reviews
+    demo_locale = demo
     
     # Genera HTML per entrambe le lingue
     html_locale = generate_static_html(demo_locale, locale_lang)
@@ -1831,6 +1828,251 @@ async def check_domain_status(demo_id: str):
                 return {"status": "error", "domain": domain}
     except Exception as e:
         return {"status": "error", "domain": domain, "error": str(e)}
+
+# ============================================
+# SITE EDITOR ENDPOINTS (MVP - No AI)
+# ============================================
+
+class SiteEditorUpdate(BaseModel):
+    """Request to update site content"""
+    section: str  # "hours", "menu", "texts", "contacts", "gallery", "seo"
+    data: Dict[str, Any]
+
+@api_router.get("/sites/{demo_id}/editor-data")
+async def get_site_editor_data(demo_id: str):
+    """Get site data for editor (simplified format)"""
+    demo = await db.demo_sites.find_one({"demo_id": demo_id}, {"_id": 0})
+    if not demo:
+        raise HTTPException(status_code=404, detail="Demo non trovato")
+    
+    business = demo.get('business_data', {}) or {}
+    content = demo.get('content', {}) or {}
+    
+    # Parse hours_text into structured format
+    hours = {}
+    hours_text = business.get('hours_text', []) or []
+    day_map = {'monday': 'mon', 'tuesday': 'tue', 'wednesday': 'wed', 'thursday': 'thu', 
+               'friday': 'fri', 'saturday': 'sat', 'sunday': 'sun',
+               'lunedì': 'mon', 'martedì': 'tue', 'mercoledì': 'wed', 'giovedì': 'thu',
+               'venerdì': 'fri', 'sabato': 'sat', 'domenica': 'sun'}
+    
+    for line in hours_text:
+        line_lower = line.lower().replace('\u202f', ' ').replace('\u2009', ' ')
+        for day_name, day_code in day_map.items():
+            if day_name in line_lower:
+                if 'closed' in line_lower or 'chiuso' in line_lower:
+                    hours[day_code] = {'closed': True, 'open': '', 'close': '', 'note': ''}
+                else:
+                    import re
+                    times = re.findall(r'(\d{1,2}):(\d{2})', line)
+                    if len(times) >= 2:
+                        hours[day_code] = {
+                            'closed': False,
+                            'open': f"{times[0][0]}:{times[0][1]}",
+                            'close': f"{times[1][0]}:{times[1][1]}",
+                            'note': ''
+                        }
+                break
+    
+    # Ensure all days exist
+    for day in ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']:
+        if day not in hours:
+            hours[day] = {'closed': False, 'open': '', 'close': '', 'note': ''}
+    
+    # Gallery from photos
+    gallery = []
+    for i, photo in enumerate(business.get('photos', []) or []):
+        gallery.append({
+            'url': photo.get('url', ''),
+            'caption': '',
+            'order': i
+        })
+    
+    # Build response
+    locale_lang = business.get('site_language', 'it') or 'it'
+    
+    return {
+        "demo_id": demo_id,
+        "business_name": demo.get('business_name', business.get('name', '')),
+        "locale_lang": locale_lang,
+        "publish_status": demo.get('publish_status', 'draft'),
+        "production_url": demo.get('production_url'),
+        
+        # Editor sections
+        "hours": hours,
+        
+        "menu": {
+            "mode": "menu" if content.get('menu_categories') else "services",
+            "categories": content.get('menu_categories', []) or [],
+            "services": content.get('services', []) or []
+        },
+        
+        "texts": {
+            "about_local": content.get('about_text', ''),
+            "about_en": content.get('about_text_en', content.get('about_text', '')),
+            "tagline_local": content.get('tagline', ''),
+            "tagline_en": content.get('tagline_en', content.get('tagline', ''))
+        },
+        
+        "contacts": {
+            "phone": business.get('phone', ''),
+            "whatsapp": business.get('phone', ''),  # Default same as phone
+            "email": business.get('email', '')
+        },
+        
+        "gallery": gallery,
+        
+        "seo": {
+            "title_local": f"{demo.get('business_name', '')} | {business.get('category', '')}",
+            "title_en": f"{demo.get('business_name', '')} | {business.get('category', '')}",
+            "meta_local": f"{demo.get('business_name', '')} - {business.get('category', '')} a {business.get('city', '')}",
+            "meta_en": f"{demo.get('business_name', '')} - {business.get('category', '')} in {business.get('city', '')}"
+        }
+    }
+
+@api_router.post("/sites/{demo_id}/update")
+async def update_site_content(demo_id: str, update: SiteEditorUpdate):
+    """Update a specific section of site content"""
+    demo = await db.demo_sites.find_one({"demo_id": demo_id})
+    if not demo:
+        raise HTTPException(status_code=404, detail="Demo non trovato")
+    
+    business_data = demo.get('business_data', {}) or {}
+    content_data = demo.get('content', {}) or {}
+    locale_lang = business_data.get('site_language', 'it') or 'it'
+    
+    errors = []
+    
+    if update.section == "hours":
+        # Validate and convert hours to hours_text format
+        hours = update.data
+        day_names = {
+            'it': {'mon': 'Lunedì', 'tue': 'Martedì', 'wed': 'Mercoledì', 'thu': 'Giovedì', 
+                   'fri': 'Venerdì', 'sat': 'Sabato', 'sun': 'Domenica'},
+            'en': {'mon': 'Monday', 'tue': 'Tuesday', 'wed': 'Wednesday', 'thu': 'Thursday',
+                   'fri': 'Friday', 'sat': 'Saturday', 'sun': 'Sunday'}
+        }
+        closed_text = {'it': 'Chiuso', 'en': 'Closed'}
+        
+        names = day_names.get(locale_lang, day_names['en'])
+        closed = closed_text.get(locale_lang, 'Closed')
+        
+        hours_text = []
+        for day in ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']:
+            day_data = hours.get(day, {})
+            if day_data.get('closed'):
+                hours_text.append(f"{names[day]}: {closed}")
+            elif day_data.get('open') and day_data.get('close'):
+                note = f" ({day_data.get('note')})" if day_data.get('note') else ''
+                hours_text.append(f"{names[day]}: {day_data['open']} – {day_data['close']}{note}")
+        
+        business_data['hours_text'] = hours_text
+    
+    elif update.section == "menu":
+        menu_data = update.data
+        if menu_data.get('mode') == 'menu':
+            content_data['menu_categories'] = menu_data.get('categories', [])
+            content_data.pop('services', None)
+        else:
+            content_data['services'] = menu_data.get('services', [])
+            content_data.pop('menu_categories', None)
+    
+    elif update.section == "texts":
+        texts = update.data
+        # Validate both languages present
+        if texts.get('about_local') and not texts.get('about_en'):
+            texts['about_en'] = texts['about_local']
+        if texts.get('about_en') and not texts.get('about_local'):
+            texts['about_local'] = texts['about_en']
+        
+        content_data['about_text'] = texts.get('about_local', '')
+        content_data['about_text_en'] = texts.get('about_en', '')
+        content_data['tagline'] = texts.get('tagline_local', '')
+        content_data['tagline_en'] = texts.get('tagline_en', '')
+    
+    elif update.section == "contacts":
+        contacts = update.data
+        # Validate phone format
+        phone = contacts.get('phone', '')
+        whatsapp = contacts.get('whatsapp', phone)
+        
+        if phone and not re.match(r'^[\d\s\+\-\(\)]+$', phone):
+            errors.append("Formato telefono non valido")
+        if whatsapp and not re.match(r'^[\d\s\+\-\(\)]+$', whatsapp):
+            errors.append("Formato WhatsApp non valido")
+        
+        email = contacts.get('email', '')
+        if email and '@' not in email:
+            errors.append("Formato email non valido")
+        
+        if not errors:
+            business_data['phone'] = whatsapp or phone  # Prefer WhatsApp as main
+            business_data['email'] = email
+    
+    elif update.section == "gallery":
+        gallery = update.data.get('images', [])
+        # Validate URLs
+        photos = []
+        for img in sorted(gallery, key=lambda x: x.get('order', 0)):
+            url = img.get('url', '')
+            if url and url.startswith('http'):
+                photos.append({'url': url})
+        business_data['photos'] = photos
+    
+    elif update.section == "seo":
+        seo = update.data
+        content_data['seo_title_local'] = seo.get('title_local', '')
+        content_data['seo_title_en'] = seo.get('title_en', '')
+        content_data['seo_meta_local'] = seo.get('meta_local', '')
+        content_data['seo_meta_en'] = seo.get('meta_en', '')
+    
+    else:
+        errors.append(f"Sezione non valida: {update.section}")
+    
+    if errors:
+        return {"success": False, "errors": errors}
+    
+    # Save updates
+    await db.demo_sites.update_one(
+        {"demo_id": demo_id},
+        {"$set": {
+            "business_data": business_data,
+            "content": content_data,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"success": True, "message": f"Sezione '{update.section}' aggiornata"}
+
+@api_router.post("/sites/{demo_id}/republish")
+async def republish_site(demo_id: str):
+    """Republish site to Vercel after edits"""
+    demo = await db.demo_sites.find_one({"demo_id": demo_id}, {"_id": 0})
+    if not demo:
+        raise HTTPException(status_code=404, detail="Demo non trovato")
+    
+    # Deploy
+    result = await deploy_to_vercel(demo, demo_id)
+    
+    if result.get('success'):
+        await db.demo_sites.update_one(
+            {"demo_id": demo_id},
+            {"$set": {
+                "publish_status": "published",
+                "production_url": result['url'],
+                "published_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        return {
+            "success": True,
+            "production_url": result['url'],
+            "message": "Sito ripubblicato con successo!"
+        }
+    else:
+        return {
+            "success": False,
+            "error": result.get('error', 'Errore durante la pubblicazione')
+        }
 
 app.include_router(api_router)
 

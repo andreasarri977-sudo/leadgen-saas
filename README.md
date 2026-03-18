@@ -128,7 +128,7 @@ sudo supervisorctl status
 ```
 
 ### 6. Accedi all'applicazione
-Apri il browser su: `https://emergent-lead-finder.preview.emergentagent.com`
+Apri il browser su: `https://site-editor-mvp.preview.emergentagent.com`
 
 ---
 
@@ -273,10 +273,10 @@ yarn test
 ### Test API con cURL
 ```bash
 # Test health check
-curl https://emergent-lead-finder.preview.emergentagent.com/api/
+curl https://site-editor-mvp.preview.emergentagent.com/api/
 
 # Test statistiche
-curl https://emergent-lead-finder.preview.emergentagent.com/api/stats/dashboard
+curl https://site-editor-mvp.preview.emergentagent.com/api/stats/dashboard
 ```
 
 ---

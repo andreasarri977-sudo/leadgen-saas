@@ -135,31 +135,41 @@ def get_whatsapp_link(phone: str, message: str) -> Optional[str]:
 
 def generate_static_html(demo: Dict, lang: str) -> str:
     """Genera HTML statico per deploy su Vercel"""
-    business = demo.get('business_data', {})
-    content = demo.get('content', {})
+    business = demo.get('business_data', {}) or {}
+    content = demo.get('content', {}) or {}
     t = STATIC_TRANSLATIONS.get(lang, STATIC_TRANSLATIONS['en'])
     
-    business_name = demo.get('business_name', business.get('name', 'Business'))
-    category = business.get('category', '')
-    address = business.get('address', '')
-    phone = business.get('phone', '')
-    rating = business.get('rating', 0) or 0
-    reviews_count = business.get('reviews_count', 0) or 0
-    photos = business.get('photos', []) or []
-    reviews = business.get('reviews', []) or []
-    hours_text_raw = business.get('hours_text', []) or []
+    business_name = demo.get('business_name') or business.get('name') or 'Business'
+    category = business.get('category') or ''
+    address = business.get('address') or ''
+    phone = business.get('phone') or ''
+    rating = business.get('rating') or 0
+    reviews_count = business.get('reviews_count') or 0
+    photos = business.get('photos') or []
+    reviews = business.get('reviews') or []
+    hours_text_raw = business.get('hours_text') or []
     # Traduci gli orari nella lingua del sito
     hours_text = translate_hours(hours_text_raw, lang)
-    location = business.get('location', {}) or {}
-    google_maps_link = business.get('google_maps_link', '')
-    city = business.get('city', '')
-    locale_lang = business.get('site_language', 'it')
+    location = business.get('location') or {}
+    google_maps_link = business.get('google_maps_link') or ''
+    city = business.get('city') or ''
     
-    hero_photo = photos[0]['url'] if photos else ''
+    # CRITICAL: locale_lang must never be None - use explicit check
+    locale_lang = business.get('site_language')
+    if not locale_lang or locale_lang == 'None':
+        locale_lang = 'it'
+    locale_lang = str(locale_lang)
+    
+    # Ensure all values are strings where expected
+    business_name = str(business_name) if business_name else 'Business'
+    category = str(category) if category else ''
+    
+    hero_photo = photos[0]['url'] if photos and photos[0].get('url') else ''
     gallery_photos = photos[1:9] if len(photos) > 1 else []
     
-    whatsapp_link = get_whatsapp_link(phone, t['whatsapp_msg'])
-    about_text = content.get('about_text', business_name + ' ' + t['misc']['trust'])
+    whatsapp_link = get_whatsapp_link(phone, t['whatsapp_msg']) or '' or ''
+    about_text = content.get('about_text') or (str(business_name) + ' ' + t['misc']['trust'])
+    about_text = str(about_text) if about_text else ''
     
     # Build sections
     services_section = ""
@@ -339,6 +349,33 @@ section{padding:48px 0}
 .contact-cta h2{font-size:1.75rem}
 }'''
 
+    # Ensure ALL variables are never None
+    lang = str(lang) if lang else 'it'
+    business_name = str(business_name) if business_name else 'Business'
+    category = str(category) if category else ''
+    about_text = str(about_text) if about_text else 'Benvenuto'
+    nav_items = str(nav_items) if nav_items else ''
+    lang_switch = str(lang_switch) if lang_switch else ''
+    locale_lang = str(locale_lang) if locale_lang else 'it'
+    hero_bg = str(hero_bg) if hero_bg else ''
+    primary_cta = str(primary_cta) if primary_cta else ''
+    secondary_cta = str(secondary_cta) if secondary_cta else ''
+    info_items = str(info_items) if info_items else ''
+    services_section = str(services_section) if services_section else ''
+    gallery_section = str(gallery_section) if gallery_section else ''
+    reviews_section = str(reviews_section) if reviews_section else ''
+    hours_section = str(hours_section) if hours_section else ''
+    map_section = str(map_section) if map_section else ''
+    contact_primary = str(contact_primary) if contact_primary else ''
+    contact_secondary = str(contact_secondary) if contact_secondary else ''
+    mobile_wa = str(mobile_wa) if mobile_wa else ''
+    mobile_dir = str(mobile_dir) if mobile_dir else ''
+    footer_hours = str(footer_hours) if footer_hours else ''
+    phone = str(phone) if phone else ''
+    address = str(address) if address else ''
+    city = str(city) if city else ''
+    google_maps_link = str(google_maps_link) if google_maps_link else ''
+
     html = '''<!DOCTYPE html>
 <html lang="''' + lang + '''">
 <head>
@@ -367,7 +404,7 @@ section{padding:48px 0}
 ''' + hero_bg + '''
 <div class="container hero-content">
 <h2>''' + business_name + '''</h2>
-<p>''' + content.get("homepage_subtitle", category + ' ' + t['misc']['trust']) + '''</p>
+<p>''' + str(content.get("homepage_subtitle") or (category + ' ' + t['misc']['trust'])) + '''</p>
 <div class="hero-btns">
 ''' + primary_cta + '''
 ''' + secondary_cta + '''
@@ -399,7 +436,7 @@ section{padding:48px 0}
 <section id="contact">
 <div class="container">
 <div class="contact-cta">
-<h2>''' + content.get("cta_text", t["cta"]["contact_today"]) + '''</h2>
+<h2>''' + (content.get("cta_text") or t["cta"]["contact_today"]) + '''</h2>
 <p>''' + t["cta"]["visit_us"] + '''</p>
 <div class="btns">
 ''' + contact_primary + '''

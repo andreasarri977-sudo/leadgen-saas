@@ -43,6 +43,18 @@ Piattaforma SaaS avanzata in italiano per automatizzare il processo di ricerca d
     - Mostra istruzioni DNS per configurazione
     - Verifica stato dominio
 
+15. **Editor Manuale Siti (MVP)** ✅ COMPLETATO (2025-03-18)
+    - Pagina `/site-editor/:demoId` con interfaccia a schede (Tabs)
+    - **Tab Orari**: Editor per ogni giorno (aperto/chiuso, orari, note)
+    - **Tab Menu/Servizi**: Switch menu/servizi, aggiunta/rimozione categorie e items
+    - **Tab Testi**: Modifica "Chi siamo" e tagline (locale + EN)
+    - **Tab Contatti**: Aggiornamento telefono, WhatsApp, email con validazione
+    - **Tab Galleria**: Riordinare, rimuovere, aggiungere immagini via URL
+    - **Tab SEO**: Titolo e meta description (locale + EN)
+    - Pulsante "Ripubblica su Vercel" per deploy modifiche
+    - Backend: `/api/sites/{demo_id}/editor-data`, `/update`, `/republish`
+    - **19 test automatici passati** (pytest)
+
 ### Funzionalità Parzialmente Implementate 🟡
 - **Contact Discovery** - Scraping email da siti web (in corso)
 - **Contenuti Ristoranti** - Menu realistici generati via AI
@@ -66,9 +78,13 @@ Piattaforma SaaS avanzata in italiano per automatizzare il processo di ricerca d
 ```
 /app/
 ├── backend/
-│   ├── server.py         # API FastAPI
-│   ├── .env              # MONGO_URL, EMERGENT_LLM_KEY
-│   └── requirements.txt
+│   ├── server.py         # API FastAPI + Editor endpoints
+│   ├── html_generator.py # Generazione HTML per Vercel
+│   ├── .env              # MONGO_URL, EMERGENT_LLM_KEY, VERCEL_TOKEN
+│   ├── requirements.txt
+│   └── tests/
+│       ├── test_api.py
+│       └── test_site_editor.py  # 19 test editor MVP
 ├── frontend/
 │   └── src/
 │       ├── App.js
@@ -78,8 +94,9 @@ Piattaforma SaaS avanzata in italiano per automatizzare il processo di ricerca d
 │           ├── Dashboard.jsx
 │           ├── SearchLeads.jsx
 │           ├── LeadDetail.jsx    # Con impostazioni lingua e booking
-│           ├── DemoSites.jsx
+│           ├── DemoSites.jsx     # + pulsante Modifica Sito
 │           ├── DemoPreview.jsx   # Sito demo PRO con WhatsApp e i18n
+│           ├── SiteEditor.jsx    # ✅ NUOVO: Editor manuale MVP
 │           ├── EmailManager.jsx
 │           └── Settings.jsx
 └── memory/
@@ -132,8 +149,28 @@ Booking(
 - `POST /api/demos/{id}/publish` - Pubblica su Vercel
 - `POST /api/demos/{id}/domain` - Collega dominio custom
 - `GET /api/demos/{id}/domain-status` - Verifica stato dominio
+- **Editor MVP**:
+  - `GET /api/sites/{id}/editor-data` - Dati strutturati per editor
+  - `POST /api/sites/{id}/update` - Salva modifiche sezione
+  - `POST /api/sites/{id}/republish` - Ripubblica su Vercel
 
 ## Changelog
+
+### 2025-03-18: Editor Manuale Siti MVP ✅ COMPLETATO
+- ✅ Creato `/app/frontend/src/pages/SiteEditor.jsx` con 6 tab complete
+- ✅ Tab Orari: switch aperto/chiuso per ogni giorno, campi orario, note
+- ✅ Tab Menu/Servizi: switch modalità, CRUD categorie e items
+- ✅ Tab Testi: tagline e about in due lingue (locale + EN)
+- ✅ Tab Contatti: telefono, WhatsApp, email con validazione
+- ✅ Tab Galleria: aggiunta URL, rimozione, riordinamento immagini
+- ✅ Tab SEO: title e meta description bilingue con contatore caratteri
+- ✅ Pulsante "Salva Modifiche" per ogni sezione
+- ✅ Pulsante "Ripubblica su Vercel" fixed in basso
+- ✅ Route `/site-editor/:demoId` aggiunta in App.js
+- ✅ Pulsante "Modifica Sito" aggiunto in DemoSites.jsx
+- ✅ Backend endpoints testati: editor-data, update, republish
+- ✅ 19 test pytest automatici passati (0 failures)
+- ✅ Test file creato: `/app/backend/tests/test_site_editor.py`
 
 ### 2025-03-17: Fix Completo Lingua Recensioni e Orari
 - ✅ Traduzione recensioni via LLM (GPT-5.2) nella lingua del sito

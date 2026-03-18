@@ -1,0 +1,855 @@
+import React, { useEffect, useState, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { 
+  ArrowLeft, Save, RefreshCw, Clock, UtensilsCrossed, FileText, 
+  Phone, Images, Search, Loader2, CheckCircle, AlertCircle, ExternalLink,
+  Plus, Trash2, GripVertical, X
+} from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
+
+const DAYS = [
+  { code: 'mon', name: 'Lunedì' },
+  { code: 'tue', name: 'Martedì' },
+  { code: 'wed', name: 'Mercoledì' },
+  { code: 'thu', name: 'Giovedì' },
+  { code: 'fri', name: 'Venerdì' },
+  { code: 'sat', name: 'Sabato' },
+  { code: 'sun', name: 'Domenica' }
+];
+
+export default function SiteEditor() {
+  const { demoId } = useParams();
+  const navigate = useNavigate();
+  
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState({});
+  const [republishing, setRepublishing] = useState(false);
+  const [siteData, setSiteData] = useState(null);
+  const [hasChanges, setHasChanges] = useState({});
+
+  // Load site data
+  useEffect(() => {
+    loadSiteData();
+  }, [demoId]);
+
+  const loadSiteData = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API}/sites/${demoId}/editor-data`);
+      setSiteData(response.data);
+      setHasChanges({});
+    } catch (error) {
+      console.error('Errore caricamento dati:', error);
+      toast.error('Errore nel caricamento dei dati del sito');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Save a section
+  const saveSection = async (section, data) => {
+    setSaving(prev => ({ ...prev, [section]: true }));
+    try {
+      const response = await axios.post(`${API}/sites/${demoId}/update`, {
+        section,
+        data
+      });
+      
+      if (response.data.success) {
+        toast.success(`Sezione "${section}" salvata!`);
+        setHasChanges(prev => ({ ...prev, [section]: false }));
+      } else {
+        toast.error(response.data.errors?.join(', ') || 'Errore salvataggio');
+      }
+    } catch (error) {
+      console.error('Errore salvataggio:', error);
+      toast.error(error.response?.data?.detail || 'Errore durante il salvataggio');
+    } finally {
+      setSaving(prev => ({ ...prev, [section]: false }));
+    }
+  };
+
+  // Republish
+  const handleRepublish = async () => {
+    setRepublishing(true);
+    try {
+      const response = await axios.post(`${API}/sites/${demoId}/republish`);
+      if (response.data.success) {
+        toast.success('Sito ripubblicato con successo!');
+        setSiteData(prev => ({
+          ...prev,
+          production_url: response.data.production_url,
+          publish_status: 'published'
+        }));
+      } else {
+        toast.error(response.data.error || 'Errore durante la ripubblicazione');
+      }
+    } catch (error) {
+      console.error('Errore ripubblicazione:', error);
+      toast.error(error.response?.data?.detail || 'Errore durante la ripubblicazione');
+    } finally {
+      setRepublishing(false);
+    }
+  };
+
+  // Update local state
+  const updateSection = useCallback((section, newData) => {
+    setSiteData(prev => ({
+      ...prev,
+      [section]: newData
+    }));
+    setHasChanges(prev => ({ ...prev, [section]: true }));
+  }, []);
+
+  if (loading) {
+    return (
+      <div data-testid="editor-loading" className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin" size={32} />
+      </div>
+    );
+  }
+
+  if (!siteData) {
+    return (
+      <div data-testid="editor-error" className="text-center py-12">
+        <AlertCircle className="mx-auto mb-4 text-red-500" size={48} />
+        <p className="text-lg">Sito non trovato</p>
+        <Button onClick={() => navigate('/demos')} className="mt-4">
+          Torna ai Siti Demo
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div data-testid="site-editor-page" className="max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/demos')}
+            data-testid="back-to-demos"
+          >
+            <ArrowLeft size={20} className="mr-2" />
+            Indietro
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">{siteData.business_name}</h1>
+            <p className="text-sm text-neutral-500">Editor Sito</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          {siteData.production_url && (
+            <a
+              href={siteData.production_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+            >
+              <ExternalLink size={14} />
+              Vedi sito live
+            </a>
+          )}
+          <Badge variant={siteData.publish_status === 'published' ? 'default' : 'secondary'}>
+            {siteData.publish_status === 'published' ? 'Online' : 'Bozza'}
+          </Badge>
+        </div>
+      </div>
+
+      {/* Tabs Editor */}
+      <Tabs defaultValue="hours" className="w-full">
+        <TabsList className="grid w-full grid-cols-6 mb-6">
+          <TabsTrigger value="hours" data-testid="tab-hours" className="flex items-center gap-2">
+            <Clock size={16} />
+            <span className="hidden sm:inline">Orari</span>
+          </TabsTrigger>
+          <TabsTrigger value="menu" data-testid="tab-menu" className="flex items-center gap-2">
+            <UtensilsCrossed size={16} />
+            <span className="hidden sm:inline">Menu</span>
+          </TabsTrigger>
+          <TabsTrigger value="texts" data-testid="tab-texts" className="flex items-center gap-2">
+            <FileText size={16} />
+            <span className="hidden sm:inline">Testi</span>
+          </TabsTrigger>
+          <TabsTrigger value="contacts" data-testid="tab-contacts" className="flex items-center gap-2">
+            <Phone size={16} />
+            <span className="hidden sm:inline">Contatti</span>
+          </TabsTrigger>
+          <TabsTrigger value="gallery" data-testid="tab-gallery" className="flex items-center gap-2">
+            <Images size={16} />
+            <span className="hidden sm:inline">Galleria</span>
+          </TabsTrigger>
+          <TabsTrigger value="seo" data-testid="tab-seo" className="flex items-center gap-2">
+            <Search size={16} />
+            <span className="hidden sm:inline">SEO</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* ORARI */}
+        <TabsContent value="hours">
+          <HoursEditor 
+            hours={siteData.hours} 
+            onUpdate={(data) => updateSection('hours', data)}
+            onSave={() => saveSection('hours', siteData.hours)}
+            saving={saving.hours}
+            hasChanges={hasChanges.hours}
+          />
+        </TabsContent>
+
+        {/* MENU / SERVIZI */}
+        <TabsContent value="menu">
+          <MenuEditor
+            menu={siteData.menu}
+            onUpdate={(data) => updateSection('menu', data)}
+            onSave={() => saveSection('menu', siteData.menu)}
+            saving={saving.menu}
+            hasChanges={hasChanges.menu}
+          />
+        </TabsContent>
+
+        {/* TESTI */}
+        <TabsContent value="texts">
+          <TextsEditor
+            texts={siteData.texts}
+            localeLang={siteData.locale_lang}
+            onUpdate={(data) => updateSection('texts', data)}
+            onSave={() => saveSection('texts', siteData.texts)}
+            saving={saving.texts}
+            hasChanges={hasChanges.texts}
+          />
+        </TabsContent>
+
+        {/* CONTATTI */}
+        <TabsContent value="contacts">
+          <ContactsEditor
+            contacts={siteData.contacts}
+            onUpdate={(data) => updateSection('contacts', data)}
+            onSave={() => saveSection('contacts', siteData.contacts)}
+            saving={saving.contacts}
+            hasChanges={hasChanges.contacts}
+          />
+        </TabsContent>
+
+        {/* GALLERIA */}
+        <TabsContent value="gallery">
+          <GalleryEditor
+            gallery={siteData.gallery}
+            onUpdate={(data) => updateSection('gallery', data)}
+            onSave={() => saveSection('gallery', { images: siteData.gallery })}
+            saving={saving.gallery}
+            hasChanges={hasChanges.gallery}
+          />
+        </TabsContent>
+
+        {/* SEO */}
+        <TabsContent value="seo">
+          <SeoEditor
+            seo={siteData.seo}
+            localeLang={siteData.locale_lang}
+            onUpdate={(data) => updateSection('seo', data)}
+            onSave={() => saveSection('seo', siteData.seo)}
+            saving={saving.seo}
+            hasChanges={hasChanges.seo}
+          />
+        </TabsContent>
+      </Tabs>
+
+      {/* Republish Button - Fixed at bottom */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 flex justify-center z-50">
+        <Button
+          data-testid="republish-btn"
+          onClick={handleRepublish}
+          disabled={republishing}
+          className="bg-green-600 hover:bg-green-700 px-8"
+          size="lg"
+        >
+          {republishing ? (
+            <>
+              <Loader2 className="mr-2 animate-spin" size={18} />
+              Ripubblicazione...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="mr-2" size={18} />
+              Ripubblica su Vercel
+            </>
+          )}
+        </Button>
+      </div>
+
+      {/* Spacer for fixed button */}
+      <div className="h-24" />
+    </div>
+  );
+}
+
+// ========== SUB-COMPONENTS ==========
+
+function SaveButton({ onClick, saving, hasChanges }) {
+  return (
+    <Button
+      onClick={onClick}
+      disabled={saving || !hasChanges}
+      className="mt-4"
+      data-testid="save-section-btn"
+    >
+      {saving ? (
+        <Loader2 className="mr-2 animate-spin" size={16} />
+      ) : hasChanges ? (
+        <Save className="mr-2" size={16} />
+      ) : (
+        <CheckCircle className="mr-2" size={16} />
+      )}
+      {saving ? 'Salvataggio...' : hasChanges ? 'Salva Modifiche' : 'Salvato'}
+    </Button>
+  );
+}
+
+// HOURS EDITOR
+function HoursEditor({ hours, onUpdate, onSave, saving, hasChanges }) {
+  const updateDay = (dayCode, field, value) => {
+    const newHours = { ...hours };
+    newHours[dayCode] = { ...newHours[dayCode], [field]: value };
+    onUpdate(newHours);
+  };
+
+  return (
+    <Card className="p-6" data-testid="hours-editor">
+      <h2 className="text-xl font-semibold mb-4">Orari di Apertura</h2>
+      <div className="space-y-4">
+        {DAYS.map(day => (
+          <div key={day.code} className="flex items-center gap-4 p-3 bg-neutral-50 rounded-lg">
+            <div className="w-24 font-medium">{day.name}</div>
+            
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={!hours[day.code]?.closed}
+                onCheckedChange={(checked) => updateDay(day.code, 'closed', !checked)}
+                data-testid={`hours-${day.code}-switch`}
+              />
+              <span className="text-sm text-neutral-500">
+                {hours[day.code]?.closed ? 'Chiuso' : 'Aperto'}
+              </span>
+            </div>
+
+            {!hours[day.code]?.closed && (
+              <>
+                <Input
+                  type="time"
+                  value={hours[day.code]?.open || ''}
+                  onChange={(e) => updateDay(day.code, 'open', e.target.value)}
+                  className="w-32"
+                  data-testid={`hours-${day.code}-open`}
+                />
+                <span>-</span>
+                <Input
+                  type="time"
+                  value={hours[day.code]?.close || ''}
+                  onChange={(e) => updateDay(day.code, 'close', e.target.value)}
+                  className="w-32"
+                  data-testid={`hours-${day.code}-close`}
+                />
+                <Input
+                  type="text"
+                  placeholder="Note (opzionale)"
+                  value={hours[day.code]?.note || ''}
+                  onChange={(e) => updateDay(day.code, 'note', e.target.value)}
+                  className="flex-1"
+                  data-testid={`hours-${day.code}-note`}
+                />
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+      <SaveButton onClick={onSave} saving={saving} hasChanges={hasChanges} />
+    </Card>
+  );
+}
+
+// MENU EDITOR
+function MenuEditor({ menu, onUpdate, onSave, saving, hasChanges }) {
+  const isMenuMode = menu?.mode === 'menu';
+
+  const addCategory = () => {
+    const newCategories = [...(menu.categories || []), { name: '', items: [''] }];
+    onUpdate({ ...menu, categories: newCategories });
+  };
+
+  const updateCategory = (index, field, value) => {
+    const newCategories = [...(menu.categories || [])];
+    newCategories[index] = { ...newCategories[index], [field]: value };
+    onUpdate({ ...menu, categories: newCategories });
+  };
+
+  const addItemToCategory = (catIndex) => {
+    const newCategories = [...(menu.categories || [])];
+    newCategories[catIndex].items = [...(newCategories[catIndex].items || []), ''];
+    onUpdate({ ...menu, categories: newCategories });
+  };
+
+  const updateItem = (catIndex, itemIndex, value) => {
+    const newCategories = [...(menu.categories || [])];
+    newCategories[catIndex].items[itemIndex] = value;
+    onUpdate({ ...menu, categories: newCategories });
+  };
+
+  const removeItem = (catIndex, itemIndex) => {
+    const newCategories = [...(menu.categories || [])];
+    newCategories[catIndex].items = newCategories[catIndex].items.filter((_, i) => i !== itemIndex);
+    onUpdate({ ...menu, categories: newCategories });
+  };
+
+  const removeCategory = (index) => {
+    const newCategories = (menu.categories || []).filter((_, i) => i !== index);
+    onUpdate({ ...menu, categories: newCategories });
+  };
+
+  // Services mode
+  const addService = () => {
+    const newServices = [...(menu.services || []), ''];
+    onUpdate({ ...menu, services: newServices });
+  };
+
+  const updateService = (index, value) => {
+    const newServices = [...(menu.services || [])];
+    newServices[index] = value;
+    onUpdate({ ...menu, services: newServices });
+  };
+
+  const removeService = (index) => {
+    const newServices = (menu.services || []).filter((_, i) => i !== index);
+    onUpdate({ ...menu, services: newServices });
+  };
+
+  return (
+    <Card className="p-6" data-testid="menu-editor">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">
+          {isMenuMode ? 'Menu' : 'Servizi'}
+        </h2>
+        <div className="flex items-center gap-2 text-sm">
+          <span className={!isMenuMode ? 'font-medium' : 'text-neutral-400'}>Servizi</span>
+          <Switch
+            checked={isMenuMode}
+            onCheckedChange={(checked) => onUpdate({ ...menu, mode: checked ? 'menu' : 'services' })}
+            data-testid="menu-mode-switch"
+          />
+          <span className={isMenuMode ? 'font-medium' : 'text-neutral-400'}>Menu</span>
+        </div>
+      </div>
+
+      {isMenuMode ? (
+        // Menu categories
+        <div className="space-y-6">
+          {(menu.categories || []).map((category, catIndex) => (
+            <div key={catIndex} className="p-4 border rounded-lg">
+              <div className="flex items-center gap-2 mb-3">
+                <Input
+                  placeholder="Nome categoria (es. Antipasti)"
+                  value={category.name || ''}
+                  onChange={(e) => updateCategory(catIndex, 'name', e.target.value)}
+                  className="font-medium"
+                  data-testid={`category-${catIndex}-name`}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeCategory(catIndex)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <Trash2 size={16} />
+                </Button>
+              </div>
+              
+              <div className="space-y-2 ml-4">
+                {(category.items || []).map((item, itemIndex) => (
+                  <div key={itemIndex} className="flex items-center gap-2">
+                    <GripVertical size={16} className="text-neutral-300" />
+                    <Input
+                      placeholder="Nome piatto"
+                      value={item || ''}
+                      onChange={(e) => updateItem(catIndex, itemIndex, e.target.value)}
+                      data-testid={`category-${catIndex}-item-${itemIndex}`}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeItem(catIndex, itemIndex)}
+                      className="text-neutral-400 hover:text-red-500"
+                    >
+                      <X size={16} />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => addItemToCategory(catIndex)}
+                  className="text-blue-600"
+                >
+                  <Plus size={16} className="mr-1" />
+                  Aggiungi piatto
+                </Button>
+              </div>
+            </div>
+          ))}
+          
+          <Button variant="outline" onClick={addCategory} data-testid="add-category-btn">
+            <Plus size={16} className="mr-2" />
+            Aggiungi Categoria
+          </Button>
+        </div>
+      ) : (
+        // Services list
+        <div className="space-y-3">
+          {(menu.services || []).map((service, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <GripVertical size={16} className="text-neutral-300" />
+              <Input
+                placeholder="Nome servizio"
+                value={service || ''}
+                onChange={(e) => updateService(index, e.target.value)}
+                data-testid={`service-${index}`}
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => removeService(index)}
+                className="text-neutral-400 hover:text-red-500"
+              >
+                <X size={16} />
+              </Button>
+            </div>
+          ))}
+          
+          <Button variant="outline" onClick={addService} data-testid="add-service-btn">
+            <Plus size={16} className="mr-2" />
+            Aggiungi Servizio
+          </Button>
+        </div>
+      )}
+
+      <SaveButton onClick={onSave} saving={saving} hasChanges={hasChanges} />
+    </Card>
+  );
+}
+
+// TEXTS EDITOR
+function TextsEditor({ texts, localeLang, onUpdate, onSave, saving, hasChanges }) {
+  const langLabel = localeLang === 'it' ? 'Italiano' : localeLang.toUpperCase();
+
+  return (
+    <Card className="p-6" data-testid="texts-editor">
+      <h2 className="text-xl font-semibold mb-4">Testi del Sito</h2>
+      
+      <div className="space-y-6">
+        {/* Tagline */}
+        <div>
+          <Label className="text-base font-medium">Tagline / Slogan</Label>
+          <div className="grid grid-cols-2 gap-4 mt-2">
+            <div>
+              <Label className="text-xs text-neutral-500">{langLabel}</Label>
+              <Input
+                placeholder={`Tagline in ${langLabel}`}
+                value={texts?.tagline_local || ''}
+                onChange={(e) => onUpdate({ ...texts, tagline_local: e.target.value })}
+                data-testid="tagline-local"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-neutral-500">English</Label>
+              <Input
+                placeholder="Tagline in English"
+                value={texts?.tagline_en || ''}
+                onChange={(e) => onUpdate({ ...texts, tagline_en: e.target.value })}
+                data-testid="tagline-en"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* About */}
+        <div>
+          <Label className="text-base font-medium">Chi Siamo</Label>
+          <div className="grid grid-cols-2 gap-4 mt-2">
+            <div>
+              <Label className="text-xs text-neutral-500">{langLabel}</Label>
+              <Textarea
+                placeholder={`Descrizione in ${langLabel}`}
+                value={texts?.about_local || ''}
+                onChange={(e) => onUpdate({ ...texts, about_local: e.target.value })}
+                rows={5}
+                data-testid="about-local"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-neutral-500">English</Label>
+              <Textarea
+                placeholder="Description in English"
+                value={texts?.about_en || ''}
+                onChange={(e) => onUpdate({ ...texts, about_en: e.target.value })}
+                rows={5}
+                data-testid="about-en"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <SaveButton onClick={onSave} saving={saving} hasChanges={hasChanges} />
+    </Card>
+  );
+}
+
+// CONTACTS EDITOR
+function ContactsEditor({ contacts, onUpdate, onSave, saving, hasChanges }) {
+  return (
+    <Card className="p-6" data-testid="contacts-editor">
+      <h2 className="text-xl font-semibold mb-4">Informazioni di Contatto</h2>
+      
+      <div className="space-y-4 max-w-md">
+        <div>
+          <Label>Telefono</Label>
+          <Input
+            type="tel"
+            placeholder="+39 123 456 7890"
+            value={contacts?.phone || ''}
+            onChange={(e) => onUpdate({ ...contacts, phone: e.target.value })}
+            data-testid="contact-phone"
+          />
+        </div>
+        
+        <div>
+          <Label>WhatsApp</Label>
+          <Input
+            type="tel"
+            placeholder="+39 123 456 7890"
+            value={contacts?.whatsapp || ''}
+            onChange={(e) => onUpdate({ ...contacts, whatsapp: e.target.value })}
+            data-testid="contact-whatsapp"
+          />
+          <p className="text-xs text-neutral-500 mt-1">
+            Lascia vuoto per usare lo stesso numero del telefono
+          </p>
+        </div>
+        
+        <div>
+          <Label>Email</Label>
+          <Input
+            type="email"
+            placeholder="info@esempio.it"
+            value={contacts?.email || ''}
+            onChange={(e) => onUpdate({ ...contacts, email: e.target.value })}
+            data-testid="contact-email"
+          />
+        </div>
+      </div>
+
+      <SaveButton onClick={onSave} saving={saving} hasChanges={hasChanges} />
+    </Card>
+  );
+}
+
+// GALLERY EDITOR
+function GalleryEditor({ gallery, onUpdate, onSave, saving, hasChanges }) {
+  const [newUrl, setNewUrl] = useState('');
+
+  const addImage = () => {
+    if (!newUrl || !newUrl.startsWith('http')) {
+      toast.error('Inserisci un URL valido (inizia con http)');
+      return;
+    }
+    const newGallery = [
+      ...(gallery || []),
+      { url: newUrl, caption: '', order: (gallery || []).length }
+    ];
+    onUpdate(newGallery);
+    setNewUrl('');
+  };
+
+  const removeImage = (index) => {
+    const newGallery = (gallery || []).filter((_, i) => i !== index);
+    // Update order
+    newGallery.forEach((img, i) => img.order = i);
+    onUpdate(newGallery);
+  };
+
+  const moveImage = (index, direction) => {
+    const newGallery = [...(gallery || [])];
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= newGallery.length) return;
+    
+    [newGallery[index], newGallery[newIndex]] = [newGallery[newIndex], newGallery[index]];
+    newGallery.forEach((img, i) => img.order = i);
+    onUpdate(newGallery);
+  };
+
+  return (
+    <Card className="p-6" data-testid="gallery-editor">
+      <h2 className="text-xl font-semibold mb-4">Galleria Immagini</h2>
+      
+      {/* Add new image */}
+      <div className="flex gap-2 mb-6">
+        <Input
+          placeholder="URL immagine (https://...)"
+          value={newUrl}
+          onChange={(e) => setNewUrl(e.target.value)}
+          data-testid="gallery-new-url"
+        />
+        <Button onClick={addImage} data-testid="gallery-add-btn">
+          <Plus size={16} className="mr-2" />
+          Aggiungi
+        </Button>
+      </div>
+
+      {/* Image grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {(gallery || []).map((img, index) => (
+          <div key={index} className="relative group">
+            <img
+              src={img.url}
+              alt={`Gallery ${index + 1}`}
+              className="w-full h-32 object-cover rounded-lg border"
+              onError={(e) => {
+                e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23eee" width="100" height="100"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23999">Errore</text></svg>';
+              }}
+            />
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-white"
+                onClick={() => moveImage(index, -1)}
+                disabled={index === 0}
+              >
+                ←
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-white"
+                onClick={() => moveImage(index, 1)}
+                disabled={index === (gallery || []).length - 1}
+              >
+                →
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-red-400 hover:text-red-300"
+                onClick={() => removeImage(index)}
+                data-testid={`gallery-remove-${index}`}
+              >
+                <Trash2 size={16} />
+              </Button>
+            </div>
+            <span className="absolute top-1 left-1 bg-black/60 text-white text-xs px-2 py-1 rounded">
+              #{index + 1}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {(gallery || []).length === 0 && (
+        <div className="text-center py-8 text-neutral-500">
+          <Images size={48} className="mx-auto mb-2 opacity-50" />
+          <p>Nessuna immagine nella galleria</p>
+          <p className="text-sm">Aggiungi immagini tramite URL</p>
+        </div>
+      )}
+
+      <SaveButton onClick={onSave} saving={saving} hasChanges={hasChanges} />
+    </Card>
+  );
+}
+
+// SEO EDITOR
+function SeoEditor({ seo, localeLang, onUpdate, onSave, saving, hasChanges }) {
+  const langLabel = localeLang === 'it' ? 'Italiano' : localeLang.toUpperCase();
+
+  return (
+    <Card className="p-6" data-testid="seo-editor">
+      <h2 className="text-xl font-semibold mb-4">SEO & Meta Tags</h2>
+      
+      <div className="space-y-6">
+        {/* Title */}
+        <div>
+          <Label className="text-base font-medium">Titolo Pagina (Title Tag)</Label>
+          <div className="grid grid-cols-2 gap-4 mt-2">
+            <div>
+              <Label className="text-xs text-neutral-500">{langLabel}</Label>
+              <Input
+                placeholder="Titolo pagina"
+                value={seo?.title_local || ''}
+                onChange={(e) => onUpdate({ ...seo, title_local: e.target.value })}
+                data-testid="seo-title-local"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-neutral-500">English</Label>
+              <Input
+                placeholder="Page title"
+                value={seo?.title_en || ''}
+                onChange={(e) => onUpdate({ ...seo, title_en: e.target.value })}
+                data-testid="seo-title-en"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-neutral-500 mt-1">
+            Ideale: 50-60 caratteri
+          </p>
+        </div>
+
+        {/* Meta Description */}
+        <div>
+          <Label className="text-base font-medium">Meta Description</Label>
+          <div className="grid grid-cols-2 gap-4 mt-2">
+            <div>
+              <Label className="text-xs text-neutral-500">{langLabel}</Label>
+              <Textarea
+                placeholder="Descrizione per i motori di ricerca"
+                value={seo?.meta_local || ''}
+                onChange={(e) => onUpdate({ ...seo, meta_local: e.target.value })}
+                rows={3}
+                data-testid="seo-meta-local"
+              />
+              <p className="text-xs text-neutral-500 mt-1">
+                {(seo?.meta_local || '').length}/160 caratteri
+              </p>
+            </div>
+            <div>
+              <Label className="text-xs text-neutral-500">English</Label>
+              <Textarea
+                placeholder="Description for search engines"
+                value={seo?.meta_en || ''}
+                onChange={(e) => onUpdate({ ...seo, meta_en: e.target.value })}
+                rows={3}
+                data-testid="seo-meta-en"
+              />
+              <p className="text-xs text-neutral-500 mt-1">
+                {(seo?.meta_en || '').length}/160 characters
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <SaveButton onClick={onSave} saving={saving} hasChanges={hasChanges} />
+    </Card>
+  );
+}

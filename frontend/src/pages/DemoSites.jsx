@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Globe, Eye, Rocket, Loader2, CheckCircle, AlertCircle, ExternalLink, Shield, Link2, RefreshCw } from 'lucide-react';
+import { Globe, Eye, Rocket, Loader2, CheckCircle, AlertCircle, ExternalLink, Shield, Link2, RefreshCw, Pencil } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -244,6 +244,17 @@ export default function DemoSites() {
                 >
                   <Eye className="mr-2" size={16} />
                   Anteprima Demo
+                </Button>
+
+                {/* Edit Site - sempre visibile dopo la creazione */}
+                <Button
+                  data-testid={`edit-demo-${demo.demo_id}`}
+                  onClick={() => navigate(`/site-editor/${demo.demo_id}`)}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <Pencil className="mr-2" size={16} />
+                  Modifica Sito
                 </Button>
 
                 {/* Quality Check (solo per draft) */}
