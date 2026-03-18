@@ -675,51 +675,56 @@ export default function DemoPreview() {
             </div>
           </section>
 
-          {/* Social Media Section - Solo se almeno un social è configurato */}
-          {(business.instagram_url || business.facebook_url || business.tiktok_url) && (
-            <section id="social" className="text-center">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">{t('sections.socialTitle', lang)}</h2>
-              <p className="text-neutral-600 mb-6 sm:mb-8 text-base sm:text-lg">
-                {lang === 'it' && 'Resta aggiornato sulle nostre novità!'}
-                {lang === 'fr' && 'Restez informé de nos actualités!'}
-                {lang === 'en' && 'Stay updated with our latest news!'}
-                {lang === 'es' && '¡Mantente al día con nuestras novedades!'}
-                {lang === 'de' && 'Bleiben Sie über unsere Neuigkeiten informiert!'}
-              </p>
-              <div className="flex items-center justify-center gap-4 sm:gap-6">
-                {business.instagram_url && (
-                  <a href={business.instagram_url} target="_blank" rel="noopener noreferrer"
-                     className={`group flex flex-col items-center gap-2 p-4 sm:p-6 ${style.cardBg} rounded-xl sm:rounded-2xl hover:shadow-lg transition-all hover:scale-105`}
-                     title="Instagram">
-                    <div className={`w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg group-hover:shadow-xl transition-all`}>
-                      <Instagram size={28} className="sm:w-8 sm:h-8" />
-                    </div>
-                    <span className="text-sm sm:text-base font-medium text-neutral-700">Instagram</span>
-                  </a>
-                )}
-                {business.facebook_url && (
-                  <a href={business.facebook_url} target="_blank" rel="noopener noreferrer"
-                     className={`group flex flex-col items-center gap-2 p-4 sm:p-6 ${style.cardBg} rounded-xl sm:rounded-2xl hover:shadow-lg transition-all hover:scale-105`}
-                     title="Facebook">
-                    <div className={`w-14 h-14 sm:w-16 sm:h-16 bg-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg group-hover:shadow-xl transition-all`}>
-                      <Facebook size={28} className="sm:w-8 sm:h-8" />
-                    </div>
-                    <span className="text-sm sm:text-base font-medium text-neutral-700">Facebook</span>
-                  </a>
-                )}
-                {business.tiktok_url && (
-                  <a href={business.tiktok_url} target="_blank" rel="noopener noreferrer"
-                     className={`group flex flex-col items-center gap-2 p-4 sm:p-6 ${style.cardBg} rounded-xl sm:rounded-2xl hover:shadow-lg transition-all hover:scale-105`}
-                     title="TikTok">
-                    <div className={`w-14 h-14 sm:w-16 sm:h-16 bg-black rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg group-hover:shadow-xl transition-all`}>
-                      <TikTokIcon size={28} className="sm:w-8 sm:h-8" />
-                    </div>
-                    <span className="text-sm sm:text-base font-medium text-neutral-700">TikTok</span>
-                  </a>
-                )}
-              </div>
-            </section>
-          )}
+          {/* Social Media Section - SEMPRE visibile con Instagram e Facebook come base */}
+          <section id="social" className="text-center">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">{t('sections.socialTitle', lang)}</h2>
+            <p className="text-neutral-600 mb-6 sm:mb-8 text-base sm:text-lg">
+              {lang === 'it' && 'Resta aggiornato sulle nostre novità!'}
+              {lang === 'fr' && 'Restez informé de nos actualités!'}
+              {lang === 'en' && 'Stay updated with our latest news!'}
+              {lang === 'es' && '¡Mantente al día con nuestras novedades!'}
+              {lang === 'de' && 'Bleiben Sie über unsere Neuigkeiten informiert!'}
+            </p>
+            <div className="flex items-center justify-center gap-4 sm:gap-6">
+              {/* Instagram - SEMPRE visibile */}
+              <a href={business.instagram_url || '#'} 
+                 target={business.instagram_url ? "_blank" : "_self"} 
+                 rel="noopener noreferrer"
+                 onClick={(e) => !business.instagram_url && e.preventDefault()}
+                 className={`group flex flex-col items-center gap-2 p-4 sm:p-6 ${style.cardBg} rounded-xl sm:rounded-2xl transition-all ${business.instagram_url ? 'hover:shadow-lg hover:scale-105' : 'opacity-60 cursor-default'}`}
+                 title="Instagram">
+                <div className={`w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg ${business.instagram_url ? 'group-hover:shadow-xl' : ''} transition-all`}>
+                  <Instagram size={28} className="sm:w-8 sm:h-8" />
+                </div>
+                <span className="text-sm sm:text-base font-medium text-neutral-700">Instagram</span>
+              </a>
+              
+              {/* Facebook - SEMPRE visibile */}
+              <a href={business.facebook_url || '#'} 
+                 target={business.facebook_url ? "_blank" : "_self"} 
+                 rel="noopener noreferrer"
+                 onClick={(e) => !business.facebook_url && e.preventDefault()}
+                 className={`group flex flex-col items-center gap-2 p-4 sm:p-6 ${style.cardBg} rounded-xl sm:rounded-2xl transition-all ${business.facebook_url ? 'hover:shadow-lg hover:scale-105' : 'opacity-60 cursor-default'}`}
+                 title="Facebook">
+                <div className={`w-14 h-14 sm:w-16 sm:h-16 bg-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg ${business.facebook_url ? 'group-hover:shadow-xl' : ''} transition-all`}>
+                  <Facebook size={28} className="sm:w-8 sm:h-8" />
+                </div>
+                <span className="text-sm sm:text-base font-medium text-neutral-700">Facebook</span>
+              </a>
+              
+              {/* TikTok - Solo se configurato */}
+              {business.tiktok_url && (
+                <a href={business.tiktok_url} target="_blank" rel="noopener noreferrer"
+                   className={`group flex flex-col items-center gap-2 p-4 sm:p-6 ${style.cardBg} rounded-xl sm:rounded-2xl hover:shadow-lg transition-all hover:scale-105`}
+                   title="TikTok">
+                  <div className={`w-14 h-14 sm:w-16 sm:h-16 bg-black rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg group-hover:shadow-xl transition-all`}>
+                    <TikTokIcon size={28} className="sm:w-8 sm:h-8" />
+                  </div>
+                  <span className="text-sm sm:text-base font-medium text-neutral-700">TikTok</span>
+                </a>
+              )}
+            </div>
+          </section>
 
           {/* Final CTA */}
           <section className={`text-center py-10 sm:py-12 md:py-14 bg-gradient-to-br ${style.primaryColor} rounded-xl sm:rounded-2xl text-white shadow-xl`}>
@@ -766,9 +771,36 @@ export default function DemoPreview() {
               <div>
                 <h4 className="font-bold mb-3 sm:mb-4 text-sm sm:text-base">{t('footer.hours', lang)}</h4>
                 <div className="space-y-1 text-neutral-400 text-xs sm:text-sm">
-                  {localizedHours.slice(0, 3).map((hour, i) => (
+                  {localizedHours.map((hour, i) => (
                     <p key={i}>{hour}</p>
                   ))}
+                </div>
+              </div>
+              {/* Social Media in Footer - Always show Instagram/Facebook as base */}
+              <div>
+                <h4 className="font-bold mb-3 sm:mb-4 text-sm sm:text-base">Social</h4>
+                <div className="flex items-center gap-3">
+                  <a href={business.instagram_url || '#'} 
+                     target={business.instagram_url ? "_blank" : "_self"} 
+                     rel="noopener noreferrer"
+                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${business.instagram_url ? 'bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 hover:scale-110' : 'bg-neutral-700 opacity-50'}`}
+                     title="Instagram">
+                    <Instagram size={20} className="text-white" />
+                  </a>
+                  <a href={business.facebook_url || '#'} 
+                     target={business.facebook_url ? "_blank" : "_self"} 
+                     rel="noopener noreferrer"
+                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${business.facebook_url ? 'bg-blue-600 hover:scale-110' : 'bg-neutral-700 opacity-50'}`}
+                     title="Facebook">
+                    <Facebook size={20} className="text-white" />
+                  </a>
+                  {business.tiktok_url && (
+                    <a href={business.tiktok_url} target="_blank" rel="noopener noreferrer"
+                       className="w-10 h-10 bg-black rounded-full flex items-center justify-center transition-all hover:scale-110"
+                       title="TikTok">
+                      <TikTokIcon size={20} className="text-white" />
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
