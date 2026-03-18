@@ -2230,12 +2230,14 @@ async def republish_site(demo_id: str):
 
 app.include_router(api_router)
 
+# CORS configuration - allow all origins for cross-domain access
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 @app.on_event("shutdown")
