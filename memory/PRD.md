@@ -162,11 +162,13 @@ Booking(
 ### 2025-03-18: Miglioramenti UX Siti Demo ✅ COMPLETATO
 - ✅ **Descrizioni Servizi Dinamiche**: Ogni servizio ha una descrizione unica basata sul tipo (non più "Servizio professionale di alta qualità" ripetuto)
 - ✅ **Fix CSS Form Prenotazione**: Risolto overflow grigio su iOS nel selettore orario
-- ✅ **Social Media nei Siti**: Aggiunto supporto per Instagram, Facebook, TikTok
-  - Icone social nella sezione contatti del sito demo
+- ✅ **Sezione Social Media Dedicata**: 
+  - Nuova sezione "Seguici sui Social" con icone grandi e colorate (Instagram, Facebook, TikTok)
+  - Appare SOLO se l'attività ha almeno un social configurato
+  - Cliccando si apre la pagina social del cliente
   - Campi Social Media nell'editor sito (tab Contatti)
-  - Salvati nel database e visualizzati automaticamente
-- ✅ Traduzioni descrizioni servizi in IT, FR, EN, ES, DE
+  - I social vengono presi automaticamente dal lead e mostrati nel demo
+- ✅ Traduzioni sezione social in IT, FR, EN, ES, DE
 
 ### 2025-03-18: Nuove Funzionalità CRM ✅ COMPLETATO
 - ✅ **Filtro Clienti Acquisiti**: Card "Clienti Acquisiti" in Dashboard filtra lead con status=client

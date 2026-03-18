@@ -48,7 +48,8 @@ const translations = {
       contactTitle: 'Contatti',
       bookingTitle: 'Prenota',
       bookTableTitle: 'Prenota un Tavolo',
-      bookAppointmentTitle: 'Prenota Appuntamento'
+      bookAppointmentTitle: 'Prenota Appuntamento',
+      socialTitle: 'Seguici sui Social'
     },
     // Info bar
     info: {
@@ -198,7 +199,8 @@ const translations = {
       contactTitle: 'Contact',
       bookingTitle: 'Réservation',
       bookTableTitle: 'Réserver une Table',
-      bookAppointmentTitle: 'Prendre Rendez-vous'
+      bookAppointmentTitle: 'Prendre Rendez-vous',
+      socialTitle: 'Suivez-nous'
     },
     // Info bar
     info: {
@@ -345,7 +347,8 @@ const translations = {
       contactTitle: 'Contact',
       bookingTitle: 'Book',
       bookTableTitle: 'Book a Table',
-      bookAppointmentTitle: 'Book Appointment'
+      bookAppointmentTitle: 'Book Appointment',
+      socialTitle: 'Follow Us'
     },
     // Info bar
     info: {
@@ -492,7 +495,8 @@ const translations = {
       contactTitle: 'Contacto',
       bookingTitle: 'Reservar',
       bookTableTitle: 'Reservar Mesa',
-      bookAppointmentTitle: 'Reservar Cita'
+      bookAppointmentTitle: 'Reservar Cita',
+      socialTitle: 'Síguenos'
     },
     // Info bar
     info: {
@@ -639,7 +643,8 @@ const translations = {
       contactTitle: 'Kontakt',
       bookingTitle: 'Reservierung',
       bookTableTitle: 'Tisch Reservieren',
-      bookAppointmentTitle: 'Termin Buchen'
+      bookAppointmentTitle: 'Termin Buchen',
+      socialTitle: 'Folgen Sie Uns'
     },
     // Info bar
     info: {

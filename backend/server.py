@@ -1087,6 +1087,21 @@ async def get_demo_by_id(demo_id: str):
     if isinstance(demo.get('created_at'), str):
         demo['created_at'] = datetime.fromisoformat(demo['created_at'])
     
+    # Ensure business_data has social links from lead if not present
+    business_data = demo.get('business_data', {})
+    if not business_data.get('instagram_url') and not business_data.get('facebook_url') and not business_data.get('tiktok_url'):
+        lead_id = demo.get('lead_id')
+        if lead_id:
+            lead = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
+            if lead:
+                if lead.get('instagram_url'):
+                    business_data['instagram_url'] = lead['instagram_url']
+                if lead.get('facebook_url'):
+                    business_data['facebook_url'] = lead['facebook_url']
+                if lead.get('tiktok_url'):
+                    business_data['tiktok_url'] = lead['tiktok_url']
+                demo['business_data'] = business_data
+    
     return demo
 
 @api_router.get("/demos", response_model=List[DemoSite])
