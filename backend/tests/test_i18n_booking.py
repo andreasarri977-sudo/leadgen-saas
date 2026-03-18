@@ -7,7 +7,7 @@ import requests
 import os
 import uuid
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://site-editor-mvp.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://saas-migration-4.preview.emergentagent.com')
 
 # Test data IDs from main agent
 TEST_LEAD_ID = "3e061e0f-d673-495b-aa9e-350fee511f41"

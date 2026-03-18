@@ -796,6 +796,22 @@ async def update_lead_status(lead_id: str, status: str):
     
     return {"success": True, "message": "Status aggiornato"}
 
+class LeadStatusUpdate(BaseModel):
+    status: str
+
+@api_router.patch("/leads/{lead_id}")
+async def update_lead(lead_id: str, update: LeadStatusUpdate):
+    """Aggiorna lo stato del lead (supporta body JSON)"""
+    result = await db.leads.update_one(
+        {"lead_id": lead_id},
+        {"$set": {"status": update.status}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Lead non trovato")
+    
+    return {"success": True, "message": "Status aggiornato", "status": update.status}
+
 class LeadSettingsUpdate(BaseModel):
     site_language: Optional[str] = None
     booking_mode: Optional[str] = None
@@ -1191,9 +1207,10 @@ Tono: cordiale e diretto."""
 async def get_dashboard_stats():
     total_leads = await db.leads.count_documents({})
     demos_created = await db.demo_sites.count_documents({})
-    contacted = await db.leads.count_documents({"status": "contattato"})
-    clients = await db.leads.count_documents({"status": "cliente_acquisito"})
-    new_leads = await db.leads.count_documents({"status": "nuovo_lead"})
+    # Support both English and Italian status values
+    contacted = await db.leads.count_documents({"status": {"$in": ["contacted", "contattato"]}})
+    clients = await db.leads.count_documents({"status": {"$in": ["client", "cliente_acquisito"]}})
+    new_leads = await db.leads.count_documents({"status": {"$in": ["new", "nuovo_lead"]}})
     emails_sent = await db.emails_sent.count_documents({})
     
     return DashboardStats(

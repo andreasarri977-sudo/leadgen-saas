@@ -139,12 +139,14 @@ Booking(
 
 ### API Endpoints Chiave
 - `GET /api/stats/dashboard` - Statistiche dashboard
-- `GET /api/leads` - Lista lead
+- `GET /api/leads` - Lista lead (supporta ?status=client per filtro)
 - `GET /api/leads/{id}` - Singolo lead
+- `PATCH /api/leads/{id}` - Aggiorna status lead (body JSON: {"status": "client"})
 - `PATCH /api/leads/{id}/settings` - Aggiorna site_language, booking_mode
 - `POST /api/search` - Ricerca nuove aziende
 - `POST /api/demo/generate` - Genera sito demo
 - `GET /api/demos/{id}` - Dati demo per rendering
+- `DELETE /api/demos/{id}` - Elimina sito demo
 - `POST /api/bookings` - Crea prenotazione
 - `GET /api/bookings` - Lista prenotazioni
 - `POST /api/demos/{id}/publish` - Pubblica su Vercel
@@ -156,6 +158,13 @@ Booking(
   - `POST /api/sites/{id}/republish` - Ripubblica su Vercel
 
 ## Changelog
+
+### 2025-03-18: Nuove Funzionalità CRM ✅ COMPLETATO
+- ✅ **Filtro Clienti Acquisiti**: Card "Clienti Acquisiti" in Dashboard filtra lead con status=client
+- ✅ **Checkbox "Pagato"**: Toggle nella lista Lead per marcare come cliente acquisito
+- ✅ **Elimina Sito Demo**: Pulsante rosso con conferma per eliminare demo non più necessari
+- ✅ Fix backend: nuovo endpoint `PATCH /api/leads/{lead_id}` con body JSON
+- ✅ Fix backend: stats dashboard ora conta correttamente status inglesi e italiani
 
 ### 2025-03-18: Preparazione Deploy Vercel Production
 - ✅ Creato `/app/vercel.json` per configurazione Vercel

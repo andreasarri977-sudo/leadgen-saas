@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://site-editor-mvp.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://saas-migration-4.preview.emergentagent.com')
 
 class TestHealthAndRoot:
     """Test basic API health"""
