@@ -203,26 +203,26 @@ export default function Dashboard() {
         <Card className="mt-8 p-6" data-testid="quick-actions-card">
           <h2 className="text-2xl font-bold mb-4 tracking-tight">Azioni Rapide</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 opacity-60">
-            <a href="/search" className="p-4 border border-neutral-200 rounded-lg">
+            <Link to="/search" className="p-4 border border-neutral-200 rounded-lg">
               <Search className="mb-2" size={24} />
               <h3 className="font-bold mb-1">Cerca Nuove Aziende</h3>
               <p className="text-sm text-neutral-600">Trova aziende senza sito web</p>
-            </a>
-            <a href="/leads" className="p-4 border border-neutral-200 rounded-lg">
+            </Link>
+            <Link to="/leads" className="p-4 border border-neutral-200 rounded-lg">
               <Users className="mb-2" size={24} />
               <h3 className="font-bold mb-1">Gestisci Lead</h3>
               <p className="text-sm text-neutral-600">Visualizza i tuoi lead</p>
-            </a>
-            <a href="/email" className="p-4 border border-neutral-200 rounded-lg">
+            </Link>
+            <Link to="/email" className="p-4 border border-neutral-200 rounded-lg">
               <Mail className="mb-2" size={24} />
               <h3 className="font-bold mb-1">Email & WhatsApp</h3>
               <p className="text-sm text-neutral-600">Invia messaggi ai lead</p>
-            </a>
-            <a href="/demos" className="p-4 border border-neutral-200 rounded-lg">
+            </Link>
+            <Link to="/demos" className="p-4 border border-neutral-200 rounded-lg">
               <Globe className="mb-2" size={24} />
               <h3 className="font-bold mb-1">Siti Demo</h3>
               <p className="text-sm text-neutral-600">Visualizza i siti demo</p>
-            </a>
+            </Link>
           </div>
         </Card>
       </div>
@@ -300,26 +300,26 @@ export default function Dashboard() {
       <Card className="mt-8 p-6" data-testid="quick-actions-card">
         <h2 className="text-2xl font-bold mb-4 tracking-tight">Azioni Rapide</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <a href="/search" className="p-4 border border-neutral-200 rounded-lg hover:shadow-md hover:border-blue-300 transition-all cursor-pointer">
+          <Link to="/search" className="p-4 border border-neutral-200 rounded-lg hover:shadow-md hover:border-blue-300 transition-all cursor-pointer">
             <Search className="mb-2" size={24} />
             <h3 className="font-bold mb-1">Cerca Nuove Aziende</h3>
             <p className="text-sm text-neutral-600">Trova aziende senza sito web nella tua zona</p>
-          </a>
-          <a href="/leads" className="p-4 border border-neutral-200 rounded-lg hover:shadow-md hover:border-blue-300 transition-all cursor-pointer">
+          </Link>
+          <Link to="/leads" className="p-4 border border-neutral-200 rounded-lg hover:shadow-md hover:border-blue-300 transition-all cursor-pointer">
             <Users className="mb-2" size={24} />
             <h3 className="font-bold mb-1">Gestisci Lead</h3>
             <p className="text-sm text-neutral-600">Visualizza e gestisci i tuoi lead attivi</p>
-          </a>
-          <a href="/email" className="p-4 border-2 border-purple-300 rounded-lg hover:shadow-md hover:border-purple-400 transition-all cursor-pointer bg-purple-50">
+          </Link>
+          <Link to="/email" className="p-4 border-2 border-purple-300 rounded-lg hover:shadow-md hover:border-purple-400 transition-all cursor-pointer bg-purple-50">
             <Mail className="mb-2 text-purple-600" size={24} />
             <h3 className="font-bold mb-1 text-purple-900">Email & WhatsApp</h3>
             <p className="text-sm text-purple-700">Invia messaggi AI ai tuoi lead</p>
-          </a>
-          <a href="/demos" className="p-4 border border-neutral-200 rounded-lg hover:shadow-md hover:border-blue-300 transition-all cursor-pointer">
+          </Link>
+          <Link to="/demos" className="p-4 border border-neutral-200 rounded-lg hover:shadow-md hover:border-blue-300 transition-all cursor-pointer">
             <Globe className="mb-2" size={24} />
             <h3 className="font-bold mb-1">Siti Demo</h3>
             <p className="text-sm text-neutral-600">Visualizza i siti demo generati</p>
-          </a>
+          </Link>
         </div>
       </Card>
 
@@ -328,9 +328,9 @@ export default function Dashboard() {
           <div>
             <h3 className="font-bold text-lg mb-2">Configurazione API</h3>
             <p className="text-sm text-neutral-700 mb-3">Configura le tue API keys per utilizzare tutte le funzionalità della piattaforma.</p>
-            <a href="/settings" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
+            <Link to="/settings" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
               Vai alle Impostazioni API
-            </a>
+            </Link>
           </div>
         </div>
       </Card>
