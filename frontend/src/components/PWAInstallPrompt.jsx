@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { X, Download, Share, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -7,8 +8,15 @@ export default function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
+    // NON mostrare PWA prompt sui siti demo dei clienti
+    if (location.pathname.startsWith('/demo/')) {
+      setShowPrompt(false);
+      return;
+    }
+
     // Check if already installed (standalone mode)
     const standalone = window.matchMedia('(display-mode: standalone)').matches || 
                        window.navigator.standalone === true;
@@ -46,7 +54,7 @@ export default function PWAInstallPrompt() {
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
     };
-  }, []);
+  }, [location.pathname]);
 
   const handleInstall = async () => {
     if (deferredPrompt) {
@@ -63,8 +71,8 @@ export default function PWAInstallPrompt() {
     localStorage.setItem('pwa-install-dismissed', Date.now().toString());
   };
 
-  // Don't render if already installed
-  if (isStandalone || !showPrompt) {
+  // Don't render on client demo sites or if already installed
+  if (isStandalone || !showPrompt || location.pathname.startsWith('/demo/')) {
     return null;
   }
 
