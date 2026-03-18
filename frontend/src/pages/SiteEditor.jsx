@@ -861,6 +861,49 @@ function ContactsEditor({ contacts, onUpdate, onSave, saving, hasChanges }) {
             data-testid="contact-email"
           />
         </div>
+        
+        {/* Social Media Links */}
+        <div className="pt-4 border-t">
+          <h3 className="text-lg font-medium mb-3">Social Media</h3>
+          <p className="text-sm text-neutral-500 mb-4">
+            Aggiungi i link ai profili social dell'attività
+          </p>
+          
+          <div className="space-y-3">
+            <div>
+              <Label>Instagram</Label>
+              <Input
+                type="url"
+                placeholder="https://instagram.com/tuoprofilo"
+                value={contacts?.instagram_url || ''}
+                onChange={(e) => onUpdate({ ...contacts, instagram_url: e.target.value })}
+                data-testid="contact-instagram"
+              />
+            </div>
+            
+            <div>
+              <Label>Facebook</Label>
+              <Input
+                type="url"
+                placeholder="https://facebook.com/tuapagina"
+                value={contacts?.facebook_url || ''}
+                onChange={(e) => onUpdate({ ...contacts, facebook_url: e.target.value })}
+                data-testid="contact-facebook"
+              />
+            </div>
+            
+            <div>
+              <Label>TikTok</Label>
+              <Input
+                type="url"
+                placeholder="https://tiktok.com/@tuoprofilo"
+                value={contacts?.tiktok_url || ''}
+                onChange={(e) => onUpdate({ ...contacts, tiktok_url: e.target.value })}
+                data-testid="contact-tiktok"
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       <SaveButton onClick={onSave} saving={saving} hasChanges={hasChanges} />

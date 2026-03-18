@@ -125,6 +125,30 @@ const translations = {
       trustBusiness: 'di fiducia',
       professionalService: 'Servizio professionale di alta qualità',
       in: 'a'
+    },
+    // Descrizioni servizi dinamiche
+    serviceDescriptions: {
+      // Parrucchiere
+      'taglio donna': 'Taglio personalizzato per valorizzare il tuo stile unico',
+      'taglio uomo': 'Precisione e stile per un look sempre curato',
+      'piega': 'Styling professionale per un\'acconciatura perfetta',
+      'colore': 'Colorazioni vibranti e naturali con prodotti di qualità',
+      'meches': 'Sfumature luminose per un effetto naturale e moderno',
+      'balayage': 'Tecnica sun-kissed per riflessi naturali e sofisticati',
+      'trattamenti': 'Cura intensiva per capelli sani e lucenti',
+      'extension': 'Volume e lunghezza per un look da star',
+      'permanente': 'Onde e ricci naturali che durano nel tempo',
+      'barba': 'Cura e definizione per una barba impeccabile',
+      'rasatura': 'Rasatura classica con asciugamani caldi e dopobarba',
+      // Estetista
+      'manicure': 'Cura delle mani per unghie perfette e curate',
+      'pedicure': 'Trattamento completo per piedi sani e belli',
+      'ceretta': 'Epilazione delicata per una pelle liscia e setosa',
+      'pulizia viso': 'Trattamento profondo per una pelle luminosa',
+      'massaggio': 'Relax totale per corpo e mente',
+      'trucco': 'Make-up professionale per ogni occasione',
+      // Default per altri servizi
+      'default': 'Servizio curato nei minimi dettagli'
     }
   },
 
@@ -251,6 +275,27 @@ const translations = {
       trustBusiness: 'de confiance',
       professionalService: 'Service professionnel de haute qualité',
       in: 'à'
+    },
+    // Descrizioni servizi dinamiche
+    serviceDescriptions: {
+      'taglio donna': 'Coupe personnalisée pour mettre en valeur votre style unique',
+      'taglio uomo': 'Précision et style pour un look toujours soigné',
+      'piega': 'Coiffage professionnel pour une coiffure parfaite',
+      'colore': 'Colorations vibrantes et naturelles avec des produits de qualité',
+      'meches': 'Reflets lumineux pour un effet naturel et moderne',
+      'balayage': 'Technique sun-kissed pour des reflets naturels et sophistiqués',
+      'trattamenti': 'Soins intensifs pour des cheveux sains et brillants',
+      'extension': 'Volume et longueur pour un look de star',
+      'permanente': 'Boucles naturelles qui durent dans le temps',
+      'barba': 'Soin et définition pour une barbe impeccable',
+      'rasatura': 'Rasage classique avec serviettes chaudes et après-rasage',
+      'manicure': 'Soin des mains pour des ongles parfaits',
+      'pedicure': 'Traitement complet pour des pieds sains et beaux',
+      'ceretta': 'Épilation douce pour une peau lisse et soyeuse',
+      'pulizia viso': 'Traitement profond pour une peau lumineuse',
+      'massaggio': 'Relaxation totale pour le corps et l\'esprit',
+      'trucco': 'Maquillage professionnel pour chaque occasion',
+      'default': 'Service soigné dans les moindres détails'
     }
   },
 
@@ -377,6 +422,27 @@ const translations = {
       trustBusiness: 'you can trust',
       professionalService: 'High quality professional service',
       in: 'in'
+    },
+    // Dynamic service descriptions
+    serviceDescriptions: {
+      'taglio donna': 'Personalized cut to enhance your unique style',
+      'taglio uomo': 'Precision and style for an always polished look',
+      'piega': 'Professional styling for the perfect hairstyle',
+      'colore': 'Vibrant and natural colors with quality products',
+      'meches': 'Luminous highlights for a natural and modern effect',
+      'balayage': 'Sun-kissed technique for natural, sophisticated highlights',
+      'trattamenti': 'Intensive care for healthy and shiny hair',
+      'extension': 'Volume and length for a star look',
+      'permanente': 'Natural curls that last over time',
+      'barba': 'Care and definition for an impeccable beard',
+      'rasatura': 'Classic shave with hot towels and aftershave',
+      'manicure': 'Hand care for perfect and well-groomed nails',
+      'pedicure': 'Complete treatment for healthy and beautiful feet',
+      'ceretta': 'Gentle waxing for smooth and silky skin',
+      'pulizia viso': 'Deep treatment for radiant skin',
+      'massaggio': 'Total relaxation for body and mind',
+      'trucco': 'Professional makeup for every occasion',
+      'default': 'Service crafted with attention to detail'
     }
   },
 
@@ -503,6 +569,27 @@ const translations = {
       trustBusiness: 'de confianza',
       professionalService: 'Servicio profesional de alta calidad',
       in: 'en'
+    },
+    // Descripciones de servicios dinámicas
+    serviceDescriptions: {
+      'taglio donna': 'Corte personalizado para realzar tu estilo único',
+      'taglio uomo': 'Precisión y estilo para un look siempre cuidado',
+      'piega': 'Peinado profesional para un look perfecto',
+      'colore': 'Coloraciones vibrantes y naturales con productos de calidad',
+      'meches': 'Reflejos luminosos para un efecto natural y moderno',
+      'balayage': 'Técnica sun-kissed para reflejos naturales y sofisticados',
+      'trattamenti': 'Cuidado intensivo para un cabello sano y brillante',
+      'extension': 'Volumen y longitud para un look de estrella',
+      'permanente': 'Rizos naturales que duran en el tiempo',
+      'barba': 'Cuidado y definición para una barba impecable',
+      'rasatura': 'Afeitado clásico con toallas calientes y aftershave',
+      'manicure': 'Cuidado de manos para uñas perfectas',
+      'pedicure': 'Tratamiento completo para pies sanos y bonitos',
+      'ceretta': 'Depilación suave para una piel lisa y sedosa',
+      'pulizia viso': 'Tratamiento profundo para una piel radiante',
+      'massaggio': 'Relajación total para cuerpo y mente',
+      'trucco': 'Maquillaje profesional para cada ocasión',
+      'default': 'Servicio cuidado en cada detalle'
     }
   },
 
@@ -629,6 +716,27 @@ const translations = {
       trustBusiness: 'Ihres Vertrauens',
       professionalService: 'Professioneller Service höchster Qualität',
       in: 'in'
+    },
+    // Dynamische Service-Beschreibungen
+    serviceDescriptions: {
+      'taglio donna': 'Personalisierter Schnitt zur Betonung Ihres einzigartigen Stils',
+      'taglio uomo': 'Präzision und Stil für einen stets gepflegten Look',
+      'piega': 'Professionelles Styling für die perfekte Frisur',
+      'colore': 'Lebendige und natürliche Farben mit Qualitätsprodukten',
+      'meches': 'Leuchtende Strähnchen für einen natürlichen und modernen Effekt',
+      'balayage': 'Sun-kissed Technik für natürliche, raffinierte Highlights',
+      'trattamenti': 'Intensive Pflege für gesundes und glänzendes Haar',
+      'extension': 'Volumen und Länge für einen Star-Look',
+      'permanente': 'Natürliche Locken, die lange halten',
+      'barba': 'Pflege und Definition für einen makellosen Bart',
+      'rasatura': 'Klassische Rasur mit heißen Tüchern und Aftershave',
+      'manicure': 'Handpflege für perfekte und gepflegte Nägel',
+      'pedicure': 'Komplette Behandlung für gesunde und schöne Füße',
+      'ceretta': 'Sanfte Enthaarung für glatte und seidige Haut',
+      'pulizia viso': 'Tiefenbehandlung für strahlende Haut',
+      'massaggio': 'Totale Entspannung für Körper und Geist',
+      'trucco': 'Professionelles Make-up für jeden Anlass',
+      'default': 'Service mit Liebe zum Detail'
     }
   }
 };
@@ -815,6 +923,82 @@ export function hasWrongLanguageWords(text, expectedLang) {
  */
 export function getTranslations(lang = 'it') {
   return translations[lang?.toLowerCase()] || translations['it'];
+}
+
+/**
+ * Ottiene una descrizione dinamica per un servizio
+ * @param {string} serviceName - Nome del servizio
+ * @param {string} lang - Codice lingua
+ * @returns {string} - Descrizione del servizio
+ */
+export function getServiceDescription(serviceName, lang = 'it') {
+  const language = lang?.toLowerCase() || 'it';
+  const dict = translations[language]?.serviceDescriptions || translations['it'].serviceDescriptions;
+  
+  if (!serviceName) return dict['default'];
+  
+  const serviceKey = serviceName.toLowerCase().trim();
+  
+  // Cerca corrispondenza esatta
+  if (dict[serviceKey]) {
+    return dict[serviceKey];
+  }
+  
+  // Cerca corrispondenza parziale
+  for (const [key, description] of Object.entries(dict)) {
+    if (key !== 'default' && (serviceKey.includes(key) || key.includes(serviceKey))) {
+      return description;
+    }
+  }
+  
+  // Descrizioni alternative basate su parole chiave
+  const keywordDescriptions = {
+    it: {
+      'taglio': 'Taglio personalizzato per il tuo stile unico',
+      'color': 'Colorazione professionale con prodotti premium',
+      'trattament': 'Trattamento esclusivo per risultati eccezionali',
+      'massag': 'Esperienza rilassante per il tuo benessere',
+      'nail': 'Cura delle unghie per mani impeccabili',
+      'facial': 'Trattamento viso per una pelle radiosa',
+      'body': 'Trattamento corpo per sentirti al meglio'
+    },
+    fr: {
+      'coupe': 'Coupe personnalisée pour votre style unique',
+      'couleur': 'Coloration professionnelle avec des produits premium',
+      'soin': 'Traitement exclusif pour des résultats exceptionnels',
+      'massage': 'Expérience relaxante pour votre bien-être',
+      'ongle': 'Soin des ongles pour des mains impeccables'
+    },
+    en: {
+      'cut': 'Personalized cut for your unique style',
+      'color': 'Professional coloring with premium products',
+      'treatment': 'Exclusive treatment for exceptional results',
+      'massage': 'Relaxing experience for your well-being',
+      'nail': 'Nail care for impeccable hands'
+    },
+    es: {
+      'corte': 'Corte personalizado para tu estilo único',
+      'color': 'Coloración profesional con productos premium',
+      'tratamiento': 'Tratamiento exclusivo para resultados excepcionales',
+      'masaje': 'Experiencia relajante para tu bienestar'
+    },
+    de: {
+      'schnitt': 'Personalisierter Schnitt für Ihren einzigartigen Stil',
+      'farbe': 'Professionelle Färbung mit Premium-Produkten',
+      'behandlung': 'Exklusive Behandlung für außergewöhnliche Ergebnisse',
+      'massage': 'Entspannendes Erlebnis für Ihr Wohlbefinden'
+    }
+  };
+  
+  const langKeywords = keywordDescriptions[language] || keywordDescriptions['it'];
+  
+  for (const [keyword, desc] of Object.entries(langKeywords)) {
+    if (serviceKey.includes(keyword)) {
+      return desc;
+    }
+  }
+  
+  return dict['default'];
 }
 
 export default translations;

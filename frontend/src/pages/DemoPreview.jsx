@@ -1,13 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { MapPin, Phone, Clock, Star, ExternalLink, Mail, Globe, Menu as MenuIcon, X, Calendar, Users, MessageCircle, ChevronDown } from 'lucide-react';
+import { MapPin, Phone, Clock, Star, ExternalLink, Mail, Globe, Menu as MenuIcon, X, Calendar, Users, MessageCircle, ChevronDown, Instagram, Facebook } from 'lucide-react';
 import Lightbox from 'yet-another-react-lightbox';
 import Zoom from 'yet-another-react-lightbox/plugins/zoom';
 import 'yet-another-react-lightbox/styles.css';
-import { t, localizeHours, getLanguageFromCountry } from '@/lib/translations';
+import { t, localizeHours, getLanguageFromCountry, getServiceDescription } from '@/lib/translations';
 import { toast } from 'sonner';
 import API from '@/lib/api';
+
+// TikTok Icon (not in lucide-react)
+const TikTokIcon = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+  </svg>
+);
 
 // Language config
 const AVAILABLE_LANGUAGES = {
@@ -158,16 +165,16 @@ function BookingForm({ demoId, bookingMode, lang, style, businessPhone, external
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-md mx-auto">
       <div className="grid grid-cols-2 gap-4">
-        <div>
+        <div className="overflow-hidden">
           <label className="block text-sm font-medium text-neutral-700 mb-1">{t('booking.selectDate', lang)}</label>
           <input type="date" required value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})}
                  min={new Date().toISOString().split('T')[0]}
-                 className="w-full px-4 py-3 border-2 border-neutral-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                 className="w-full px-4 py-3 border-2 border-neutral-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white" />
         </div>
-        <div>
+        <div className="overflow-hidden">
           <label className="block text-sm font-medium text-neutral-700 mb-1">{t('booking.selectTime', lang)}</label>
           <input type="time" required value={formData.time} onChange={(e) => setFormData({...formData, time: e.target.value})}
-                 className="w-full px-4 py-3 border-2 border-neutral-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                 className="w-full px-4 py-3 border-2 border-neutral-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white" />
         </div>
       </div>
       
@@ -511,7 +518,7 @@ export default function DemoPreview() {
                       {index + 1}
                     </div>
                     <h3 className="text-lg sm:text-xl font-bold mb-2">{service}</h3>
-                    <p className="text-neutral-600 text-sm sm:text-base">{t('misc.professionalService', lang)}</p>
+                    <p className="text-neutral-600 text-sm sm:text-base">{getServiceDescription(service, lang)}</p>
                     
                     {/* WhatsApp CTA for each service */}
                     {whatsappLink && (
@@ -598,7 +605,7 @@ export default function DemoPreview() {
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">
                 {bookingMode === 'table' ? t('sections.bookTableTitle', lang) : t('sections.bookAppointmentTitle', lang)}
               </h2>
-              <div className={`${style.cardBg} p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl border-2 border-neutral-100`}>
+              <div className={`${style.cardBg} p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl border-2 border-neutral-100 overflow-hidden`}>
                 <BookingForm demoId={demoId} bookingMode={bookingMode} lang={lang} style={style}
                              businessPhone={business.phone} externalBookingUrl={externalBookingUrl} />
               </div>
@@ -652,6 +659,36 @@ export default function DemoPreview() {
                       </div>
                     )}
                   </div>
+                  
+                  {/* Social Media Links */}
+                  {(business.instagram_url || business.facebook_url || business.tiktok_url) && (
+                    <div className="mt-6">
+                      <h4 className="text-lg font-semibold mb-3 opacity-90">Social</h4>
+                      <div className="flex items-center gap-4">
+                        {business.instagram_url && (
+                          <a href={business.instagram_url} target="_blank" rel="noopener noreferrer"
+                             className="w-12 h-12 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                             title="Instagram">
+                            <Instagram size={24} />
+                          </a>
+                        )}
+                        {business.facebook_url && (
+                          <a href={business.facebook_url} target="_blank" rel="noopener noreferrer"
+                             className="w-12 h-12 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                             title="Facebook">
+                            <Facebook size={24} />
+                          </a>
+                        )}
+                        {business.tiktok_url && (
+                          <a href={business.tiktok_url} target="_blank" rel="noopener noreferrer"
+                             className="w-12 h-12 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                             title="TikTok">
+                            <TikTokIcon size={24} />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 {/* WhatsApp CTA in Contact */}

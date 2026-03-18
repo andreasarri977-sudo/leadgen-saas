@@ -74,6 +74,11 @@ class Lead(BaseModel):
     website: Optional[str] = None
     primary_type: Optional[str] = None  # Tipo principale
     types: Optional[List[str]] = None  # Tutti i tipi
+    # Social Media
+    instagram_url: Optional[str] = None
+    facebook_url: Optional[str] = None
+    tiktok_url: Optional[str] = None
+    # Status
     status: str = "nuovo_lead"
     language: str = "it"  # Deprecated, use site_language
     site_language: str = "it"  # Lingua del sito (it, fr, en, es, de)
@@ -816,10 +821,13 @@ class LeadSettingsUpdate(BaseModel):
     site_language: Optional[str] = None
     booking_mode: Optional[str] = None
     external_booking_url: Optional[str] = None
+    instagram_url: Optional[str] = None
+    facebook_url: Optional[str] = None
+    tiktok_url: Optional[str] = None
 
 @api_router.patch("/leads/{lead_id}/settings")
 async def update_lead_settings(lead_id: str, settings: LeadSettingsUpdate):
-    """Aggiorna site_language, booking_mode o external_booking_url del lead"""
+    """Aggiorna site_language, booking_mode, external_booking_url e social media del lead"""
     update_data = {}
     
     if settings.site_language is not None:
@@ -835,6 +843,16 @@ async def update_lead_settings(lead_id: str, settings: LeadSettingsUpdate):
     
     if settings.external_booking_url is not None:
         update_data['external_booking_url'] = settings.external_booking_url if settings.external_booking_url else None
+    
+    # Social Media URLs
+    if settings.instagram_url is not None:
+        update_data['instagram_url'] = settings.instagram_url if settings.instagram_url else None
+    
+    if settings.facebook_url is not None:
+        update_data['facebook_url'] = settings.facebook_url if settings.facebook_url else None
+    
+    if settings.tiktok_url is not None:
+        update_data['tiktok_url'] = settings.tiktok_url if settings.tiktok_url else None
     
     if not update_data:
         raise HTTPException(status_code=400, detail="Nessun campo da aggiornare")
@@ -1981,7 +1999,10 @@ async def get_site_editor_data(demo_id: str):
         "contacts": {
             "phone": business.get('phone', ''),
             "whatsapp": business.get('phone', ''),  # Default same as phone
-            "email": business.get('email', '')
+            "email": business.get('email', ''),
+            "instagram_url": business.get('instagram_url', ''),
+            "facebook_url": business.get('facebook_url', ''),
+            "tiktok_url": business.get('tiktok_url', '')
         },
         
         "gallery": gallery,
@@ -2069,9 +2090,24 @@ async def update_site_content(demo_id: str, update: SiteEditorUpdate):
         if email and '@' not in email:
             errors.append("Formato email non valido")
         
+        # Validate social media URLs
+        instagram_url = contacts.get('instagram_url', '')
+        facebook_url = contacts.get('facebook_url', '')
+        tiktok_url = contacts.get('tiktok_url', '')
+        
+        if instagram_url and not instagram_url.startswith('http'):
+            errors.append("URL Instagram non valido (deve iniziare con http)")
+        if facebook_url and not facebook_url.startswith('http'):
+            errors.append("URL Facebook non valido (deve iniziare con http)")
+        if tiktok_url and not tiktok_url.startswith('http'):
+            errors.append("URL TikTok non valido (deve iniziare con http)")
+        
         if not errors:
             business_data['phone'] = whatsapp or phone  # Prefer WhatsApp as main
             business_data['email'] = email
+            business_data['instagram_url'] = instagram_url if instagram_url else None
+            business_data['facebook_url'] = facebook_url if facebook_url else None
+            business_data['tiktok_url'] = tiktok_url if tiktok_url else None
     
     elif update.section == "gallery":
         gallery = update.data.get('images', [])
