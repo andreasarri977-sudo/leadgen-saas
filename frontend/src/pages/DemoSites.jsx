@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Globe, Eye, Rocket, Loader2, CheckCircle, AlertCircle, ExternalLink, Shield, Link2, RefreshCw, Pencil } from 'lucide-react';
+import { Globe, Eye, Rocket, Loader2, CheckCircle, AlertCircle, ExternalLink, Shield, Link2, RefreshCw, Pencil, Trash2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +30,7 @@ export default function DemoSites() {
   const [checking, setChecking] = useState({});
   const [domainInputs, setDomainInputs] = useState({});
   const [addingDomain, setAddingDomain] = useState({});
+  const [deleting, setDeleting] = useState({});
 
   useEffect(() => {
     loadDemos();
@@ -44,6 +45,25 @@ export default function DemoSites() {
       toast.error('Errore caricamento siti demo');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (demoId, businessName) => {
+    if (!window.confirm(`Sei sicuro di voler eliminare il sito demo "${businessName}"?\n\nQuesta azione non può essere annullata.`)) {
+      return;
+    }
+    
+    setDeleting(prev => ({ ...prev, [demoId]: true }));
+    try {
+      await axios.delete(`${API}/demos/${demoId}`);
+      toast.success(`Sito "${businessName}" eliminato`);
+      // Remove from local state
+      setDemos(prev => prev.filter(d => d.demo_id !== demoId));
+    } catch (error) {
+      console.error('Errore eliminazione:', error);
+      toast.error('Errore durante l\'eliminazione');
+    } finally {
+      setDeleting(prev => ({ ...prev, [demoId]: false }));
     }
   };
 
@@ -253,6 +273,22 @@ export default function DemoSites() {
                 >
                   <Pencil className="mr-2" size={16} />
                   Modifica Sito
+                </Button>
+
+                {/* Delete Site */}
+                <Button
+                  data-testid={`delete-demo-${demo.demo_id}`}
+                  onClick={() => handleDelete(demo.demo_id, demo.business_name)}
+                  disabled={deleting[demo.demo_id]}
+                  variant="outline"
+                  className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                >
+                  {deleting[demo.demo_id] ? (
+                    <Loader2 className="mr-2 animate-spin" size={16} />
+                  ) : (
+                    <Trash2 className="mr-2" size={16} />
+                  )}
+                  Elimina Sito
                 </Button>
 
                 {/* Quality Check (solo per draft) */}

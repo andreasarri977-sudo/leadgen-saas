@@ -1065,6 +1065,23 @@ async def get_demos():
     
     return demos
 
+@api_router.delete("/demos/{demo_id}")
+async def delete_demo(demo_id: str):
+    """Elimina un sito demo"""
+    demo = await db.demo_sites.find_one({"demo_id": demo_id})
+    if not demo:
+        raise HTTPException(status_code=404, detail="Demo non trovata")
+    
+    # Delete the demo
+    result = await db.demo_sites.delete_one({"demo_id": demo_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=500, detail="Errore durante l'eliminazione")
+    
+    logger.info(f"Demo {demo_id} eliminata: {demo.get('business_name', 'N/A')}")
+    
+    return {"success": True, "message": "Demo eliminata con successo"}
+
 @api_router.post("/email/generate")
 async def generate_email(lead_id: str, demo_url: str):
     lead = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})

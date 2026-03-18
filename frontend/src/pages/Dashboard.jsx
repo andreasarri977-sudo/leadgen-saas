@@ -293,7 +293,7 @@ export default function Dashboard() {
           value={stats.clients_acquired}
           trend={`${conversionRate}%`}
           color="bg-green-500"
-          href="/leads"
+          href="/leads?status=client"
         />
       </div>
 
