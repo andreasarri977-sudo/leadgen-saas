@@ -1,16 +1,26 @@
 // API Configuration - Works in both Emergent preview and Vercel production
-// In Vercel production: uses relative paths (/api/...)
-// In Emergent preview: uses REACT_APP_BACKEND_URL
+// REACT_APP_BACKEND_URL must be set in Vercel Environment Variables
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
+// Detect if running on Vercel
+const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app');
 
-// If BACKEND_URL is empty or we're on Vercel, use relative paths
+// Get backend URL from environment or use fallback for Vercel
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 
+  (isVercel ? 'https://saas-migration-4.preview.emergentagent.com' : '');
+
+// Use the backend URL if provided, otherwise fall back to relative paths
 export const API_BASE = BACKEND_URL ? `${BACKEND_URL}/api` : '/api';
 
-// Log for debugging (only in development)
-if (process.env.NODE_ENV === 'development') {
-  console.log('[LeadHunter] API_BASE:', API_BASE);
-  console.log('[LeadHunter] BACKEND_URL:', BACKEND_URL || '(relative paths)');
-}
+// Always log for debugging
+console.log('[LeadHunter] API_BASE:', API_BASE);
+console.log('[LeadHunter] BACKEND_URL:', BACKEND_URL || '(using relative paths)');
+console.log('[LeadHunter] isVercel:', isVercel);
+console.log('[LeadHunter] ENV REACT_APP_BACKEND_URL:', process.env.REACT_APP_BACKEND_URL || 'NOT SET');
+
+// Export helper for constructing full API URLs
+export const getApiUrl = (path) => {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${API_BASE}${cleanPath}`;
+};
 
 export default API_BASE;
