@@ -45,6 +45,7 @@ Piattaforma SaaS avanzata in italiano per automatizzare il processo di ricerca d
 
 15. **Editor Manuale Siti (MVP)** ✅ COMPLETATO (2025-03-18)
     - Pagina `/site-editor/:demoId` con interfaccia a schede (Tabs)
+    - **Tab Logo**: Anteprima, carica da URL, carica da file, rimuovi logo
     - **Tab Orari**: Editor per ogni giorno (aperto/chiuso, orari, note)
     - **Tab Menu/Servizi**: Switch menu/servizi, aggiunta/rimozione categorie e items
     - **Tab Testi**: Modifica "Chi siamo" e tagline (locale + EN)
@@ -157,7 +158,8 @@ Booking(
 ## Changelog
 
 ### 2025-03-18: Editor Manuale Siti MVP ✅ COMPLETATO
-- ✅ Creato `/app/frontend/src/pages/SiteEditor.jsx` con 6 tab complete
+- ✅ Creato `/app/frontend/src/pages/SiteEditor.jsx` con 7 tab complete
+- ✅ Tab Logo: anteprima logo, carica da URL, carica da file (max 2MB), rimuovi
 - ✅ Tab Orari: switch aperto/chiuso per ogni giorno, campi orario, note
 - ✅ Tab Menu/Servizi: switch modalità, CRUD categorie e items
 - ✅ Tab Testi: tagline e about in due lingue (locale + EN)
@@ -168,7 +170,7 @@ Booking(
 - ✅ Pulsante "Ripubblica su Vercel" fixed in basso
 - ✅ Route `/site-editor/:demoId` aggiunta in App.js
 - ✅ Pulsante "Modifica Sito" aggiunto in DemoSites.jsx
-- ✅ Backend endpoints testati: editor-data, update, republish
+- ✅ Backend endpoints testati: editor-data, update (con logo), republish
 - ✅ 19 test pytest automatici passati (0 failures)
 - ✅ Test file creato: `/app/backend/tests/test_site_editor.py`
 

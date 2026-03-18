@@ -1898,6 +1898,9 @@ async def get_site_editor_data(demo_id: str):
         "publish_status": demo.get('publish_status', 'draft'),
         "production_url": demo.get('production_url'),
         
+        # Logo
+        "logo_base64": demo.get('logo_base64'),
+        
         # Editor sections
         "hours": hours,
         
@@ -2025,6 +2028,45 @@ async def update_site_content(demo_id: str, update: SiteEditorUpdate):
         content_data['seo_title_en'] = seo.get('title_en', '')
         content_data['seo_meta_local'] = seo.get('meta_local', '')
         content_data['seo_meta_en'] = seo.get('meta_en', '')
+    
+    elif update.section == "logo":
+        logo_data = update.data
+        logo_url = logo_data.get('logo_url', '')
+        logo_base64 = logo_data.get('logo_base64', '')
+        
+        # If URL provided, fetch and convert to base64
+        if logo_url and logo_url.startswith('http'):
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(logo_url, timeout=10) as response:
+                        if response.status == 200:
+                            image_data = await response.read()
+                            logo_base64 = base64.b64encode(image_data).decode('utf-8')
+                        else:
+                            errors.append(f"Impossibile scaricare l'immagine: HTTP {response.status}")
+            except Exception as e:
+                errors.append(f"Errore download immagine: {str(e)}")
+        
+        if logo_base64 and not errors:
+            # Update logo_base64 directly on demo document
+            await db.demo_sites.update_one(
+                {"demo_id": demo_id},
+                {"$set": {
+                    "logo_base64": logo_base64,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            return {"success": True, "message": "Logo aggiornato"}
+        elif logo_data.get('remove_logo'):
+            # Remove logo
+            await db.demo_sites.update_one(
+                {"demo_id": demo_id},
+                {"$set": {
+                    "logo_base64": None,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            return {"success": True, "message": "Logo rimosso"}
     
     else:
         errors.append(f"Sezione non valida: {update.section}")

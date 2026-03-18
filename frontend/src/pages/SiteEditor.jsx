@@ -4,7 +4,7 @@ import axios from 'axios';
 import { 
   ArrowLeft, Save, RefreshCw, Clock, UtensilsCrossed, FileText, 
   Phone, Images, Search, Loader2, CheckCircle, AlertCircle, ExternalLink,
-  Plus, Trash2, GripVertical, X
+  Plus, Trash2, GripVertical, X, ImageIcon, Upload
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -171,8 +171,12 @@ export default function SiteEditor() {
       </div>
 
       {/* Tabs Editor */}
-      <Tabs defaultValue="hours" className="w-full">
-        <TabsList className="grid w-full grid-cols-6 mb-6">
+      <Tabs defaultValue="logo" className="w-full">
+        <TabsList className="grid w-full grid-cols-7 mb-6">
+          <TabsTrigger value="logo" data-testid="tab-logo" className="flex items-center gap-2">
+            <ImageIcon size={16} />
+            <span className="hidden sm:inline">Logo</span>
+          </TabsTrigger>
           <TabsTrigger value="hours" data-testid="tab-hours" className="flex items-center gap-2">
             <Clock size={16} />
             <span className="hidden sm:inline">Orari</span>
@@ -198,6 +202,17 @@ export default function SiteEditor() {
             <span className="hidden sm:inline">SEO</span>
           </TabsTrigger>
         </TabsList>
+
+        {/* LOGO */}
+        <TabsContent value="logo">
+          <LogoEditor
+            logoBase64={siteData.logo_base64}
+            demoId={demoId}
+            onSave={saveSection}
+            saving={saving.logo}
+            onLogoUpdated={loadSiteData}
+          />
+        </TabsContent>
 
         {/* ORARI */}
         <TabsContent value="hours">
@@ -316,6 +331,196 @@ function SaveButton({ onClick, saving, hasChanges }) {
       )}
       {saving ? 'Salvataggio...' : hasChanges ? 'Salva Modifiche' : 'Salvato'}
     </Button>
+  );
+}
+
+// LOGO EDITOR
+function LogoEditor({ logoBase64, demoId, onSave, saving, onLogoUpdated }) {
+  const [logoUrl, setLogoUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [previewBase64, setPreviewBase64] = useState(logoBase64);
+
+  const handleUrlUpload = async () => {
+    if (!logoUrl || !logoUrl.startsWith('http')) {
+      toast.error('Inserisci un URL valido (inizia con http)');
+      return;
+    }
+    
+    setUploading(true);
+    try {
+      const response = await axios.post(`${API}/sites/${demoId}/update`, {
+        section: 'logo',
+        data: { logo_url: logoUrl }
+      });
+      
+      if (response.data.success) {
+        toast.success('Logo aggiornato!');
+        setLogoUrl('');
+        onLogoUpdated(); // Refresh data
+      } else {
+        toast.error(response.data.errors?.join(', ') || 'Errore upload');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Errore durante l\'upload');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Seleziona un file immagine valido');
+      return;
+    }
+    
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Il file è troppo grande (max 2MB)');
+      return;
+    }
+    
+    setUploading(true);
+    try {
+      // Convert to base64
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64 = event.target.result.split(',')[1]; // Remove data:image/...;base64, prefix
+        
+        const response = await axios.post(`${API}/sites/${demoId}/update`, {
+          section: 'logo',
+          data: { logo_base64: base64 }
+        });
+        
+        if (response.data.success) {
+          toast.success('Logo caricato!');
+          onLogoUpdated();
+        } else {
+          toast.error(response.data.errors?.join(', ') || 'Errore upload');
+        }
+        setUploading(false);
+      };
+      reader.onerror = () => {
+        toast.error('Errore lettura file');
+        setUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      toast.error('Errore durante l\'upload');
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    setUploading(true);
+    try {
+      const response = await axios.post(`${API}/sites/${demoId}/update`, {
+        section: 'logo',
+        data: { remove_logo: true }
+      });
+      
+      if (response.data.success) {
+        toast.success('Logo rimosso');
+        onLogoUpdated();
+      } else {
+        toast.error('Errore rimozione logo');
+      }
+    } catch (error) {
+      toast.error('Errore durante la rimozione');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <Card className="p-6" data-testid="logo-editor">
+      <h2 className="text-xl font-semibold mb-4">Logo Aziendale</h2>
+      
+      {/* Current Logo Preview */}
+      <div className="mb-6">
+        <Label className="text-sm text-neutral-500 mb-2 block">Logo Attuale</Label>
+        <div className="flex items-center gap-4">
+          {logoBase64 ? (
+            <div className="relative">
+              <img
+                src={`data:image/png;base64,${logoBase64}`}
+                alt="Logo attuale"
+                className="w-32 h-32 object-contain bg-neutral-100 rounded-lg border p-2"
+              />
+              <Button
+                variant="destructive"
+                size="sm"
+                className="absolute -top-2 -right-2"
+                onClick={handleRemoveLogo}
+                disabled={uploading}
+              >
+                <X size={14} />
+              </Button>
+            </div>
+          ) : (
+            <div className="w-32 h-32 bg-neutral-100 rounded-lg border flex items-center justify-center">
+              <ImageIcon size={32} className="text-neutral-300" />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Upload Options */}
+      <div className="space-y-4">
+        {/* Option 1: URL */}
+        <div>
+          <Label className="text-sm font-medium mb-2 block">Carica da URL</Label>
+          <div className="flex gap-2">
+            <Input
+              placeholder="https://esempio.com/logo.png"
+              value={logoUrl}
+              onChange={(e) => setLogoUrl(e.target.value)}
+              data-testid="logo-url-input"
+            />
+            <Button 
+              onClick={handleUrlUpload} 
+              disabled={uploading || !logoUrl}
+              data-testid="logo-url-upload-btn"
+            >
+              {uploading ? <Loader2 className="animate-spin" size={16} /> : 'Carica'}
+            </Button>
+          </div>
+        </div>
+
+        {/* Option 2: File Upload */}
+        <div>
+          <Label className="text-sm font-medium mb-2 block">Carica da File</Label>
+          <div className="flex items-center gap-2">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="hidden"
+              id="logo-file-input"
+              data-testid="logo-file-input"
+            />
+            <label
+              htmlFor="logo-file-input"
+              className="flex items-center gap-2 px-4 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg cursor-pointer transition-colors"
+            >
+              <Upload size={16} />
+              Seleziona File
+            </label>
+            <span className="text-xs text-neutral-500">PNG, JPG, WebP (max 2MB)</span>
+          </div>
+        </div>
+      </div>
+
+      {uploading && (
+        <div className="mt-4 flex items-center gap-2 text-blue-600">
+          <Loader2 className="animate-spin" size={16} />
+          <span>Caricamento in corso...</span>
+        </div>
+      )}
+    </Card>
   );
 }
 
