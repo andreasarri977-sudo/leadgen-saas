@@ -9,9 +9,15 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import API from '@/lib/api';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+// Get base URL for demo links - works in both Emergent and Vercel production
+const getBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return '';
+};
 
 export default function EmailManager() {
   const [leads, setLeads] = useState([]);
@@ -64,7 +70,7 @@ export default function EmailManager() {
         return;
       }
 
-      const internalUrl = `${BACKEND_URL}/demo/${demo.demo_id}`;
+      const internalUrl = `${getBaseUrl()}/demo/${demo.demo_id}`;
       setDemoUrl(internalUrl);
 
       const response = await axios.post(`${API}/email/generate?lead_id=${selectedLead}&demo_url=${internalUrl}`);
@@ -98,7 +104,7 @@ export default function EmailManager() {
         return;
       }
 
-      const internalUrl = `${BACKEND_URL}/demo/${demo.demo_id}`;
+      const internalUrl = `${getBaseUrl()}/demo/${demo.demo_id}`;
       setDemoUrl(internalUrl);
 
       const response = await axios.post(`${API}/whatsapp/generate?lead_id=${selectedLead}&demo_url=${internalUrl}`);

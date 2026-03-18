@@ -4,11 +4,9 @@ import axios from 'axios';
 import { TrendingUp, Users, Globe, CheckCircle, Target, Search, Mail, RefreshCw, WifiOff, Wifi } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import API from '@/lib/api';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
-
-// Log URL in production for debugging
+// Log URL for debugging
 console.log('[LeadHunter] API_BASE_URL:', API);
 
 const StatCard = ({ icon: Icon, label, value, trend, color, href }) => (

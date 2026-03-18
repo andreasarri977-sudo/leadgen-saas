@@ -157,7 +157,19 @@ Booking(
 
 ## Changelog
 
-### 2025-03-18: Fix Traduzione Recensioni su Deploy
+### 2025-03-18: Preparazione Deploy Vercel Production
+- ✅ Creato `/app/vercel.json` per configurazione Vercel
+- ✅ Creato `/app/api/` con serverless functions Python:
+  - `health.py` - Health check
+  - `stats/dashboard.py` - Statistiche dashboard
+  - `leads/index.py` - Lista leads
+  - `demos/index.py` - Lista demo sites
+- ✅ Aggiornato frontend per usare path relativi (`/api/...`) 
+- ✅ Creato `/app/frontend/src/lib/api.js` per configurazione API centralizzata
+- ✅ Creato `/app/DEPLOY_VERCEL.md` con istruzioni complete
+- ✅ Build frontend verificato OK
+
+### 2025-03-18: Health Check + Keep-Alive
 - ✅ Riattivata traduzione recensioni via GPT-5.2 durante deploy su Vercel
 - ✅ Recensioni tradotte nella lingua locale del sito (IT/FR/ES/DE)
 - ✅ Tempo relativo tradotto ("3 years ago" → "3 anni fa")

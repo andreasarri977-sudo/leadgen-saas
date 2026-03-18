@@ -7,9 +7,7 @@ import Zoom from 'yet-another-react-lightbox/plugins/zoom';
 import 'yet-another-react-lightbox/styles.css';
 import { t, localizeHours, getLanguageFromCountry } from '@/lib/translations';
 import { toast } from 'sonner';
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import API from '@/lib/api';
 
 // Language config
 const AVAILABLE_LANGUAGES = {
