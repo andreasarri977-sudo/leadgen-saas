@@ -2,7 +2,7 @@
   "version": 2,
   "buildCommand": "cd frontend && yarn build",
   "outputDirectory": "frontend/build",
-  "installCommand": "cd frontend && yarn install",
+  "installCommand": "cd frontend && yarn install && pip install -r requirements.txt",
   "framework": null,
   "rewrites": [
     {
@@ -15,12 +15,5 @@
       "runtime": "@vercel/python@4.3.1",
       "maxDuration": 60
     }
-  },
-  "env": {
-    "MONGO_URL": "@mongo_url",
-    "VERCEL_TOKEN": "@vercel_token",
-    "GOOGLE_MAPS_API_KEY": "@google_maps_api_key",
-    "EMERGENT_LLM_KEY": "@emergent_llm_key",
-    "RESEND_API_KEY": "@resend_api_key"
   }
 }
