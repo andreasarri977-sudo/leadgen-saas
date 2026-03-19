@@ -133,23 +133,41 @@ export default function Dashboard() {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000); // 10 sec timeout
       
+      console.log('[LeadHunter] Fetching stats from:', `${API}/stats/dashboard`);
       const response = await axios.get(`${API}/stats/dashboard`, {
         signal: controller.signal
       });
       clearTimeout(timeout);
       
+      // Check for database configuration error
+      if (response.data.error) {
+        console.error('[LeadHunter] API Error:', response.data);
+        if (response.data.message?.includes('MONGO_URL')) {
+          setError('Database non configurato. Configura MONGO_URL su Vercel.');
+        } else {
+          setError(`Errore API: ${response.data.error}`);
+        }
+        setLoading(false);
+        return;
+      }
+      
       setStats(response.data);
       setError(null);
       console.log('[LeadHunter] Stats loaded:', response.data);
     } catch (err) {
-      console.error('[LeadHunter] Error loading stats:', err.message);
+      console.error('[LeadHunter] Error loading stats:', err.message, err.response?.data);
       
       if (err.name === 'AbortError' || err.code === 'ECONNABORTED') {
         setError('Timeout: il server sta impiegando troppo tempo. Riprova.');
+      } else if (err.response?.status === 503) {
+        setError('Database non configurato. Configura MONGO_URL nelle variabili d\'ambiente Vercel.');
       } else if (err.response?.status === 500) {
-        setError('Errore interno del server. Riprova.');
+        const errMsg = err.response?.data?.error || 'Errore interno del server';
+        setError(`Errore: ${errMsg}`);
+      } else if (err.response?.status === 404) {
+        setError(`Endpoint non trovato: ${API}/stats/dashboard`);
       } else {
-        setError('Impossibile caricare i dati. Verifica la connessione.');
+        setError(`Impossibile caricare i dati: ${err.message}`);
       }
       setBackendStatus('offline');
     } finally {

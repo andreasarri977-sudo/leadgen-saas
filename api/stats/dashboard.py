@@ -9,8 +9,27 @@ MONGO_URL = os.environ.get('MONGO_URL')
 DB_NAME = os.environ.get('DB_NAME', 'leadhunter')
 
 class handler(BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
+    
     def do_GET(self):
         try:
+            # Check if MONGO_URL is configured
+            if not MONGO_URL:
+                self.send_response(503)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "error": "Database not configured",
+                    "message": "MONGO_URL environment variable is not set. Please configure MongoDB Atlas."
+                }).encode())
+                return
+            
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             result = loop.run_until_complete(self.get_stats())
@@ -24,8 +43,9 @@ class handler(BaseHTTPRequestHandler):
         except Exception as e:
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
-            self.wfile.write(json.dumps({"error": str(e)}).encode())
+            self.wfile.write(json.dumps({"error": str(e), "type": "database_error"}).encode())
     
     async def get_stats(self):
         client = AsyncIOMotorClient(MONGO_URL)
@@ -33,9 +53,9 @@ class handler(BaseHTTPRequestHandler):
         
         total_leads = await db.leads.count_documents({})
         demos_created = await db.demo_sites.count_documents({})
-        new_leads = await db.leads.count_documents({"status": "new"})
-        contacted = await db.leads.count_documents({"status": "contacted"})
-        clients = await db.leads.count_documents({"status": "client"})
+        new_leads = await db.leads.count_documents({"status": {"$in": ["new", "nuovo_lead"]}})
+        contacted = await db.leads.count_documents({"status": {"$in": ["contacted", "contattato"]}})
+        clients = await db.leads.count_documents({"status": {"$in": ["client", "cliente_acquisito"]}})
         
         client.close()
         

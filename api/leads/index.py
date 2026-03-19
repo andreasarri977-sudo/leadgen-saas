@@ -19,6 +19,18 @@ class handler(BaseHTTPRequestHandler):
     
     def do_GET(self):
         try:
+            # Check if MONGO_URL is configured
+            if not MONGO_URL:
+                self.send_response(503)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "error": "Database not configured",
+                    "message": "MONGO_URL environment variable is not set"
+                }).encode())
+                return
+            
             # Parse query params
             parsed = urlparse(self.path)
             params = parse_qs(parsed.query)
