@@ -1,0 +1,24 @@
+# Ignore backend folder (legacy, not needed for Vercel)
+backend/
+
+# Ignore test files
+tests/
+*.test.js
+*.spec.js
+
+# Ignore development files
+*.md
+*.log
+.git/
+.emergent/
+
+# Ignore node_modules (will be installed fresh)
+node_modules/
+
+# Ignore local env files
+.env.local
+.env.development
+
+# Ignore IDE files
+.vscode/
+.idea/
