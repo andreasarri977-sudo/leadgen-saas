@@ -5,19 +5,16 @@
   "installCommand": "cd frontend && yarn install",
   "framework": null,
   "functions": {
-    "api/**/*.py": {
+    "api/*.py": {
       "runtime": "@vercel/python@4.3.1",
       "maxDuration": 60
     }
   },
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
+  "rewrites": [
+    { "source": "/api/stats/dashboard", "destination": "/api/stats" },
+    { "source": "/api/health", "destination": "/api/health" },
+    { "source": "/api/leads", "destination": "/api/leads" },
+    { "source": "/api/demos", "destination": "/api/demos" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

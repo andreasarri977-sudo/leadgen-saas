@@ -4,6 +4,13 @@ import json
 from datetime import datetime, timezone
 
 class handler(BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
+
     def do_GET(self):
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
@@ -14,8 +21,7 @@ class handler(BaseHTTPRequestHandler):
             "status": "ok",
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "version": "1.0.0",
-            "environment": "production"
+            "environment": "vercel-production"
         }
         
         self.wfile.write(json.dumps(response).encode())
-        return
