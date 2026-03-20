@@ -12,9 +12,7 @@
   },
   "rewrites": [
     { "source": "/api/stats/dashboard", "destination": "/api/stats" },
-    { "source": "/api/health", "destination": "/api/health" },
-    { "source": "/api/leads", "destination": "/api/leads" },
-    { "source": "/api/demos", "destination": "/api/demos" },
+    { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
