@@ -3,7 +3,8 @@
   "outputDirectory": "frontend/build",
   "functions": {
     "api/*.py": {
-      "runtime": "@vercel/python"
+      "runtime": "@vercel/python",
+      "maxDuration": 10
     }
   },
   "rewrites": [
