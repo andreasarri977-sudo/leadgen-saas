@@ -1,4 +1,4 @@
-# Vercel Serverless Function - Health Check with Debug Info
+# Vercel Serverless Function - Health Check
 from http.server import BaseHTTPRequestHandler
 import json
 import os
@@ -9,51 +9,35 @@ class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
 
     def do_GET(self):
-        # Check which modules are available
-        modules_status = {}
-        
+        # Check modules
+        modules = {}
         try:
             import pymongo
-            modules_status['pymongo'] = pymongo.version
-        except ImportError as e:
-            modules_status['pymongo'] = f"NOT INSTALLED: {e}"
+            modules['pymongo'] = pymongo.version
+        except:
+            modules['pymongo'] = 'NOT INSTALLED'
         
         try:
             import dns
-            modules_status['dnspython'] = "installed"
-        except ImportError as e:
-            modules_status['dnspython'] = f"NOT INSTALLED: {e}"
-        
-        try:
-            import certifi
-            modules_status['certifi'] = "installed"
-        except ImportError as e:
-            modules_status['certifi'] = f"NOT INSTALLED: {e}"
-        
-        # Check env vars (names only, not values)
-        env_vars = {
-            'MONGO_URL': 'MONGO_URL' in os.environ,
-            'URL_MONGO': 'URL_MONGO' in os.environ,
-            'DB_NAME': os.environ.get('DB_NAME', 'NOT SET')
-        }
-        
+            modules['dnspython'] = 'OK'
+        except:
+            modules['dnspython'] = 'NOT INSTALLED'
+
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         
-        response = {
+        self.wfile.write(json.dumps({
             "status": "ok",
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "python_version": sys.version,
-            "modules": modules_status,
-            "env_vars": env_vars,
-            "sys_path": sys.path[:5]
-        }
-        
-        self.wfile.write(json.dumps(response, indent=2).encode())
+            "python": sys.version.split()[0],
+            "modules": modules,
+            "env": {
+                "MONGO_URL": "SET" if os.environ.get('MONGO_URL') else "NOT SET",
+                "DB_NAME": os.environ.get('DB_NAME', 'leadhunter')
+            }
+        }).encode())
