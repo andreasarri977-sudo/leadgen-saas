@@ -1,157 +1,198 @@
 <analysis>**original_problem_statement:**
 L'utente ha richiesto di trasformare la sua applicazione SaaS in una piattaforma di produzione completamente stabile e indipendente, ospitata sul proprio account Vercel. Questo include la migrazione di tutte le funzionalità backend a Vercel Serverless Functions per eliminare i problemi di cold start (backend in sleep).
 
-Recentemente, l'utente ha richiesto l'aggiunta di tre nuove funzionalità:
-1.  **Filtro Clienti Acquisiti**: La card Clienti Acquisiti sulla dashboard deve filtrare e mostrare solo i lead con lo stato corrispondente.
-2.  **Checkbox Pagato**: Nella lista dei lead, deve essere presente una checkbox o un toggle per marcare un lead come pagato, aggiornandone lo stato a cliente acquisito.
-3.  **Eliminazione Siti Demo**: Deve essere possibile eliminare i siti demo non più necessari direttamente dalla dashboard.
-
-L'applicazione è stata anche trasformata in una PWA (Progressive Web App) installabile, con l'accortezza che il prompt di installazione appaia solo sulla dashboard e non sui siti web generati per i clienti.
+Richieste recenti implementate e in attesa di verifica finale su Vercel:
+1.  **Filtro Clienti Acquisiti**: La card sulla dashboard deve filtrare e mostrare solo i lead con stato cliente.
+2.  **Checkbox Pagato**: Nella lista dei lead, deve essere presente un toggle per marcare un lead come pagato.
+3.  **Eliminazione Siti Demo**: Deve essere possibile eliminare i siti demo dalla dashboard.
+4.  **Fix UI/UX Siti Demo**:
+    *   Risolvere un bug CSS nel form di prenotazione dove il selettore dell'orario fuoriusciva dal riquadro.
+    *   Sostituire la descrizione ripetitiva Servizio professionale con descrizioni dinamiche e uniche per ogni servizio.
+5.  **Integrazione Social Media**:
+    *   Aggiungere una sezione dedicata Seguici sui Social nei siti demo.
+    *   Questa sezione deve mostrare di default le icone di Instagram e Facebook (disattivate se non configurate) e altre icone (TikTok) se i link sono presenti.
+    *   Aggiungere i campi per i link social nell'editor del sito.
+    *   Risolvere un bug per cui gli orari nel footer del sito demo erano incompleti (mostravano solo 3 giorni su 7).
 
 **User's preferred language**: italiano
 
 **what currently exists?**
-L'applicazione è un sistema full-stack (FastAPI/Python + React) la cui parte frontend è stata deployata con successo sull'account Vercel dell'utente come PWA (Progressive Web App) white-label e installabile.
+L'applicazione è un sistema full-stack (FastAPI/Python + React) con un'architettura ibrida. Il frontend è su React e il backend legacy è un server FastAPI () che gestisce l'ambiente di preview.
 
-Esiste una architettura backend ibrida:
-1.  **Backend Emergent (Legacy)**: Un server FastAPI in esecuzione nell'ambiente Emergent che gestisce ancora la maggior parte delle operazioni sul database (incluso il nuovo endpoint ).
-2.  **API Vercel Serverless (Nuovo)**: Una serie di funzioni serverless Python create in  per gestire alcuni endpoint critici (, , ). **Queste API non sono attualmente funzionanti in produzione** perché richiedono una connessione a un database cloud (MongoDB Atlas) che non è stata configurata.
+Sono state create delle Vercel Serverless Functions in Python () per migrare il backend, ma **non sono funzionanti in produzione su Vercel** a causa di due problemi principali:
+1.  **Errore di deployment**: Vercel sta eseguendo una versione vecchia del codice, causando errori di import () anche se il codice attuale usa .
+2.  **Mancanza di Database**: Le funzioni non sono connesse a un database cloud (MongoDB Atlas), quindi anche se l'import funzionasse, le query al DB fallirebbero.
 
-Il frontend su Vercel è configurato per puntare al backend Emergent come fallback, garantendo che l'app rimanga utilizzabile mentre la migrazione è in corso. Sono state implementate le ultime richieste dell'utente: il filtro per clienti acquisiti, la checkbox pagato nella lista dei lead e il pulsante per eliminare i siti demo.
+Tutte le recenti richieste dell'utente (filtri, toggle, elimina, fix UI, social media) sono state implementate e funzionano correttamente nell'ambiente di preview di Emergent.
 
 **Last working item**:
--   **Last item agent was working**: Implementazione di tre funzionalità richieste dall'utente:
-    1.  Correzione del link Clienti Acquisiti sulla dashboard per filtrare i lead ().
-    2.  Aggiunta di una colonna Pagato con un toggle nella pagina  per aggiornare lo stato di un lead.
-    3.  Aggiunta di un pulsante Elimina Sito nelle card della pagina  e del relativo endpoint backend .
--   **Status**: USER VERIFICATION PENDING
--   **Agent Testing Done**: Y (L'agente ha verificato la presenza e la funzionalità base degli elementi UI tramite screenshot e ha testato a secco il nuovo endpoint backend.)
--   **Which testing method agent to use?**: both. Il prossimo agente dovrebbe usare il  per un test E2E completo: marcare un lead come pagato, verificare che appaia nella lista clienti e provare a eliminare un sito demo, controllando che scompaia dalla lista.
--   **User Testing Done**: N
+-   **Last item agent was working**: Risoluzione definitiva del problema di deployment su Vercel. L'agente ha identificato che Vercel stava eseguendo codice obsoleto da una struttura di cartelle non più esistente ( invece di ). Per risolvere, ha eliminato le vecchie sottocartelle API per forzare Vercel a usare la nuova struttura flat.
+-   **Status**: IN PROGRESS
+-   **Agent Testing Done**: Y (nell'ambiente di preview Emergent, dove tutto funziona).
+-   **Which testing method agent to use?**: Manual testing by user/agent. Il prossimo agente deve guidare l'utente a fare un **Redeploy senza cache** su Vercel e poi verificare gli URL pubblici delle API e i log di Vercel.
+-   **User Testing Done**: N (L'utente sta riscontrando errori 500 sull'ambiente Vercel).
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Le API Serverless su Vercel non funzionano (P0 - BLOCKER)**
-    -   **Attempted fixes**: L'agente ha tentato di configurare le variabili d'ambiente ma ha capito che il  punta a , che è inaccessibile da Vercel.
+-   **Issue 1: Le funzioni Serverless su Vercel falliscono in produzione (P0 - BLOCKER)**
+    -   **Attempted fixes**:
+        -   Spostate tutte le funzioni API in una struttura flat (es. ).
+        -   Create  sia nella root () che in .
+        -   Sostituito  (asincrono) con  (sincrono) per semplificare.
+        -   Aggiunto logging dettagliato per il debug.
+        -   Aggiornato  per rimuovere  e usare la nuova struttura.
+        -   **Eliminate le vecchie sottocartelle API** ( ecc.) per evitare che Vercel le usi.
     -   **Next debug checklist**:
-        1.  Attendere che l'utente fornisca una connection string di **MongoDB Atlas**.
-        2.  Configurare la stringa come variabile d'ambiente  nel progetto Vercel.
-        3.  Testare nuovamente gli endpoint serverless (, , ecc.).
-    -   **Why fix this issue and what will be achieved with the fix?**: Risolvere questo problema è l'unico modo per completare la migrazione a Vercel e rendere l'applicazione completamente indipendente dal backend Emergent, eliminando definitivamente i problemi di sleep.
-    -   **Status**: BLOCKED (in attesa dell'utente)
-    -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Backend.
+        1.  Spiegare all'utente che il problema è che Vercel sta usando una versione fantasma del vecchio codice e che le modifiche ai file devono essere sincronizzate tramite Git.
+        2.  Guidare l'utente a fare On branch main
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	deleted:    api/runtime.txt
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	frontend/yarn.lock
+	yarn.lock
+
+no changes added to commit (use "git add" and/or "git commit -a") e  per aggiornare il repository.
+        3.  Guidare l'utente a fare un **Redeploy senza cache** su Vercel.
+        4.  Chiedere all'utente di verificare nel Source tab del deployment Vercel che la struttura delle cartelle sia corretta (solo  flat, senza sottocartelle).
+        5.  Testare . Se funziona e mostra i moduli installati, il problema dell'import è risolto.
+    -   **Why fix this issue and what will be achieved with the fix?**: È il blocco principale che impedisce all'applicazione di funzionare su Vercel e di completare la migrazione.
+    -   **Status**: IN PROGRESS
+    -   **Is recurring issue?**: Y
+    -   **Should Test frontend/backend/both after fix?**: Backend (API Vercel).
     -   **Blocked on other issue**: No.
 
-**In progress Task List**:
--   **Task 1: Completare la migrazione di tutte le API backend a Vercel Serverless (P0 - HIGHEST)**
-    -   **Where to resume**: Una volta sbloccato l'Issue 1 (configurazione di MongoDB Atlas), l'agente deve migrare le restanti logiche da  a nuove funzioni serverless in . Questo include:
-        -   Ricerca aziende ()
-        -   Creazione, pubblicazione e ripubblicazione dei demo.
-        -   Tutti gli endpoint dell'editor manuale ().
-        -   **Importante**: L'endpoint  è stato aggiunto al vecchio  e deve essere spostato in una Vercel Function.
-    -   **What will be achieved with this?**: L'applicazione diventerà 100% serverless su Vercel, veloce e sempre online.
-    -   **Status**: IN PROGRESS (ma bloccata dall'Issue 1).
+-   **Issue 2: Le API Serverless non sono connesse a un DB cloud (P1)**
+    -   **Attempted fixes**: Il codice è stato preparato per leggere la variabile , con fallback e messaggi di errore chiari.
+    -   **Next debug checklist**:
+        1.  Una volta risolto l'Issue 1, guidare l'utente a creare un cluster gratuito su **MongoDB Atlas**.
+        2.  Fornire istruzioni su come ottenere la connection string ().
+        3.  Guidare l'utente a impostare la variabile d'ambiente  su Vercel.
+    -   **Why fix this issue and what will be achieved with the fix?**: Completa la migrazione del backend, rendendo l'app indipendente e sempre online.
+    -   **Status**: BLOCKED
+    -   **Is recurring issue?**: N
     -   **Should Test frontend/backend/both after fix?**: Both.
-    -   **Blocked on something**: Issue 1: Le API Serverless su Vercel non funzionano.
+    -   **Blocked on other issue**: Issue 1.
+
+**In progress Task List**:
+-   **Task 1: Completare la migrazione del backend a Vercel Serverless (P0 - HIGHEST)**
+    -   **Where to resume**: Una volta che le API base su Vercel sono funzionanti (Issue 1 & 2 risolti), migrare le funzionalità rimanenti da  a nuove funzioni serverless (es. creazione/pubblicazione siti, editor manuale, ricerca aziende).
+    -   **What will be achieved with this?**: L'applicazione diventerà 100% serverless su Vercel.
+    -   **Status**: IN PROGRESS (ma bloccata dagli Issue pendenti).
+    -   **Should Test frontend/backend/both after fix?**: Both.
+    -   **Blocked on something**: Issue 1 e Issue 2.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks**:
-    -   P1: Implementare l'upload diretto di immagini per la galleria (attualmente supporta solo URL).
-    -   P2: Implementare l'interfaccia utente per la connessione di un dominio custom.
+    -   P1: Implementare l'upload diretto di immagini per la galleria.
+    -   P2: Implementare un'interfaccia per la connessione di domini custom.
 -   **Future Tasks**:
-    -   Reintrodurre funzionalità smart o AI per l'editing, ma in modo più stabile.
+    -   Reintrodurre funzionalità AI per l'editing.
     -   Implementare una scansione automatica per trovare nuovi lead.
-    -   Implementare la generazione massiva di siti demo (batch).
+    -   Implementare la generazione massiva di siti demo.
 
 **Completed work in this session**
--   Implementate le 3 funzionalità richieste: filtro Clienti Acquisiti, checkbox Pagato per i lead, e pulsante Elimina Sito.
--   Deployata l'applicazione sull'account Vercel dell'utente come PWA white-label (senza watermark Emergent).
--   Risolto un errore di routing SPA su Vercel (errore 404) aggiornando .
--   Corretto un errore critico React ().
--   Corretto il comportamento del prompt di installazione della PWA per non mostrarlo sui siti dei clienti.
--   Iniziata la migrazione del backend a Vercel Serverless Functions.
+-   Corretto e verificato il funzionamento delle 3 funzionalità CRM (filtro clienti, toggle pagato, elimina demo).
+-   Risolto un disallineamento di status tra frontend () e backend ().
+-   Corretto un bug CSS nel selettore orario del form di prenotazione.
+-   Sostituite le descrizioni dei servizi statiche con descrizioni dinamiche e tradotte.
+-   Aggiunti campi per social media nell'editor del sito e una sezione dedicata nei siti demo.
+-   Corretto il footer dei siti demo per mostrare sempre 7 giorni di orari.
+-   Eseguiti numerosi tentativi di fix per il deploy Vercel, culminati nella ristrutturazione flat della cartella  e nella pulizia delle vecchie cartelle.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1: Warning UI Token Vercel non configurato in **
-    -   **Debug checklist**: Analizzare la logica in  per capire perché mostra un messaggio di errore obsoleto o non pertinente.
-    -   **Why to solve this issue and what will be achieved with this?**: Evita confusione per l'utente, che potrebbe pensare a un problema di configurazione inesistente.
+    -   **Debug checklist**: Analizzare la logica in  per rimuovere il messaggio di avviso obsoleto.
+    -   **Why to solve this issue and what will be achieved with this?**: Evita confusione per l'utente.
     -   **Should Test frontend/backend/both after fix**: Frontend.
-    -   **Is recurring issue?**: Y (potenzialmente).
+    -   **Is recurring issue?**: N
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Frontend**: React, React Router, TailwindCSS, Shadcn UI, **PWA (Progressive Web App)**
--   **Backend**: **Architettura Ibrida** - FastAPI (su Emergent) + **Vercel Serverless Functions** (Python)
+-   **Frontend**: React, React Router, TailwindCSS, Shadcn UI, PWA
+-   **Backend**: Architettura Ibrida - FastAPI (Legacy) + Vercel Serverless Functions (Python)
 -   **Database**: MongoDB
--   **Deployment**: Vercel
+-   **Deployment**: Vercel (attualmente problematico)
 
 **key DB schema**
--   **leads**: La struttura esistente viene ora utilizzata per tracciare lo stato pagato tramite il campo .
--   **demo_sites**: Nessuna modifica allo schema.
+-   **leads**: Aggiunti i campi , , .
 
 **All files of reference**
--    (Configurazione Vercel, **critica per il routing SPA**)
--    (Directory contenente le nuove API serverless)
--    (Contiene ancora logica da migrare e il nuovo endpoint DELETE)
--    (Modificato per filtro  e checkbox Pagato)
--    (Modificato per il pulsante Elimina)
--    (Modificato per il link corretto a Clienti Acquisiti)
--    (Modificato per correggere l'errore )
--    (Modificato per escludere le pagine demo)
+-   : Directory con le nuove Vercel functions a struttura flat.
+-   : Dipendenze Python per le Vercel functions.
+-   : Copia delle dipendenze nella root per massima compatibilità con Vercel.
+-   : Configurazione per il deploy su Vercel, modificata per supportare la nuova struttura.
+-   : Modificato per fix UI, orari e sezioni social.
+-   : Modificato per aggiungere campi input per i social.
+-   : Aggiunte descrizioni dinamiche per i servizi.
+-   : Creato per forzare l'uso di path relativi () in produzione su Vercel.
 
 **Areas that need refactoring**:
--   L'intero  deve essere smantellato e le sue funzionalità migrate una per una nelle Vercel Functions in . L'aggiunta del nuovo endpoint  al vecchio server invece che alla nuova architettura è un'incoerenza tecnica da correggere.
+-   L'intera directory  deve essere smantellata una volta che la migrazione a Vercel è completa e stabile.
 
 **key api endpoints**
--   : (Nuovo) Endpoint per eliminare un sito demo. **Attualmente sul backend legacy**.
--   , , : Endpoint migrati su Vercel, ma **non funzionanti** a causa del blocco del database.
+-   : Funzione Vercel, restituisce lo stato del server e dei moduli installati.
+-   , , : Funzioni Vercel, attualmente falliscono in produzione a causa di errori di import/configurazione.
 
 **Critical Info for New Agent**
-1.  **BLOCCANTE - DATABASE**: L'intera migrazione a Vercel è bloccata finché l'utente non fornisce una **connection string di MongoDB Atlas**. Le API serverless non possono funzionare con il  attuale. Comunica chiaramente questa dipendenza all'utente.
-2.  **OBIETTIVO FINALE**: L'obiettivo dell'utente è un'applicazione 100% serverless su Vercel. La tua priorità assoluta, una volta ottenuta la stringa del DB, è migrare tutta la logica rimanente da  alle Vercel Functions in .
-3.  **INCOERENZA DI IMPLEMENTAZIONE**: Fai attenzione che l'ultimo endpoint creato () è stato aggiunto al vecchio . Durante la migrazione, assicurati di spostarlo nella struttura corretta di Vercel Functions.
-4.  **TESTING DELLE NUOVE FUNZIONALITÀ**: Le tre funzionalità recenti (filtro clienti, checkbox pagato, elimina demo) sono state implementate ma non verificate a fondo. Esegui un test E2E per assicurarti che funzionino come previsto prima di procedere.
+1.  **IL BLOCCO È IL DEPLOY SU VERCEL**: Il problema principale è che Vercel sta eseguendo una versione vecchia del codice, causando un errore . Il codice attuale è stato corretto per usare  e la struttura dei file è stata appiattita. La tua priorità è guidare l'utente ad aggiornare il suo repository Git e fare un **Redeploy SENZA CACHE** su Vercel.
+2.  **VERIFICA LA STRUTTURA SU VERCEL**: Dopo il redeploy, la prima cosa da fare è chiedere all'utente di controllare la tab Source nel deployment Vercel per confermare che la struttura dei file sia corretta (cartella  minuscola e flat, con  visibile).
+3.  **IL DATABASE È IL PASSO SUCCESSIVO**: Anche dopo aver risolto il problema di deploy, le API Vercel falliranno o restituiranno dati di fallback finché l'utente non configurerà la variabile d'ambiente  con una connection string di MongoDB Atlas. Non procedere con altre funzionalità finché questo non è risolto.
+4.  **LEGACY BACKEND**: L'ambiente di preview () funziona perché usa ancora il backend legacy in . Non fare affidamento su di esso per testare le Vercel functions. L'obiettivo finale è eliminarlo.
 
 **documents and test reports created in this job**
--   
--   
--   
--   Vari report di test e log di screenshot.
+Nessun nuovo documento.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **Richiesta**: Correggere il link clienti acquisiti, aggiungere checkbox pagato e opzione per eliminare i siti demo. (COMPLETED)
-2.  **Richiesta**: Chiamare il deployer agent. (COMPLETED)
-3.  **Richiesta**: Riprendere il lavoro. (COMPLETED)
-4.  **Messaggio**: Rivedi che non apre (Controlla di nuovo, non si apre). (COMPLETED - Era un errore React)
-5.  **Richiesta**: Chiamare il deployer agent. (COMPLETED)
-6.  **Messaggio**: Segnalazione che il prompt PWA appare sui siti dei clienti. (COMPLETED)
-7.  **Richiesta**: Chiamare il deployer agent. (COMPLETED)
-8.  **Messaggio**: Segnalazione di errore 404 cliccando sulle Azioni Rapide. (COMPLETED)
-9.  **Richiesta**: Chiamare il deployer agent. (COMPLETED)
-10. **Richiesta**: Riprendi. (COMPLETED)
-
-Tutti i messaggi recenti dell'utente sono stati indirizzati e risolti.
+1.  **Richiesta**: Risolvere errore 500 su Vercel, .
+2.  **Richiesta**: Assicurarsi che  sia nella root e in .
+3.  **Analisi**: L'utente ha mostrato screenshot dei log e della struttura file su Vercel, rivelando che è diversa da quella in workspace.
+4.  **Richiesta**: Risolvere il problema della cartella  (maiuscola) su Vercel.
+5.  **Azione Agente**: Forzato il rename in minuscolo e confermata la struttura corretta nel workspace.
+6.  **Richiesta**: Fix definitivo per Vercel, specificando la struttura  flat e  nella root.
+7.  **Azione Agente**: Ristrutturato tutto secondo le specifiche, aggiornando .
+8.  **Messaggio Utente**: Ancora errore .
+9.  **Azione Agente**: Ha verificato che il codice non usa , confermando che Vercel sta eseguendo codice vecchio.
+10. **Messaggio Utente**: Ha mostrato screenshot di Vercel che provano l'esecuzione di codice vecchio da una struttura a sottocartelle.
 
 **Project Health Check:**
--   **Broken**: Le API Serverless su Vercel che richiedono accesso al database sono interrotte a causa della configurazione  errata.
--   **Mocked**: Nessuno.
+-   **Broken**: Il deployment di produzione su Vercel è non funzionante. Le serverless functions falliscono con .
+-   **Mocked**: Le funzioni serverless su Vercel sono state modificate per restituire dati di fallback o messaggi di errore chiari se  non è disponibile.
 
 **3rd Party Integrations**
--   **Google Places API**: Richiede la chiave API dell'utente nelle variabili d'ambiente di Vercel.
--   **Vercel**: Integrato tramite token API dell'utente per i deploy.
--   **MongoDB**: **Richiede urgentemente la migrazione da un'istanza  a un database cloud come MongoDB Atlas.**
+-   **Vercel**: Piattaforma di deployment principale, attualmente al centro dei problemi.
+-   **MongoDB**: Richiede urgentemente la configurazione di un'istanza cloud (MongoDB Atlas) e la relativa  nelle variabili d'ambiente di Vercel.
+-   **Google Places API**: Utilizzata nel backend legacy.
 
 **Testing status**
--   **Testing agent used after significant changes**: No (non per le ultime modifiche).
--   **Troubleshoot agent used after agent stuck in loop**: No.
--   **Test files created**: .
--   **Known regressions**: Le API Vercel Serverless che accedono al DB sono regredite allo stato non funzionante a causa del problema di configurazione del database.
+-   **Testing agent used after significant changes**: NO
+-   **Troubleshoot agent used after agent stuck in loop**: NO
+-   **Test files created**: Nessuno nuovo.
+-   **Known regressions**: Le API Vercel sono in uno stato di regressione continua a causa dei problemi di deployment.
 
 **Credentials to test flow:**
--   **MANCANTE**:  per un database cloud (es. MongoDB Atlas).
--   **MANCANTE**:  nelle variabili d'ambiente di Vercel per la funzione di ricerca.
+-   **MANCANTE**:  per MongoDB Atlas, necessaria per le Vercel Serverless Functions.
 
 **What agent forgot to execute**
-L'agente ha aggiunto il nuovo endpoint  al file backend legacy () invece di crearlo come una nuova Vercel Serverless Function in . Questo va contro l'obiettivo di migrazione e crea un'incoerenza architetturale che dovrà essere corretta.</analysis>
+L'agente ha correttamente identificato che il problema era Vercel che eseguiva codice vecchio, ma non è riuscito a far capire all'utente che le modifiche ai file nel workspace non si riflettono magicamente su Vercel. Il passaggio critico mancante è stato spiegare la necessità di un On branch main
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   README.md
+	modified:   SETUP_API_KEYS.md
+	deleted:    api/runtime.txt
+	modified:   backend/tests/test_api.py
+	modified:   backend/tests/test_i18n_booking.py
+	modified:   backend_test.py
+	modified:   frontend/.env.development
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	frontend/yarn.lock
+	yarn.lock
+
+no changes added to commit (use "git add" and/or "git commit -a") e  per aggiornare il repository collegato a Vercel prima di fare il redeploy. L'agente ha lavorato solo sui file locali, mentre il problema era nel processo di sync tra il workspace e Vercel.</analysis>

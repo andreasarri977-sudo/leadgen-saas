@@ -128,7 +128,7 @@ sudo supervisorctl status
 ```
 
 ### 6. Accedi all'applicazione
-Apri il browser su: `https://saas-migration-4.preview.emergentagent.com`
+Apri il browser su: `https://api-deployment-3.preview.emergentagent.com`
 
 ---
 
@@ -273,10 +273,10 @@ yarn test
 ### Test API con cURL
 ```bash
 # Test health check
-curl https://saas-migration-4.preview.emergentagent.com/api/
+curl https://api-deployment-3.preview.emergentagent.com/api/
 
 # Test statistiche
-curl https://saas-migration-4.preview.emergentagent.com/api/stats/dashboard
+curl https://api-deployment-3.preview.emergentagent.com/api/stats/dashboard
 ```
 
 ---
