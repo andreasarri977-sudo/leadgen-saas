@@ -1,17 +1,12 @@
 {
-  "version": 2,
-  "framework": null,
-  "installCommand": "cd frontend && yarn install",
-  "buildCommand": "cd frontend && yarn build",
+  "buildCommand": "cd frontend && yarn install && yarn build",
   "outputDirectory": "frontend/build",
   "functions": {
     "api/*.py": {
-      "runtime": "@vercel/python@4.3.1"
+      "runtime": "@vercel/python"
     }
   },
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/:path*" }
   ]
 }
