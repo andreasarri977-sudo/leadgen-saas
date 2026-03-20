@@ -1,13 +1,22 @@
-# Vercel Serverless Function - List Demo Sites
+# Vercel Serverless Function - List Demo Sites (usando pymongo sincrono)
 from http.server import BaseHTTPRequestHandler
 import json
-import asyncio
 import os
+import sys
+import traceback
 
-# Import motor
-from motor.motor_asyncio import AsyncIOMotorClient
+def log(msg):
+    print(f"[DEMOS] {msg}", file=sys.stderr, flush=True)
 
-# Get Mongo URL with fallback
+log("=== Function cold start ===")
+
+try:
+    from pymongo import MongoClient
+    log("pymongo imported successfully")
+except ImportError as e:
+    log(f"FAILED to import pymongo: {e}")
+    MongoClient = None
+
 MONGO_URL = os.environ.get('MONGO_URL') or os.environ.get('URL_MONGO')
 DB_NAME = os.environ.get('DB_NAME', 'leadhunter')
 
@@ -20,50 +29,45 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
     
     def do_GET(self):
-        # Check Mongo URL
-        if not MONGO_URL:
+        if MongoClient is None:
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
-            self.wfile.write(json.dumps({
-                "error": "Missing Mongo env var",
-                "message": "Neither MONGO_URL nor URL_MONGO is set"
-            }).encode())
+            self.wfile.write(json.dumps({"error": "pymongo not installed"}).encode())
+            return
+        
+        if not MONGO_URL:
+            self.send_response(503)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "Missing Mongo env var"}).encode())
             return
         
         try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            result = loop.run_until_complete(self.get_demos())
-            loop.close()
-            
+            result = self.get_demos()
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             self.wfile.write(json.dumps(result).encode())
         except Exception as e:
+            log(f"ERROR: {e}")
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
-            self.wfile.write(json.dumps({
-                "error": str(e),
-                "type": type(e).__name__
-            }).encode())
+            self.wfile.write(json.dumps({"error": str(e)}).encode())
     
-    async def get_demos(self):
-        client = AsyncIOMotorClient(MONGO_URL)
+    def get_demos(self):
+        client = MongoClient(MONGO_URL)
         db = client[DB_NAME]
-        
         demos = []
         cursor = db.demo_sites.find({}, {"_id": 0}).sort("created_at", -1).limit(100)
-        async for demo in cursor:
-            # Convert datetime to string
+        for demo in cursor:
             if 'created_at' in demo:
                 demo['created_at'] = str(demo['created_at'])
             demos.append(demo)
-        
         client.close()
         return demos

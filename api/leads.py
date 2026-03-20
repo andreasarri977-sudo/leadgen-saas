@@ -1,7 +1,6 @@
-# Vercel Serverless Function - List Leads
+# Vercel Serverless Function - List Leads (usando pymongo sincrono)
 from http.server import BaseHTTPRequestHandler
 import json
-import asyncio
 import os
 import sys
 import traceback
@@ -15,15 +14,14 @@ log("=== Function cold start ===")
 log(f"Python version: {sys.version}")
 log(f"MONGO_URL present: {'MONGO_URL' in os.environ}")
 log(f"URL_MONGO present: {'URL_MONGO' in os.environ}")
-log(f"DB_NAME present: {'DB_NAME' in os.environ}")
 
-# Try importing motor
+# Try importing pymongo (sincrono, più affidabile su Vercel)
 try:
-    from motor.motor_asyncio import AsyncIOMotorClient
-    log("motor imported successfully")
+    from pymongo import MongoClient
+    log("pymongo imported successfully")
 except ImportError as e:
-    log(f"FAILED to import motor: {e}")
-    log(f"sys.path: {sys.path}")
+    log(f"FAILED to import pymongo: {e}")
+    MongoClient = None
 
 # Get Mongo URL with fallback
 MONGO_URL = os.environ.get('MONGO_URL') or os.environ.get('URL_MONGO')
@@ -43,6 +41,19 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         log(f"GET request received: {self.path}")
         
+        # Check if pymongo is available
+        if MongoClient is None:
+            log("ERROR: pymongo not available")
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "error": "pymongo not installed",
+                "message": "Please add pymongo to requirements.txt"
+            }).encode())
+            return
+        
         # Check Mongo URL
         if not MONGO_URL:
             log("ERROR: No Mongo URL configured")
@@ -52,12 +63,7 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({
                 "error": "Missing Mongo env var",
-                "message": "Neither MONGO_URL nor URL_MONGO is set in environment",
-                "env_vars_present": {
-                    "MONGO_URL": 'MONGO_URL' in os.environ,
-                    "URL_MONGO": 'URL_MONGO' in os.environ,
-                    "DB_NAME": 'DB_NAME' in os.environ
-                }
+                "message": "Neither MONGO_URL nor URL_MONGO is set"
             }).encode())
             return
         
@@ -68,11 +74,7 @@ class handler(BaseHTTPRequestHandler):
             status = params.get('status', [None])[0]
             log(f"Querying leads with status filter: {status}")
             
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            result = loop.run_until_complete(self.get_leads(status))
-            loop.close()
-            
+            result = self.get_leads(status)
             log(f"Returning {len(result)} leads")
             
             self.send_response(200)
@@ -90,13 +92,12 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({
                 "error": str(e),
-                "type": type(e).__name__,
-                "traceback": traceback.format_exc()
+                "type": type(e).__name__
             }).encode())
     
-    async def get_leads(self, status=None):
+    def get_leads(self, status=None):
         log("Connecting to MongoDB...")
-        client = AsyncIOMotorClient(MONGO_URL)
+        client = MongoClient(MONGO_URL)
         db = client[DB_NAME]
         
         query = {}
@@ -106,7 +107,7 @@ class handler(BaseHTTPRequestHandler):
         log(f"Executing query: {query}")
         leads = []
         cursor = db.leads.find(query, {"_id": 0}).sort("created_at", -1).limit(100)
-        async for lead in cursor:
+        for lead in cursor:
             # Convert datetime to string
             if 'created_at' in lead:
                 lead['created_at'] = str(lead['created_at'])
