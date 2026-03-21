@@ -848,6 +848,23 @@ export function localizeHours(hoursText, lang = 'it') {
   
   const dayTranslations = translations[lang]?.days || translations['it'].days;
   
+  // Traduzioni per "Closed" e altri termini comuni
+  const closedTranslations = {
+    it: 'Chiuso',
+    fr: 'Fermé',
+    en: 'Closed',
+    es: 'Cerrado',
+    de: 'Geschlossen'
+  };
+  
+  const openTranslations = {
+    it: 'Aperto',
+    fr: 'Ouvert',
+    en: 'Open',
+    es: 'Abierto',
+    de: 'Geöffnet'
+  };
+  
   return hoursText.map(hourLine => {
     let localizedLine = hourLine;
     
@@ -857,6 +874,10 @@ export function localizeHours(hoursText, lang = 'it') {
       const translatedDay = dayTranslations[dayKey];
       localizedLine = localizedLine.replace(regex, translatedDay);
     });
+    
+    // Traduci "Closed" nella lingua corretta
+    localizedLine = localizedLine.replace(/\bClosed\b/gi, closedTranslations[lang] || closedTranslations['it']);
+    localizedLine = localizedLine.replace(/\bOpen\b/gi, openTranslations[lang] || openTranslations['it']);
     
     // Converti AM/PM a formato 24h se necessario
     localizedLine = convertTo24HourFormat(localizedLine);

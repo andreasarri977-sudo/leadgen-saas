@@ -55,10 +55,78 @@ const getStyleFromPlaceId = (placeId) => {
   return STYLE_VARIANTS[hash % STYLE_VARIANTS.length];
 };
 
-// Generate WhatsApp link with pre-filled message
-const getWhatsAppLink = (phone, message) => {
+// Country code prefixes
+const COUNTRY_PHONE_PREFIXES = {
+  'IT': '+39', 'Italia': '+39', 'Italy': '+39',
+  'FR': '+33', 'Francia': '+33', 'France': '+33',
+  'ES': '+34', 'Spagna': '+34', 'Spain': '+34', 'España': '+34',
+  'DE': '+49', 'Germania': '+49', 'Germany': '+49', 'Deutschland': '+49',
+  'AT': '+43', 'Austria': '+43', 'Österreich': '+43',
+  'CH': '+41', 'Svizzera': '+41', 'Switzerland': '+41', 'Schweiz': '+41', 'Suisse': '+41',
+  'BE': '+32', 'Belgio': '+32', 'Belgium': '+32', 'Belgique': '+32',
+  'GB': '+44', 'UK': '+44', 'Regno Unito': '+44', 'United Kingdom': '+44',
+  'IE': '+353', 'Irlanda': '+353', 'Ireland': '+353',
+  'US': '+1', 'USA': '+1', 'Stati Uniti': '+1', 'United States': '+1',
+  'PT': '+351', 'Portogallo': '+351', 'Portugal': '+351',
+  'NL': '+31', 'Paesi Bassi': '+31', 'Netherlands': '+31',
+  'PL': '+48', 'Polonia': '+48', 'Poland': '+48',
+  'GR': '+30', 'Grecia': '+30', 'Greece': '+30',
+  'HR': '+385', 'Croazia': '+385', 'Croatia': '+385',
+  'SI': '+386', 'Slovenia': '+386',
+  'default': '+39'
+};
+
+// Get country phone prefix
+const getPhonePrefix = (country) => {
+  if (!country) return COUNTRY_PHONE_PREFIXES['default'];
+  return COUNTRY_PHONE_PREFIXES[country] || COUNTRY_PHONE_PREFIXES[country.toUpperCase()] || COUNTRY_PHONE_PREFIXES['default'];
+};
+
+// Format phone with country prefix
+const formatPhoneWithPrefix = (phone, country) => {
   if (!phone) return null;
-  const cleanPhone = phone.replace(/[^0-9+]/g, '').replace(/^\+/, '');
+  // If already has + prefix, return as is
+  if (phone.startsWith('+')) return phone;
+  // If starts with 00, replace with +
+  if (phone.startsWith('00')) return '+' + phone.substring(2);
+  // Add country prefix
+  const prefix = getPhonePrefix(country);
+  const cleanPhone = phone.replace(/^0+/, ''); // Remove leading zeros
+  return `${prefix} ${phone}`;
+};
+
+// Check if phone is mobile (likely has WhatsApp)
+const isMobilePhone = (phone, country) => {
+  if (!phone) return false;
+  const cleanPhone = phone.replace(/[^0-9]/g, '');
+  
+  // Italian mobile numbers start with 3
+  if (country === 'IT' || country === 'Italia' || country === 'Italy') {
+    return cleanPhone.startsWith('3') || cleanPhone.startsWith('393');
+  }
+  // French mobile numbers start with 6 or 7
+  if (country === 'FR' || country === 'Francia' || country === 'France') {
+    return cleanPhone.startsWith('6') || cleanPhone.startsWith('7') || cleanPhone.startsWith('336') || cleanPhone.startsWith('337');
+  }
+  // Spanish mobile numbers start with 6 or 7
+  if (country === 'ES' || country === 'Spagna' || country === 'Spain' || country === 'España') {
+    return cleanPhone.startsWith('6') || cleanPhone.startsWith('7') || cleanPhone.startsWith('346') || cleanPhone.startsWith('347');
+  }
+  // German mobile numbers start with 15, 16, 17
+  if (country === 'DE' || country === 'Germania' || country === 'Germany' || country === 'Deutschland') {
+    return cleanPhone.startsWith('15') || cleanPhone.startsWith('16') || cleanPhone.startsWith('17') || 
+           cleanPhone.startsWith('4915') || cleanPhone.startsWith('4916') || cleanPhone.startsWith('4917');
+  }
+  // Default: assume it's mobile if it has WhatsApp field or is explicitly set
+  return false;
+};
+
+// Generate WhatsApp link with pre-filled message (only if mobile or whatsapp_number is set)
+const getWhatsAppLink = (phone, message, whatsappNumber = null) => {
+  // Use explicit WhatsApp number if provided
+  const numberToUse = whatsappNumber || phone;
+  if (!numberToUse) return null;
+  const cleanPhone = numberToUse.replace(/[^0-9+]/g, '').replace(/^\+/, '');
   const encodedMessage = encodeURIComponent(message);
   return `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
 };
@@ -302,9 +370,17 @@ export default function DemoPreview() {
   const isFoodBusiness = business.primary_type && ['restaurant', 'bar', 'cafe', 'pizza_restaurant'].includes(business.primary_type);
   const hasMenu = content.menu_categories && content.menu_categories.length > 0;
 
-  // WhatsApp link
+  // Phone formatting
+  const formattedPhone = formatPhoneWithPrefix(business.phone, business.country);
+  const hasMobile = isMobilePhone(business.phone, business.country);
+  
+  // WhatsApp link - only show if: 1) explicit whatsapp_number is set, OR 2) phone is mobile
   const whatsappMessage = t('whatsapp.message', lang);
-  const whatsappLink = getWhatsAppLink(business.phone, whatsappMessage);
+  const hasWhatsApp = business.whatsapp_number || hasMobile;
+  const whatsappLink = hasWhatsApp ? getWhatsAppLink(business.phone, whatsappMessage, business.whatsapp_number) : null;
+  
+  // Social media availability
+  const hasSocialMedia = business.instagram_url || business.facebook_url || business.tiktok_url;
 
   return (
     <>
@@ -389,54 +465,100 @@ export default function DemoPreview() {
           </div>
         </nav>
 
-        {/* Hero Section */}
-        <header className={`relative bg-gradient-to-br ${style.primaryColor} text-white overflow-hidden`}>
-          {heroPhoto && (
-            <div className="absolute inset-0 opacity-25">
-              <img src={heroPhoto} alt="" className="w-full h-full object-cover" loading="eager" />
-            </div>
-          )}
-          <div className="relative z-10 py-16 sm:py-20 md:py-28 px-4 sm:px-6">
-            <div className="max-w-6xl mx-auto">
-              {demo.logo_base64 && (
-                <img src={`data:image/png;base64,${demo.logo_base64}`} alt={demo.business_name}
-                     className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 mb-4 sm:mb-6 bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xl object-contain" />
-              )}
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4 tracking-tight">
-                {demo.business_name}
-              </h1>
-              <p className="text-lg sm:text-xl md:text-2xl text-white/90 mb-6 sm:mb-8 max-w-2xl">
-                {content.homepage_subtitle || `${business.category} ${t('misc.trustBusiness', lang)}`}
-              </p>
-              
-              {/* CTA Buttons - WhatsApp PRIMARY */}
-              <div className="flex flex-wrap gap-3 sm:gap-4">
-                {/* WhatsApp - PRIMARY CTA */}
-                {whatsappLink ? (
-                  <a href={whatsappLink} target="_blank" rel="noopener noreferrer"
-                     className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-5 sm:px-8 py-3 sm:py-4 rounded-full font-semibold hover:shadow-2xl transition-all transform hover:scale-105 text-sm sm:text-base">
-                    <MessageCircle size={20} />
-                    {t('whatsapp.buttonShort', lang)}
-                  </a>
-                ) : business.phone && (
-                  <a href={`tel:${business.phone}`}
-                     className="inline-flex items-center gap-2 bg-white text-neutral-900 px-5 sm:px-8 py-3 sm:py-4 rounded-full font-semibold hover:shadow-2xl transition-all transform hover:scale-105 text-sm sm:text-base">
-                    <Phone size={20} />
-                    {t('hero.callNow', lang)}
-                  </a>
+        {/* Hero Section - Clean modern style */}
+        <header className="relative bg-white overflow-hidden">
+          {heroPhoto ? (
+            <>
+              {/* Full width image with subtle gradient overlay at bottom only */}
+              <div className="relative h-[50vh] md:h-[60vh]">
+                <img src={heroPhoto} alt={demo.business_name} className="w-full h-full object-cover" loading="eager" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+              </div>
+              {/* Content overlaid at bottom */}
+              <div className="absolute bottom-0 left-0 right-0 z-10 py-8 sm:py-12 px-4 sm:px-6">
+                <div className="max-w-6xl mx-auto text-white">
+                  {demo.logo_base64 && (
+                    <img src={`data:image/png;base64,${demo.logo_base64}`} alt={demo.business_name}
+                         className="w-16 h-16 sm:w-20 sm:h-20 mb-4 bg-white rounded-xl p-2 shadow-2xl object-contain" />
+                  )}
+                  <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-2 tracking-tight drop-shadow-lg">
+                    {demo.business_name}
+                  </h1>
+                  <p className="text-lg sm:text-xl text-white/90 mb-6 max-w-2xl drop-shadow">
+                    {content.homepage_subtitle || `${business.category} ${t('misc.trustBusiness', lang)}`}
+                  </p>
+                  
+                  {/* CTA Buttons */}
+                  <div className="flex flex-wrap gap-3">
+                    {/* WhatsApp - only if mobile or whatsapp_number set */}
+                    {whatsappLink && (
+                      <a href={whatsappLink} target="_blank" rel="noopener noreferrer"
+                         className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-5 sm:px-8 py-3 rounded-full font-semibold hover:shadow-2xl transition-all transform hover:scale-105 text-sm sm:text-base">
+                        <MessageCircle size={20} />
+                        {t('whatsapp.buttonShort', lang)}
+                      </a>
+                    )}
+                    {/* Call button - always show if phone exists */}
+                    {business.phone && (
+                      <a href={`tel:${business.phone}`}
+                         className="inline-flex items-center gap-2 bg-white text-neutral-900 px-5 sm:px-8 py-3 rounded-full font-semibold hover:shadow-2xl transition-all transform hover:scale-105 text-sm sm:text-base">
+                        <Phone size={20} />
+                        {t('hero.callNow', lang)}
+                      </a>
+                    )}
+                    {/* Google Maps */}
+                    {business.google_maps_link && (
+                      <a href={business.google_maps_link} target="_blank" rel="noopener noreferrer"
+                         className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-5 sm:px-8 py-3 rounded-full font-semibold hover:bg-white/30 transition-all text-sm sm:text-base">
+                        <MapPin size={20} />
+                        {t('hero.directions', lang)}
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            /* Fallback gradient hero when no photo */
+            <div className={`bg-gradient-to-br ${style.primaryColor} text-white py-16 sm:py-20 md:py-28 px-4 sm:px-6`}>
+              <div className="max-w-6xl mx-auto">
+                {demo.logo_base64 && (
+                  <img src={`data:image/png;base64,${demo.logo_base64}`} alt={demo.business_name}
+                       className="w-20 h-20 sm:w-24 sm:h-24 mb-4 bg-white rounded-xl p-3 shadow-2xl object-contain" />
                 )}
+                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 tracking-tight">
+                  {demo.business_name}
+                </h1>
+                <p className="text-lg sm:text-xl md:text-2xl text-white/90 mb-6 max-w-2xl">
+                  {content.homepage_subtitle || `${business.category} ${t('misc.trustBusiness', lang)}`}
+                </p>
                 
-                {/* Google Maps - SECONDARY */}
-                {business.google_maps_link && (
-                  <a href={business.google_maps_link} target="_blank" rel="noopener noreferrer"
-                     className={`inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-5 sm:px-8 py-3 sm:py-4 rounded-full font-semibold hover:bg-white/30 transition-all text-sm sm:text-base`}>
-                    <MapPin size={20} />
-                    {t('hero.directions', lang)}
-                  </a>
-                )}
+                <div className="flex flex-wrap gap-3">
+                  {whatsappLink && (
+                    <a href={whatsappLink} target="_blank" rel="noopener noreferrer"
+                       className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-5 sm:px-8 py-3 rounded-full font-semibold hover:shadow-2xl transition-all transform hover:scale-105 text-sm sm:text-base">
+                      <MessageCircle size={20} />
+                      {t('whatsapp.buttonShort', lang)}
+                    </a>
+                  )}
+                  {business.phone && (
+                    <a href={`tel:${business.phone}`}
+                       className="inline-flex items-center gap-2 bg-white text-neutral-900 px-5 sm:px-8 py-3 rounded-full font-semibold hover:shadow-2xl transition-all transform hover:scale-105 text-sm sm:text-base">
+                      <Phone size={20} />
+                      {t('hero.callNow', lang)}
+                    </a>
+                  )}
+                  {business.google_maps_link && (
+                    <a href={business.google_maps_link} target="_blank" rel="noopener noreferrer"
+                       className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-5 sm:px-8 py-3 rounded-full font-semibold hover:bg-white/30 transition-all text-sm sm:text-base">
+                      <MapPin size={20} />
+                      {t('hero.directions', lang)}
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </header>
 
         {/* Quick Info Bar */}
@@ -456,7 +578,7 @@ export default function DemoPreview() {
                 <Phone size={22} className="text-neutral-500 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-xs sm:text-sm text-neutral-500 font-medium">{t('info.phone', lang)}</p>
-                  <a href={`tel:${business.phone}`} className="font-medium text-neutral-800 hover:underline text-sm sm:text-base">{business.phone}</a>
+                  <a href={`tel:${business.phone}`} className="font-medium text-neutral-800 hover:underline text-sm sm:text-base">{formattedPhone}</a>
                 </div>
               </div>
             )}
@@ -649,7 +771,7 @@ export default function DemoPreview() {
                     {business.phone && (
                       <div className="flex items-start gap-3">
                         <Phone size={22} className="mt-0.5 flex-shrink-0 opacity-80" />
-                        <a href={`tel:${business.phone}`} className="text-base sm:text-lg hover:underline">{business.phone}</a>
+                        <a href={`tel:${business.phone}`} className="text-base sm:text-lg hover:underline">{formattedPhone}</a>
                       </div>
                     )}
                     {business.email && (
@@ -661,14 +783,20 @@ export default function DemoPreview() {
                   </div>
                 </div>
                 
-                {/* WhatsApp CTA in Contact */}
+                {/* CTA in Contact - WhatsApp if available, otherwise Social */}
                 <div className="flex flex-col justify-center">
-                  {whatsappLink && (
+                  {whatsappLink ? (
                     <a href={whatsappLink} target="_blank" rel="noopener noreferrer"
                        className="inline-flex items-center justify-center gap-3 bg-green-500 hover:bg-green-600 text-white px-6 sm:px-8 py-4 sm:py-5 rounded-full font-bold text-base sm:text-lg hover:shadow-2xl transition-all">
                       <MessageCircle size={24} />
                       {t('whatsapp.buttonText', lang)}
                     </a>
+                  ) : (
+                    <button onClick={() => scrollToSection('social')}
+                       className="inline-flex items-center justify-center gap-3 bg-white/20 hover:bg-white/30 text-white px-6 sm:px-8 py-4 sm:py-5 rounded-full font-bold text-base sm:text-lg hover:shadow-2xl transition-all">
+                      <Instagram size={24} />
+                      {t('sections.socialTitle', lang)}
+                    </button>
                   )}
                 </div>
               </div>
@@ -735,11 +863,17 @@ export default function DemoPreview() {
               {isFoodBusiness ? t('cta.comeVisitUs', lang) : `${business.name} ${t('cta.atYourService', lang)}`}
             </p>
             <div className="flex flex-wrap justify-center gap-3 sm:gap-4 px-4">
-              {whatsappLink && (
+              {whatsappLink ? (
                 <a href={whatsappLink} target="_blank" rel="noopener noreferrer"
                    className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 sm:px-10 py-3 sm:py-4 rounded-full font-bold text-sm sm:text-lg hover:shadow-2xl transition-all">
                   <MessageCircle size={22} />
                   WhatsApp
+                </a>
+              ) : business.phone && (
+                <a href={`tel:${business.phone}`}
+                   className="inline-flex items-center gap-2 bg-white text-neutral-900 px-6 sm:px-10 py-3 sm:py-4 rounded-full font-bold text-sm sm:text-lg hover:shadow-2xl transition-all">
+                  <Phone size={22} />
+                  {t('hero.callNow', lang)}
                 </a>
               )}
               {business.google_maps_link && (
@@ -764,7 +898,7 @@ export default function DemoPreview() {
               <div>
                 <h4 className="font-bold mb-3 sm:mb-4 text-sm sm:text-base">{t('footer.contact', lang)}</h4>
                 <div className="space-y-1 sm:space-y-2 text-neutral-400 text-xs sm:text-sm">
-                  {business.phone && <p>{business.phone}</p>}
+                  {business.phone && <p>{formattedPhone}</p>}
                   {business.address && <p>{business.address}</p>}
                 </div>
               </div>
