@@ -160,17 +160,26 @@ class handler(BaseHTTPRequestHandler):
                         services = value
                         break
             
-            # Determine booking mode
+            # Determine booking mode - expanded categories
             booking_categories = {
                 'appointment': ['parrucchiere', 'barbiere', 'estetista', 'centro estetico', 'tatuatore', 'tatuaggi', 
                                'nail salon', 'spa', 'dentista', 'fisioterapista', 'veterinario', 'ottico',
-                               'palestra', 'centro yoga', 'pilates', 'crossfit', 'fotografo'],
-                'table': ['ristorante', 'pizzeria', 'trattoria', 'osteria', 'hamburgeria', 'sushi', 'poke', 'pub']
+                               'palestra', 'centro yoga', 'pilates', 'crossfit', 'fotografo', 'studio fotografico',
+                               'massaggiatore', 'massaggio', 'beauty', 'bellezza', 'salone', 'hair', 'barber',
+                               'tattoo', 'piercing', 'nails', 'unghie', 'manicure', 'pedicure', 'solarium',
+                               'medico', 'dottore', 'clinica', 'ambulatorio', 'studio medico', 'psicologo',
+                               'nutrizionista', 'dietologo', 'osteopata', 'chiropratico', 'personal trainer',
+                               'coach', 'consulente', 'avvocato', 'commercialista', 'notaio'],
+                'table': ['ristorante', 'pizzeria', 'trattoria', 'osteria', 'hamburgeria', 'sushi', 'poke', 'pub',
+                         'bar', 'caffè', 'cafe', 'caffetteria', 'bistro', 'bistrò', 'tavola calda', 'rosticceria',
+                         'braceria', 'steakhouse', 'wine bar', 'enoteca', 'ristorante giapponese', 'ristorante cinese',
+                         'ristorante indiano', 'ristorante messicano', 'ristorante italiano', 'gelateria', 'pasticceria']
             }
             
             booking_mode = 'none'
+            category_lower = category.lower()
             for mode, cats in booking_categories.items():
-                if any(c in category for c in cats):
+                if any(c in category_lower for c in cats):
                     booking_mode = mode
                     break
             

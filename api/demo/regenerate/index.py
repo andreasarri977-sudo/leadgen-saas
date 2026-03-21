@@ -128,16 +128,25 @@ class handler(BaseHTTPRequestHandler):
                         services = value
                         break
             
-            # Booking mode
+            # Booking mode - expanded categories
             booking_categories = {
                 'appointment': ['parrucchiere', 'barbiere', 'estetista', 'centro estetico', 'tatuatore', 'tatuaggi', 
                                'nail salon', 'spa', 'dentista', 'fisioterapista', 'veterinario', 'ottico',
-                               'palestra', 'centro yoga', 'pilates', 'crossfit', 'fotografo'],
-                'table': ['ristorante', 'pizzeria', 'trattoria', 'osteria', 'hamburgeria', 'sushi', 'poke', 'pub']
+                               'palestra', 'centro yoga', 'pilates', 'crossfit', 'fotografo', 'studio fotografico',
+                               'massaggiatore', 'massaggio', 'beauty', 'bellezza', 'salone', 'hair', 'barber',
+                               'tattoo', 'piercing', 'nails', 'unghie', 'manicure', 'pedicure', 'solarium',
+                               'medico', 'dottore', 'clinica', 'ambulatorio', 'studio medico', 'psicologo',
+                               'nutrizionista', 'dietologo', 'osteopata', 'chiropratico', 'personal trainer',
+                               'coach', 'consulente', 'avvocato', 'commercialista', 'notaio'],
+                'table': ['ristorante', 'pizzeria', 'trattoria', 'osteria', 'hamburgeria', 'sushi', 'poke', 'pub',
+                         'bar', 'caffè', 'cafe', 'caffetteria', 'bistro', 'bistrò', 'tavola calda', 'rosticceria',
+                         'braceria', 'steakhouse', 'wine bar', 'enoteca', 'ristorante giapponese', 'ristorante cinese',
+                         'ristorante indiano', 'ristorante messicano', 'ristorante italiano', 'gelateria', 'pasticceria']
             }
             booking_mode = 'none'
+            category_lower = category.lower()
             for mode, cats in booking_categories.items():
-                if any(c in category for c in cats):
+                if any(c in category_lower for c in cats):
                     booking_mode = mode
                     break
             
@@ -179,7 +188,7 @@ class handler(BaseHTTPRequestHandler):
                 "primary_type": lead.get('primary_type'),
                 "types": lead.get('types', []),
                 "site_language": lead.get('site_language', 'it'),
-                "booking_mode": existing_business.get('booking_mode') or booking_mode,
+                "booking_mode": booking_mode if existing_business.get('booking_mode') in [None, '', 'none'] else existing_business.get('booking_mode'),
                 "external_booking_url": existing_business.get('external_booking_url') or lead.get('external_booking_url'),
                 "whatsapp_number": existing_business.get('whatsapp_number', ''),
                 "instagram_url": existing_business.get('instagram_url', ''),
