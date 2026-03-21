@@ -45,7 +45,7 @@ Per utilizzare tutte le funzionalità di LeadHunter Pro, devi configurare le seg
 1. Clicca sulla chiave appena creata
 2. **Restrizioni applicazione:**
    - Seleziona "Referrer HTTP"
-   - Aggiungi: `https://prod-stats.preview.emergentagent.com/*`
+   - Aggiungi: `https://booking-manager-app.preview.emergentagent.com/*`
    - Aggiungi: `http://localhost:*/*` (solo per sviluppo locale)
 3. **Restrizioni API:**
    - Seleziona "Limita chiave"

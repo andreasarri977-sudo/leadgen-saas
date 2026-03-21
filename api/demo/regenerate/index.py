@@ -141,19 +141,24 @@ class handler(BaseHTTPRequestHandler):
                     booking_mode = mode
                     break
             
-            # New content
+            # Get existing content to preserve custom settings
+            existing_content = demo.get('content', {})
+            existing_business = demo.get('business_data', {})
+            
+            # New content - preserve color_scheme, hero_image, theme if set
             new_content = {
                 "tagline": f"Il miglior {category} a {city}" if city else "Qualità e professionalità",
                 "about_text": f"{business_name} è il punto di riferimento per {category} a {city}. Con anni di esperienza e passione, offriamo servizi di alta qualità per soddisfare ogni esigenza dei nostri clienti. Vieni a trovarci!",
                 "homepage_subtitle": f"{category.title()} di qualità a {city}",
                 "services": services,
                 "services_intro": f"Scopri tutti i servizi offerti da {business_name}",
-                "cta_text": "Contattaci Oggi!",
-                "theme": "modern",
-                "color_scheme": "blue"
+                "cta_text": existing_content.get('cta_text', 'Contattaci Oggi!'),
+                "theme": existing_content.get('theme', 'modern'),
+                "color_scheme": existing_content.get('color_scheme', 'blue'),
+                "hero_image": existing_content.get('hero_image')
             }
             
-            # New business data
+            # New business data - preserve custom fields
             new_business_data = {
                 "place_id": lead.get('place_id'),
                 "name": lead.get('name'),
@@ -161,8 +166,8 @@ class handler(BaseHTTPRequestHandler):
                 "address": lead.get('address'),
                 "city": lead.get('city'),
                 "country": lead.get('country'),
-                "phone": lead.get('phone'),
-                "email": lead.get('email'),
+                "phone": existing_business.get('phone') or lead.get('phone'),
+                "email": existing_business.get('email') or lead.get('email'),
                 "rating": lead.get('rating'),
                 "reviews_count": lead.get('reviews_count'),
                 "reviews": lead.get('reviews', []),
@@ -174,8 +179,11 @@ class handler(BaseHTTPRequestHandler):
                 "primary_type": lead.get('primary_type'),
                 "types": lead.get('types', []),
                 "site_language": lead.get('site_language', 'it'),
-                "booking_mode": booking_mode,
-                "external_booking_url": lead.get('external_booking_url')
+                "booking_mode": existing_business.get('booking_mode') or booking_mode,
+                "external_booking_url": existing_business.get('external_booking_url') or lead.get('external_booking_url'),
+                "whatsapp_number": existing_business.get('whatsapp_number', ''),
+                "instagram_url": existing_business.get('instagram_url', ''),
+                "facebook_url": existing_business.get('facebook_url', '')
             }
             
             # Update demo

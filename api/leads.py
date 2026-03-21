@@ -26,13 +26,30 @@ MONGO_URL = os.environ.get("MONGO_URL") or os.environ.get("URL_MONGO")
 DB_NAME = os.environ.get("DB_NAME", "leadhunter")
 GOOGLE_PLACES_API_KEY = os.environ.get("GOOGLE_PLACES_API_KEY")
 
-def get_place_details(place_id, api_key):
-    """Fetch detailed info from Google Places API"""
+def get_place_details(place_id, api_key, country='Italia'):
+    """Fetch detailed info from Google Places API with language based on country"""
     if not place_id or not api_key:
         return {}
     
+    # Map country to language code
+    country_lang_map = {
+        'Italia': 'it', 'Italy': 'it', 'IT': 'it',
+        'Francia': 'fr', 'France': 'fr', 'FR': 'fr',
+        'Spagna': 'es', 'Spain': 'es', 'España': 'es', 'ES': 'es',
+        'Germania': 'de', 'Germany': 'de', 'Deutschland': 'de', 'DE': 'de',
+        'Regno Unito': 'en', 'United Kingdom': 'en', 'UK': 'en', 'GB': 'en',
+        'Stati Uniti': 'en', 'United States': 'en', 'USA': 'en', 'US': 'en',
+        'Portogallo': 'pt', 'Portugal': 'pt', 'PT': 'pt',
+        'Paesi Bassi': 'nl', 'Netherlands': 'nl', 'NL': 'nl',
+        'Austria': 'de', 'AT': 'de',
+        'Svizzera': 'de', 'Switzerland': 'de', 'CH': 'de',
+        'Belgio': 'fr', 'Belgium': 'fr', 'BE': 'fr'
+    }
+    
+    lang_code = country_lang_map.get(country, 'it')
+    
     try:
-        url = f"https://places.googleapis.com/v1/places/{place_id}"
+        url = f"https://places.googleapis.com/v1/places/{place_id}?languageCode={lang_code}"
         headers = {
             "X-Goog-Api-Key": api_key,
             "X-Goog-FieldMask": "id,displayName,formattedAddress,location,rating,userRatingCount,regularOpeningHours,photos,reviews,websiteUri,nationalPhoneNumber,googleMapsUri"
@@ -44,6 +61,7 @@ def get_place_details(place_id, api_key):
             data = json.loads(response.read().decode('utf-8'))
             
         result = {}
+        result['site_language'] = lang_code
         
         # Parse hours
         if 'regularOpeningHours' in data:
@@ -56,20 +74,36 @@ def get_place_details(place_id, api_key):
             for photo in data['photos'][:10]:
                 photo_name = photo.get('name', '')
                 if photo_name:
-                    # Build photo URL
                     photo_url = f"https://places.googleapis.com/v1/{photo_name}/media?maxHeightPx=800&maxWidthPx=800&key={api_key}"
                     photos.append({"url": photo_url})
             result['photos'] = photos
         
-        # Parse reviews (max 5)
+        # Parse reviews - get more reviews and sort by newest (publishTime)
         if 'reviews' in data:
+            reviews_raw = data['reviews']
+            
+            # Sort by publish time if available (most recent first)
+            # Google returns reviews with 'publishTime' field
+            sorted_reviews = sorted(
+                reviews_raw, 
+                key=lambda r: r.get('publishTime', '1970-01-01'), 
+                reverse=True
+            )
+            
             reviews = []
-            for review in data['reviews'][:5]:
+            for review in sorted_reviews[:6]:  # Get top 6 most recent
+                text_obj = review.get('text', {})
+                review_text = text_obj.get('text', '') if isinstance(text_obj, dict) else str(text_obj)
+                
+                # Get relative time in the requested language
+                relative_time = review.get('relativePublishTimeDescription', '')
+                
                 reviews.append({
                     "author": review.get('authorAttribution', {}).get('displayName', 'Anonimo'),
                     "rating": review.get('rating', 5),
-                    "text": review.get('text', {}).get('text', ''),
-                    "time": review.get('relativePublishTimeDescription', '')
+                    "text": review_text,
+                    "time": relative_time,
+                    "publish_time": review.get('publishTime', '')
                 })
             result['reviews'] = reviews
         
@@ -77,7 +111,7 @@ def get_place_details(place_id, api_key):
         if 'googleMapsUri' in data:
             result['google_maps_link'] = data['googleMapsUri']
         
-        log(f"Place details fetched: {len(result.get('photos', []))} photos, {len(result.get('reviews', []))} reviews")
+        log(f"Place details fetched ({lang_code}): {len(result.get('photos', []))} photos, {len(result.get('reviews', []))} reviews")
         return result
         
     except Exception as e:
@@ -145,9 +179,10 @@ class handler(BaseHTTPRequestHandler):
             
             # Fetch additional details from Google Places
             place_details = {}
+            country = data.get("country", "Italia")
             if place_id and api_key:
-                log(f"Fetching place details for {place_id}")
-                place_details = get_place_details(place_id, api_key)
+                log(f"Fetching place details for {place_id} in {country}")
+                place_details = get_place_details(place_id, api_key, country)
             
             # Build location object
             location = data.get("location", {})
@@ -172,7 +207,7 @@ class handler(BaseHTTPRequestHandler):
                 "primary_type": data.get("primary_type", ""),
                 "types": data.get("types", []),
                 "status": "nuovo_lead",
-                "site_language": "it",
+                "site_language": place_details.get("site_language", "it"),
                 "booking_mode": "none",
                 # Enriched data from Place Details
                 "hours_text": place_details.get("hours_text", []),
