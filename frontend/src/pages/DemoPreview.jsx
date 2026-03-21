@@ -206,13 +206,20 @@ function BookingForm({ demoId, bookingMode, lang, style, businessPhone, external
     setSubmitting(true);
     try {
       await axios.post(`${API}/bookings`, {
-        demo_id: demoId, booking_type: bookingMode, date: formData.date, time: formData.time,
-        name: formData.name, phone: formData.phone, email: formData.email || null,
-        number_of_people: bookingMode === 'table' ? formData.numberOfPeople : null, notes: formData.notes || null
+        demo_id: demoId, 
+        booking_type: bookingMode, 
+        date: formData.date, 
+        time: formData.time,
+        customer_name: formData.name, 
+        customer_phone: formData.phone, 
+        customer_email: formData.email || '',
+        guests: bookingMode === 'table' ? formData.numberOfPeople : 1, 
+        notes: formData.notes || ''
       });
       setSubmitted(true);
       toast.success(t('booking.bookingSuccess', lang));
     } catch (error) {
+      console.error('Booking error:', error);
       toast.error(t('booking.bookingError', lang));
     } finally {
       setSubmitting(false);

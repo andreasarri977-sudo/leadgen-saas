@@ -10,6 +10,7 @@ import DemoSites from '@/pages/DemoSites';
 import DemoPreview from '@/pages/DemoPreview';
 import SiteEditor from '@/pages/SiteEditor';
 import EmailManager from '@/pages/EmailManager';
+import Bookings from '@/pages/Bookings';
 import Settings from '@/pages/Settings';
 import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import '@/App.css';
@@ -27,6 +28,7 @@ function App() {
             <Route path="leads/:leadId" element={<LeadDetail />} />
             <Route path="demos" element={<DemoSites />} />
             <Route path="site-editor/:demoId" element={<SiteEditor />} />
+            <Route path="bookings" element={<Bookings />} />
             <Route path="email" element={<EmailManager />} />
             <Route path="settings" element={<Settings />} />
           </Route>
