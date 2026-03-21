@@ -1,12 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Globe, Eye, Rocket, Loader2, CheckCircle, AlertCircle, ExternalLink, Shield, Link2, RefreshCw, Pencil, Trash2 } from 'lucide-react';
+import { Globe, Eye, Rocket, Loader2, CheckCircle, AlertCircle, ExternalLink, Shield, Link2, RefreshCw, Pencil, Trash2, Copy, Check } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import API from '@/lib/api';
+
+// Get the base URL for demos
+const getBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return '';
+};
 
 const STATUS_CONFIG = {
   draft: { label: 'Bozza', color: 'bg-neutral-500', icon: Eye },
@@ -32,6 +40,7 @@ export default function DemoSites() {
   const [addingDomain, setAddingDomain] = useState({});
   const [deleting, setDeleting] = useState({});
   const [regenerating, setRegenerating] = useState({});
+  const [copiedId, setCopiedId] = useState(null);
 
   useEffect(() => {
     loadDemos();
@@ -46,6 +55,32 @@ export default function DemoSites() {
       toast.error('Errore caricamento siti demo');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const copyDemoLink = async (demoId, businessName) => {
+    const baseUrl = getBaseUrl();
+    const demoUrl = `${baseUrl}/demo/${demoId}`;
+    
+    try {
+      await navigator.clipboard.writeText(demoUrl);
+      setCopiedId(demoId);
+      toast.success(`Link di "${businessName}" copiato!`);
+      
+      // Reset copied state after 2 seconds
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (error) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = demoUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      setCopiedId(demoId);
+      toast.success(`Link di "${businessName}" copiato!`);
+      setTimeout(() => setCopiedId(null), 2000);
     }
   };
 
@@ -268,6 +303,26 @@ export default function DemoSites() {
 
               {/* Azioni */}
               <div className="space-y-2 mt-4">
+                {/* Copy Link - NEW */}
+                <Button
+                  data-testid={`copy-link-${demo.demo_id}`}
+                  onClick={() => copyDemoLink(demo.demo_id, demo.business_name)}
+                  variant="outline"
+                  className={`w-full ${copiedId === demo.demo_id ? 'bg-green-50 text-green-700 border-green-300' : ''}`}
+                >
+                  {copiedId === demo.demo_id ? (
+                    <>
+                      <Check className="mr-2" size={16} />
+                      Link Copiato!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="mr-2" size={16} />
+                      Copia Link Demo
+                    </>
+                  )}
+                </Button>
+
                 {/* Preview */}
                 <Button
                   data-testid={`view-demo-${demo.demo_id}`}
