@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Search, Loader2, MapPin, Star } from 'lucide-react';
+import { Search, Loader2, MapPin, Star, Plus, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,6 +42,50 @@ export default function SearchLeads() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [savingLeads, setSavingLeads] = useState({});
+  const [savedLeads, setSavedLeads] = useState({});
+
+  const handleSaveLead = async (lead) => {
+    const leadKey = lead.place_id || lead.name;
+    setSavingLeads(prev => ({ ...prev, [leadKey]: true }));
+    
+    try {
+      const response = await axios.post(`${API}/leads`, lead);
+      
+      if (response.data.already_exists) {
+        toast.info(`"${lead.name}" era già nei tuoi lead`);
+      } else {
+        toast.success(`"${lead.name}" salvato nei lead!`);
+      }
+      
+      setSavedLeads(prev => ({ ...prev, [leadKey]: true }));
+    } catch (error) {
+      console.error('Errore salvataggio lead:', error);
+      toast.error(`Errore nel salvataggio di "${lead.name}"`);
+    } finally {
+      setSavingLeads(prev => ({ ...prev, [leadKey]: false }));
+    }
+  };
+
+  const handleSaveAllLeads = async () => {
+    const unsavedLeads = results.filter(lead => {
+      const leadKey = lead.place_id || lead.name;
+      return !savedLeads[leadKey];
+    });
+    
+    if (unsavedLeads.length === 0) {
+      toast.info('Tutti i lead sono già stati salvati');
+      return;
+    }
+    
+    toast.info(`Salvataggio di ${unsavedLeads.length} lead in corso...`);
+    
+    for (const lead of unsavedLeads) {
+      await handleSaveLead(lead);
+    }
+    
+    toast.success(`${unsavedLeads.length} lead salvati!`);
+  };
 
   const handleSearch = async () => {
     if (!formData.city) {
@@ -201,7 +245,19 @@ export default function SearchLeads() {
         </Card>
 
         <Card className="p-6 lg:col-span-2" data-testid="search-results">
-          <h2 className="text-2xl font-bold mb-6 tracking-tight">Risultati</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold tracking-tight">Risultati</h2>
+            {results.length > 0 && (
+              <Button 
+                onClick={handleSaveAllLeads}
+                className="bg-green-600 hover:bg-green-700"
+                data-testid="save-all-leads-button"
+              >
+                <Plus size={16} className="mr-2" />
+                Salva Tutti ({results.length})
+              </Button>
+            )}
+          </div>
 
           {error && (
             <div className={`mb-6 p-4 ${error.isInfo ? 'bg-blue-50 border-2 border-blue-500' : 'bg-red-50 border-2 border-red-500'} rounded-lg`} data-testid="error-banner">
@@ -255,31 +311,66 @@ export default function SearchLeads() {
           )}
 
           <div className="space-y-3">
-            {results.map((lead) => (
-              <div
-                key={lead.lead_id}
-                data-testid={`lead-result-${lead.lead_id}`}
-                className="p-4 border border-neutral-200 rounded-lg hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-bold text-lg">{lead.name}</h3>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-neutral-600">
-                      <span className="flex items-center gap-1">
-                        <MapPin size={14} />
-                        {lead.city}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Star size={14} className="text-yellow-500" />
-                        {lead.rating} ({lead.reviews_count} recensioni)
-                      </span>
+            {results.map((lead) => {
+              const leadKey = lead.place_id || lead.name;
+              const isSaving = savingLeads[leadKey];
+              const isSaved = savedLeads[leadKey];
+              
+              return (
+                <div
+                  key={leadKey}
+                  data-testid={`lead-result-${leadKey}`}
+                  className="p-4 border border-neutral-200 rounded-lg hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg">{lead.name}</h3>
+                      <div className="flex items-center gap-4 mt-2 text-sm text-neutral-600">
+                        <span className="flex items-center gap-1">
+                          <MapPin size={14} />
+                          {lead.city}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Star size={14} className="text-yellow-500" />
+                          {lead.rating} ({lead.reviews_count} recensioni)
+                        </span>
+                      </div>
+                      <p className="text-sm text-neutral-500 mt-1">{lead.address}</p>
+                      {lead.phone && (
+                        <p className="text-sm text-neutral-600 mt-1">📞 {lead.phone}</p>
+                      )}
                     </div>
-                    <p className="text-sm text-neutral-500 mt-1">{lead.address}</p>
+                    <div className="flex flex-col items-end gap-2">
+                      <Badge className="bg-blue-500 text-white">Potenziale</Badge>
+                      <Button
+                        size="sm"
+                        onClick={() => handleSaveLead(lead)}
+                        disabled={isSaving || isSaved}
+                        className={isSaved 
+                          ? "bg-green-100 text-green-700 hover:bg-green-100" 
+                          : "bg-green-600 hover:bg-green-700 text-white"
+                        }
+                        data-testid={`save-lead-${leadKey}`}
+                      >
+                        {isSaving ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : isSaved ? (
+                          <>
+                            <Check size={14} className="mr-1" />
+                            Salvato
+                          </>
+                        ) : (
+                          <>
+                            <Plus size={14} className="mr-1" />
+                            Salva Lead
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
-                  <Badge className="bg-green-500 text-white">Nuovo Lead</Badge>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
       </div>
