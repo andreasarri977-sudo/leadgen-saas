@@ -31,6 +31,7 @@ export default function DemoSites() {
   const [domainInputs, setDomainInputs] = useState({});
   const [addingDomain, setAddingDomain] = useState({});
   const [deleting, setDeleting] = useState({});
+  const [regenerating, setRegenerating] = useState({});
 
   useEffect(() => {
     loadDemos();
@@ -45,6 +46,20 @@ export default function DemoSites() {
       toast.error('Errore caricamento siti demo');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRegenerate = async (demoId, businessName) => {
+    setRegenerating(prev => ({ ...prev, [demoId]: true }));
+    try {
+      await axios.post(`${API}/demo/regenerate`, { demo_id: demoId });
+      toast.success(`Sito "${businessName}" rigenerato con nuovi contenuti!`);
+      loadDemos(); // Reload to get updated data
+    } catch (error) {
+      console.error('Errore rigenerazione:', error);
+      toast.error('Errore durante la rigenerazione');
+    } finally {
+      setRegenerating(prev => ({ ...prev, [demoId]: false }));
     }
   };
 
@@ -273,6 +288,22 @@ export default function DemoSites() {
                 >
                   <Pencil className="mr-2" size={16} />
                   Modifica Sito
+                </Button>
+
+                {/* Regenerate Site */}
+                <Button
+                  data-testid={`regenerate-demo-${demo.demo_id}`}
+                  onClick={() => handleRegenerate(demo.demo_id, demo.business_name)}
+                  disabled={regenerating[demo.demo_id]}
+                  variant="outline"
+                  className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                >
+                  {regenerating[demo.demo_id] ? (
+                    <Loader2 className="mr-2 animate-spin" size={16} />
+                  ) : (
+                    <RefreshCw className="mr-2" size={16} />
+                  )}
+                  Rigenera Contenuti
                 </Button>
 
                 {/* Delete Site */}
