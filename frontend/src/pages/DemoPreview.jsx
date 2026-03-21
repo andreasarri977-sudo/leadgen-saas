@@ -40,7 +40,81 @@ const filterReviews = (reviews) => {
   });
 };
 
-// Style variants
+// Sort reviews by recency (most recent first)
+const sortReviewsByRecency = (reviews) => {
+  if (!reviews || reviews.length === 0) return [];
+  
+  const timeOrder = {
+    'un giorno fa': 1, 'a day ago': 1, 'hace un día': 1, 'il y a un jour': 1,
+    'una settimana fa': 7, 'a week ago': 7, 'hace una semana': 7, 'il y a une semaine': 7,
+    '2 settimane fa': 14, '2 weeks ago': 14, 'hace 2 semanas': 14, 'il y a 2 semaines': 14,
+    'un mese fa': 30, 'a month ago': 30, 'hace un mes': 30, 'il y a un mois': 30,
+    '2 mesi fa': 60, '2 months ago': 60, 'hace 2 meses': 60, 'il y a 2 mois': 60,
+    '3 mesi fa': 90, '3 months ago': 90, 'hace 3 meses': 90, 'il y a 3 mois': 90,
+    '6 mesi fa': 180, '6 months ago': 180, 'hace 6 meses': 180, 'il y a 6 mois': 180,
+    'un anno fa': 365, 'a year ago': 365, 'hace un año': 365, 'il y a un an': 365
+  };
+  
+  return [...reviews].sort((a, b) => {
+    const timeA = a.time?.toLowerCase() || '';
+    const timeB = b.time?.toLowerCase() || '';
+    
+    let daysA = 999;
+    let daysB = 999;
+    
+    for (const [key, days] of Object.entries(timeOrder)) {
+      if (timeA.includes(key.toLowerCase())) daysA = days;
+      if (timeB.includes(key.toLowerCase())) daysB = days;
+    }
+    
+    // Extract number from time string (e.g., "6 months ago" -> 6)
+    const numA = parseInt(timeA.match(/\d+/)?.[0] || '1');
+    const numB = parseInt(timeB.match(/\d+/)?.[0] || '1');
+    
+    if (timeA.includes('month') || timeA.includes('mese') || timeA.includes('mois')) daysA = numA * 30;
+    if (timeB.includes('month') || timeB.includes('mese') || timeB.includes('mois')) daysB = numB * 30;
+    if (timeA.includes('week') || timeA.includes('settiman') || timeA.includes('semaine')) daysA = numA * 7;
+    if (timeB.includes('week') || timeB.includes('settiman') || timeB.includes('semaine')) daysB = numB * 7;
+    if (timeA.includes('year') || timeA.includes('anno') || timeA.includes('an')) daysA = numA * 365;
+    if (timeB.includes('year') || timeB.includes('anno') || timeB.includes('an')) daysB = numB * 365;
+    
+    return daysA - daysB;
+  });
+};
+
+// Translate review time to target language
+const translateReviewTime = (time, lang) => {
+  if (!time) return '';
+  
+  const translations = {
+    it: {
+      'a day ago': 'un giorno fa', 'a week ago': 'una settimana fa', 'a month ago': 'un mese fa', 'a year ago': 'un anno fa',
+      'days ago': 'giorni fa', 'weeks ago': 'settimane fa', 'months ago': 'mesi fa', 'years ago': 'anni fa'
+    },
+    fr: {
+      'a day ago': 'il y a un jour', 'a week ago': 'il y a une semaine', 'a month ago': 'il y a un mois', 'a year ago': 'il y a un an',
+      'days ago': 'jours', 'weeks ago': 'semaines', 'months ago': 'mois', 'years ago': 'ans'
+    },
+    es: {
+      'a day ago': 'hace un día', 'a week ago': 'hace una semana', 'a month ago': 'hace un mes', 'a year ago': 'hace un año',
+      'days ago': 'días', 'weeks ago': 'semanas', 'months ago': 'meses', 'years ago': 'años'
+    },
+    de: {
+      'a day ago': 'vor einem Tag', 'a week ago': 'vor einer Woche', 'a month ago': 'vor einem Monat', 'a year ago': 'vor einem Jahr',
+      'days ago': 'Tagen', 'weeks ago': 'Wochen', 'months ago': 'Monaten', 'years ago': 'Jahren'
+    }
+  };
+  
+  if (lang === 'en' || !translations[lang]) return time;
+  
+  let translated = time;
+  for (const [en, local] of Object.entries(translations[lang])) {
+    translated = translated.replace(new RegExp(en, 'gi'), local);
+  }
+  return translated;
+};
+
+// Style variants - can be overridden by color_scheme
 const STYLE_VARIANTS = [
   { id: 'modern-blue', primaryColor: 'from-blue-600 to-blue-800', accentColor: 'bg-blue-600', buttonColor: 'bg-blue-600 hover:bg-blue-700', cardBg: 'bg-blue-50', textAccent: 'text-blue-600' },
   { id: 'elegant-purple', primaryColor: 'from-purple-600 to-purple-800', accentColor: 'bg-purple-600', buttonColor: 'bg-purple-600 hover:bg-purple-700', cardBg: 'bg-purple-50', textAccent: 'text-purple-600' },
@@ -49,7 +123,26 @@ const STYLE_VARIANTS = [
   { id: 'professional-slate', primaryColor: 'from-slate-700 to-slate-900', accentColor: 'bg-slate-700', buttonColor: 'bg-slate-700 hover:bg-slate-800', cardBg: 'bg-slate-50', textAccent: 'text-slate-700' }
 ];
 
-const getStyleFromPlaceId = (placeId) => {
+// Color scheme map - for user-selected colors
+const COLOR_SCHEME_MAP = {
+  'blue': { primaryColor: 'from-blue-600 to-blue-800', accentColor: 'bg-blue-600', buttonColor: 'bg-blue-600 hover:bg-blue-700', cardBg: 'bg-blue-50', textAccent: 'text-blue-600' },
+  'purple': { primaryColor: 'from-purple-600 to-purple-800', accentColor: 'bg-purple-600', buttonColor: 'bg-purple-600 hover:bg-purple-700', cardBg: 'bg-purple-50', textAccent: 'text-purple-600' },
+  'green': { primaryColor: 'from-green-600 to-green-800', accentColor: 'bg-green-600', buttonColor: 'bg-green-600 hover:bg-green-700', cardBg: 'bg-green-50', textAccent: 'text-green-600' },
+  'orange': { primaryColor: 'from-orange-600 to-orange-800', accentColor: 'bg-orange-600', buttonColor: 'bg-orange-600 hover:bg-orange-700', cardBg: 'bg-orange-50', textAccent: 'text-orange-600' },
+  'red': { primaryColor: 'from-red-600 to-red-800', accentColor: 'bg-red-600', buttonColor: 'bg-red-600 hover:bg-red-700', cardBg: 'bg-red-50', textAccent: 'text-red-600' },
+  'pink': { primaryColor: 'from-pink-600 to-pink-800', accentColor: 'bg-pink-600', buttonColor: 'bg-pink-600 hover:bg-pink-700', cardBg: 'bg-pink-50', textAccent: 'text-pink-600' },
+  'teal': { primaryColor: 'from-teal-600 to-teal-800', accentColor: 'bg-teal-600', buttonColor: 'bg-teal-600 hover:bg-teal-700', cardBg: 'bg-teal-50', textAccent: 'text-teal-600' },
+  'indigo': { primaryColor: 'from-indigo-600 to-indigo-800', accentColor: 'bg-indigo-600', buttonColor: 'bg-indigo-600 hover:bg-indigo-700', cardBg: 'bg-indigo-50', textAccent: 'text-indigo-600' },
+  'slate': { primaryColor: 'from-slate-700 to-slate-900', accentColor: 'bg-slate-700', buttonColor: 'bg-slate-700 hover:bg-slate-800', cardBg: 'bg-slate-50', textAccent: 'text-slate-700' },
+  'amber': { primaryColor: 'from-amber-600 to-amber-800', accentColor: 'bg-amber-600', buttonColor: 'bg-amber-600 hover:bg-amber-700', cardBg: 'bg-amber-50', textAccent: 'text-amber-600' }
+};
+
+const getStyleFromPlaceId = (placeId, colorScheme = null) => {
+  // If color scheme is set, use it
+  if (colorScheme && COLOR_SCHEME_MAP[colorScheme]) {
+    return COLOR_SCHEME_MAP[colorScheme];
+  }
+  // Otherwise, derive from place_id
   if (!placeId) return STYLE_VARIANTS[0];
   const hash = placeId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return STYLE_VARIANTS[hash % STYLE_VARIANTS.length];
@@ -354,7 +447,8 @@ export default function DemoPreview() {
   const business = demo.business_data || {};
   const content = demo.content || {};
   const photos = business.photos || [];
-  const reviews = filterReviews(business.reviews);
+  const rawReviews = filterReviews(business.reviews);
+  const reviews = sortReviewsByRecency(rawReviews);
   
   // Locale language (from country)
   const localeLang = business.site_language || getLanguageFromCountry(business.country) || 'it';
@@ -367,9 +461,10 @@ export default function DemoPreview() {
   const bookingMode = business.booking_mode || 'none';
   const externalBookingUrl = business.external_booking_url;
   
-  const style = getStyleFromPlaceId(business.place_id);
+  const style = getStyleFromPlaceId(business.place_id, content.color_scheme);
   
-  const heroPhoto = photos.length > 0 ? photos[0].url : null;
+  // Use hero_image if set, otherwise first photo
+  const heroPhoto = content.hero_image || (photos.length > 0 ? photos[0].url : null);
   const galleryPhotos = photos.slice(1, 13);
   
   const lightboxSlides = galleryPhotos.map(photo => ({ src: photo.url, alt: business.name }));
@@ -703,7 +798,7 @@ export default function DemoPreview() {
                     <p className="text-neutral-700 mb-3 leading-relaxed line-clamp-4 text-sm sm:text-base">"{review.text}"</p>
                     <div className="flex items-center justify-between text-xs sm:text-sm">
                       <span className="font-semibold text-neutral-800">{review.author}</span>
-                      <span className="text-neutral-400">{review.time}</span>
+                      <span className="text-neutral-400">{translateReviewTime(review.time, lang)}</span>
                     </div>
                   </div>
                 ))}

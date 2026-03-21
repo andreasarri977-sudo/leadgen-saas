@@ -4,7 +4,7 @@ import axios from 'axios';
 import { 
   ArrowLeft, Save, RefreshCw, Clock, UtensilsCrossed, FileText, 
   Phone, Images, Search, Loader2, CheckCircle, AlertCircle, ExternalLink,
-  Plus, Trash2, GripVertical, X, ImageIcon, Upload
+  Plus, Trash2, GripVertical, X, ImageIcon, Upload, Palette
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import API from '@/lib/api';
 
+// Color schemes
+const COLOR_SCHEMES = [
+  { id: 'blue', name: 'Blu', color: '#2563eb', preview: 'bg-blue-600' },
+  { id: 'purple', name: 'Viola', color: '#9333ea', preview: 'bg-purple-600' },
+  { id: 'green', name: 'Verde', color: '#16a34a', preview: 'bg-green-600' },
+  { id: 'orange', name: 'Arancione', color: '#ea580c', preview: 'bg-orange-600' },
+  { id: 'red', name: 'Rosso', color: '#dc2626', preview: 'bg-red-600' },
+  { id: 'pink', name: 'Rosa', color: '#db2777', preview: 'bg-pink-600' },
+  { id: 'teal', name: 'Verde Acqua', color: '#0d9488', preview: 'bg-teal-600' },
+  { id: 'indigo', name: 'Indaco', color: '#4f46e5', preview: 'bg-indigo-600' },
+  { id: 'slate', name: 'Ardesia', color: '#475569', preview: 'bg-slate-600' },
+  { id: 'amber', name: 'Ambra', color: '#d97706', preview: 'bg-amber-600' }
+];
+
 const DAYS = [
   { code: 'mon', name: 'Lunedì' },
   { code: 'tue', name: 'Martedì' },
@@ -26,6 +40,100 @@ const DAYS = [
   { code: 'sat', name: 'Sabato' },
   { code: 'sun', name: 'Domenica' }
 ];
+
+// Style Editor Component
+function StyleEditor({ heroImage, colorScheme, theme, gallery, onUpdate, onSave, saving }) {
+  const [selectedColor, setSelectedColor] = useState(colorScheme || 'blue');
+  const [selectedHeroIndex, setSelectedHeroIndex] = useState(0);
+  
+  const handleColorChange = (colorId) => {
+    setSelectedColor(colorId);
+    onUpdate({ color_scheme: colorId });
+  };
+  
+  const handleHeroChange = (imageUrl, index) => {
+    setSelectedHeroIndex(index);
+    onUpdate({ hero_image: imageUrl });
+  };
+  
+  return (
+    <Card className="p-6">
+      <h3 className="text-lg font-semibold mb-6">Stile del Sito</h3>
+      
+      {/* Color Scheme */}
+      <div className="mb-8">
+        <Label className="text-base font-medium mb-3 block">Colore Principale</Label>
+        <p className="text-sm text-neutral-500 mb-4">Scegli il colore dei pulsanti e degli elementi principali</p>
+        <div className="grid grid-cols-5 sm:grid-cols-10 gap-3">
+          {COLOR_SCHEMES.map((scheme) => (
+            <button
+              key={scheme.id}
+              onClick={() => handleColorChange(scheme.id)}
+              className={`w-10 h-10 rounded-full ${scheme.preview} transition-all hover:scale-110 ${
+                selectedColor === scheme.id ? 'ring-4 ring-offset-2 ring-blue-400' : ''
+              }`}
+              title={scheme.name}
+            />
+          ))}
+        </div>
+        <p className="text-sm text-neutral-500 mt-2">
+          Selezionato: <span className="font-medium">{COLOR_SCHEMES.find(c => c.id === selectedColor)?.name}</span>
+        </p>
+      </div>
+      
+      {/* Hero Image Selection */}
+      <div className="mb-8">
+        <Label className="text-base font-medium mb-3 block">Immagine Hero (Sfondo principale)</Label>
+        <p className="text-sm text-neutral-500 mb-4">Seleziona l'immagine da usare come sfondo nella sezione principale</p>
+        
+        {gallery && gallery.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {gallery.map((img, index) => {
+              const imageUrl = typeof img === 'string' ? img : img.url;
+              return (
+                <button
+                  key={index}
+                  onClick={() => handleHeroChange(imageUrl, index)}
+                  className={`relative aspect-video rounded-lg overflow-hidden border-2 transition-all ${
+                    selectedHeroIndex === index ? 'border-blue-500 ring-2 ring-blue-300' : 'border-neutral-200 hover:border-neutral-400'
+                  }`}
+                >
+                  <img src={imageUrl} alt={`Opzione ${index + 1}`} className="w-full h-full object-cover" />
+                  {selectedHeroIndex === index && (
+                    <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
+                      <CheckCircle className="text-white" size={24} />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="bg-neutral-100 rounded-lg p-8 text-center">
+            <ImageIcon className="mx-auto text-neutral-400 mb-2" size={32} />
+            <p className="text-neutral-500">Nessuna immagine disponibile nella galleria</p>
+            <p className="text-sm text-neutral-400 mt-1">Aggiungi immagini nella tab "Galleria"</p>
+          </div>
+        )}
+      </div>
+      
+      {/* Save Button */}
+      <Button onClick={onSave} disabled={saving} className="w-full">
+        {saving ? (
+          <>
+            <Loader2 className="mr-2 animate-spin" size={16} />
+            Salvataggio...
+          </>
+        ) : (
+          <>
+            <Save className="mr-2" size={16} />
+            Salva Stile
+          </>
+        )}
+      </Button>
+    </Card>
+  );
+}
 
 export default function SiteEditor() {
   const { demoId } = useParams();
@@ -170,10 +278,14 @@ export default function SiteEditor() {
 
       {/* Tabs Editor */}
       <Tabs defaultValue="logo" className="w-full">
-        <TabsList className="grid w-full grid-cols-7 mb-6">
+        <TabsList className="grid w-full grid-cols-8 mb-6">
           <TabsTrigger value="logo" data-testid="tab-logo" className="flex items-center gap-2">
             <ImageIcon size={16} />
             <span className="hidden sm:inline">Logo</span>
+          </TabsTrigger>
+          <TabsTrigger value="style" data-testid="tab-style" className="flex items-center gap-2">
+            <Palette size={16} />
+            <span className="hidden sm:inline">Stile</span>
           </TabsTrigger>
           <TabsTrigger value="hours" data-testid="tab-hours" className="flex items-center gap-2">
             <Clock size={16} />
@@ -209,6 +321,23 @@ export default function SiteEditor() {
             onSave={saveSection}
             saving={saving.logo}
             onLogoUpdated={loadSiteData}
+          />
+        </TabsContent>
+
+        {/* STILE - Hero e Colori */}
+        <TabsContent value="style">
+          <StyleEditor 
+            heroImage={siteData.hero_image}
+            colorScheme={siteData.color_scheme || 'blue'}
+            theme={siteData.theme || 'modern'}
+            gallery={siteData.gallery || []}
+            onUpdate={(data) => updateSection('style', data)}
+            onSave={() => saveSection('style', { 
+              hero_image: siteData.hero_image, 
+              color_scheme: siteData.color_scheme,
+              theme: siteData.theme 
+            })}
+            saving={saving.style}
           />
         </TabsContent>
 
