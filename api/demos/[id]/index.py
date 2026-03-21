@@ -67,31 +67,92 @@ class handler(BaseHTTPRequestHandler):
             if action == "editor-data":
                 content = demo.get('content', {})
                 business = demo.get('business_data', {})
+                hours_text = business.get('hours_text', [])
+                
+                # Convert hours_text array to structured hours object
+                days_map = {
+                    'monday': 'lun', 'tuesday': 'mar', 'wednesday': 'mer',
+                    'thursday': 'gio', 'friday': 'ven', 'saturday': 'sab', 'sunday': 'dom',
+                    'lunedì': 'lun', 'martedì': 'mar', 'mercoledì': 'mer',
+                    'giovedì': 'gio', 'venerdì': 'ven', 'sabato': 'sab', 'domenica': 'dom'
+                }
+                
+                # Initialize default hours structure
+                default_hours = {
+                    'lun': {'closed': False, 'open': '09:00', 'close': '18:00', 'note': ''},
+                    'mar': {'closed': False, 'open': '09:00', 'close': '18:00', 'note': ''},
+                    'mer': {'closed': False, 'open': '09:00', 'close': '18:00', 'note': ''},
+                    'gio': {'closed': False, 'open': '09:00', 'close': '18:00', 'note': ''},
+                    'ven': {'closed': False, 'open': '09:00', 'close': '18:00', 'note': ''},
+                    'sab': {'closed': False, 'open': '09:00', 'close': '13:00', 'note': ''},
+                    'dom': {'closed': True, 'open': '', 'close': '', 'note': ''}
+                }
+                
+                # Try to parse hours_text into structured format
+                hours = demo.get('hours', default_hours)
+                if isinstance(hours, list):
+                    hours = default_hours
+                
+                # Build contacts object
+                contacts = {
+                    'phone': business.get('phone', ''),
+                    'email': business.get('email', ''),
+                    'address': business.get('address', ''),
+                    'city': business.get('city', ''),
+                    'whatsapp_number': business.get('whatsapp_number', ''),
+                    'instagram_url': business.get('instagram_url', ''),
+                    'facebook_url': business.get('facebook_url', ''),
+                    'booking_mode': business.get('booking_mode', 'none'),
+                    'external_booking_url': business.get('external_booking_url', '')
+                }
+                
+                # Build texts object
+                texts = {
+                    'tagline': content.get('tagline', ''),
+                    'about_text': content.get('about_text', ''),
+                    'homepage_subtitle': content.get('homepage_subtitle', ''),
+                    'services_intro': content.get('services_intro', ''),
+                    'cta_text': content.get('cta_text', 'Contattaci')
+                }
+                
+                # Build menu/services object
+                services = content.get('services', [])
+                menu = {
+                    'mode': 'services',
+                    'services': services if isinstance(services, list) else [],
+                    'categories': content.get('menu_categories', [])
+                }
+                
+                # Build gallery from photos
+                photos = business.get('photos', [])
+                gallery = [p.get('url', p) if isinstance(p, dict) else p for p in photos]
+                
+                # Build SEO object
+                seo = {
+                    'meta_title': content.get('meta_title', demo.get('business_name', '')),
+                    'meta_description': content.get('meta_description', content.get('about_text', '')[:160] if content.get('about_text') else ''),
+                    'keywords': content.get('keywords', '')
+                }
                 
                 editor_data = {
                     "demo_id": demo_id,
                     "business_name": demo.get('business_name', ''),
-                    "tagline": content.get('tagline', ''),
-                    "about_text": content.get('about_text', ''),
-                    "homepage_subtitle": content.get('homepage_subtitle', ''),
-                    "services_intro": content.get('services_intro', ''),
-                    "services": content.get('services', []),
-                    "cta_text": content.get('cta_text', 'Contattaci'),
+                    "logo_base64": demo.get('logo_base64'),
+                    "publish_status": demo.get('status', 'draft'),
+                    "production_url": demo.get('vercel_url') or demo.get('internal_url'),
+                    "locale_lang": business.get('site_language', 'it'),
+                    # Structured data for each tab
+                    "hours": hours,
+                    "hours_text": hours_text,
+                    "menu": menu,
+                    "texts": texts,
+                    "contacts": contacts,
+                    "gallery": gallery,
+                    "seo": seo,
+                    # Raw data
                     "theme": content.get('theme', 'modern'),
                     "color_scheme": content.get('color_scheme', 'blue'),
-                    "phone": business.get('phone', ''),
-                    "email": business.get('email', ''),
-                    "address": business.get('address', ''),
-                    "city": business.get('city', ''),
-                    "hours_text": business.get('hours_text', []),
-                    "booking_mode": business.get('booking_mode', 'none'),
-                    "external_booking_url": business.get('external_booking_url', ''),
-                    "photos": business.get('photos', []),
-                    "reviews": business.get('reviews', []),
-                    "logo_base64": demo.get('logo_base64'),
-                    "published": demo.get('published', False),
-                    "vercel_url": demo.get('vercel_url'),
-                    "status": demo.get('status', 'created')
+                    "reviews": business.get('reviews', [])
                 }
                 client.close()
                 return self._json_response(200, editor_data)
