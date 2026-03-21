@@ -133,8 +133,8 @@ export default function Dashboard() {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000); // 10 sec timeout
       
-      console.log('[LeadHunter] Fetching stats from:', `${API}/stats/dashboard`);
-      const response = await axios.get(`${API}/stats/dashboard`, {
+      console.log('[LeadHunter] Fetching stats from:', `${API}/stats`);
+      const response = await axios.get(`${API}/stats`, {
         signal: controller.signal
       });
       clearTimeout(timeout);
@@ -165,7 +165,7 @@ export default function Dashboard() {
         const errMsg = err.response?.data?.error || 'Errore interno del server';
         setError(`Errore: ${errMsg}`);
       } else if (err.response?.status === 404) {
-        setError(`Endpoint non trovato: ${API}/stats/dashboard`);
+        setError(`Endpoint non trovato: ${API}/stats`);
       } else {
         setError(`Impossibile caricare i dati: ${err.message}`);
       }
