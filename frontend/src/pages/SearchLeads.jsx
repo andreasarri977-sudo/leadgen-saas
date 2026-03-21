@@ -18,16 +18,63 @@ const COUNTRIES = [
 ];
 
 const CATEGORIES = [
+  // Bellezza & Cura della persona
   'Parrucchiere',
-  'Ristorante',
   'Estetista',
+  'Barbiere',
+  'Centro Estetico',
+  'Tatuatore',
+  'Nail Salon',
+  'Spa',
+  // Ristorazione
+  'Ristorante',
+  'Pizzeria',
+  'Bar',
+  'Caffetteria',
+  'Gelateria',
+  'Pasticceria',
+  'Hamburgeria',
+  'Fast Food',
+  'Kebab',
+  'Imbiss',
+  'Trattoria',
+  'Osteria',
+  'Pub',
+  'Sushi',
+  'Poke',
+  // Salute
   'Dentista',
+  'Fisioterapista',
+  'Veterinario',
+  'Farmacia',
+  'Ottico',
+  // Fitness & Sport
   'Palestra',
+  'Centro Yoga',
+  'Pilates',
+  'CrossFit',
+  // Servizi Auto
+  'Meccanico',
+  'Autolavaggio',
+  'Gommista',
+  'Carrozzeria',
+  // Servizi Casa
   'Idraulico',
   'Elettricista',
-  'Bar',
-  'Pizzeria',
-  'Meccanico'
+  'Fabbro',
+  'Falegname',
+  'Imbianchino',
+  // Commercio
+  'Fiorista',
+  'Negozio Abbigliamento',
+  'Gioielleria',
+  'Ferramenta',
+  // Altri Servizi
+  'Fotografo',
+  'Agenzia Immobiliare',
+  'Assicurazioni',
+  'Commercialista',
+  'Avvocato'
 ];
 
 export default function SearchLeads() {

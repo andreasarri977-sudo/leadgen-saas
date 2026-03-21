@@ -95,22 +95,77 @@ class handler(BaseHTTPRequestHandler):
             
             # Default services based on category
             services_map = {
+                # Bellezza & Cura persona
                 'parrucchiere': ['Taglio Uomo', 'Taglio Donna', 'Colore', 'Piega', 'Trattamenti', 'Barba'],
+                'barbiere': ['Taglio Classico', 'Barba', 'Rasatura', 'Trattamenti Viso', 'Hair Styling'],
+                'estetista': ['Manicure', 'Pedicure', 'Ceretta', 'Trattamenti Viso', 'Massaggi', 'Epilazione Laser'],
+                'centro estetico': ['Trattamenti Viso', 'Trattamenti Corpo', 'Massaggi', 'Depilazione', 'Solarium'],
+                'tatuatore': ['Tatuaggi Custom', 'Coperture', 'Rimozione Laser', 'Piercing', 'Consulenza Design'],
+                'tatuaggi': ['Tatuaggi Custom', 'Coperture', 'Rimozione Laser', 'Piercing', 'Consulenza Design'],
+                'nail salon': ['Manicure', 'Pedicure', 'Gel', 'Semipermanente', 'Nail Art', 'Ricostruzione'],
+                'spa': ['Massaggi', 'Sauna', 'Bagno Turco', 'Trattamenti Benessere', 'Percorso Spa'],
+                # Ristorazione
                 'ristorante': ['Pranzo', 'Cena', 'Menu Degustazione', 'Catering', 'Eventi Privati'],
                 'pizzeria': ['Pizza Classica', 'Pizza Gourmet', 'Antipasti', 'Dolci', 'Bevande'],
                 'bar': ['Caffetteria', 'Aperitivi', 'Cocktail', 'Brunch', 'Snack'],
-                'estetista': ['Manicure', 'Pedicure', 'Ceretta', 'Trattamenti Viso', 'Massaggi', 'Epilazione Laser'],
+                'caffetteria': ['Caffè Specialty', 'Colazione', 'Brunch', 'Pasticceria', 'Bevande'],
+                'gelateria': ['Gelato Artigianale', 'Granite', 'Semifreddi', 'Torte Gelato', 'Bevande'],
+                'pasticceria': ['Dolci', 'Torte', 'Pasticceria Secca', 'Colazioni', 'Catering Dolce'],
+                'hamburgeria': ['Hamburger Classic', 'Hamburger Gourmet', 'Patatine', 'Bevande', 'Dessert'],
+                'fast food': ['Panini', 'Patatine', 'Bevande', 'Menù Combo', 'Dessert'],
+                'kebab': ['Kebab', 'Piadine', 'Falafel', 'Piatti Tipici', 'Bevande'],
+                'imbiss': ['Currywurst', 'Döner', 'Pommes', 'Schnitzel', 'Getränke'],
+                'trattoria': ['Primi Piatti', 'Secondi', 'Contorni', 'Dolci della Casa', 'Vini Locali'],
+                'osteria': ['Taglieri', 'Primi Tradizionali', 'Carne', 'Formaggi', 'Vini'],
+                'pub': ['Birre Artigianali', 'Cocktail', 'Panini', 'Patatine', 'Aperitivi'],
+                'sushi': ['Sushi', 'Sashimi', 'Uramaki', 'Tempura', 'Piatti Caldi'],
+                'poke': ['Poke Bowl', 'Sushi Burrito', 'Edamame', 'Gyoza', 'Bevande'],
+                # Salute
                 'dentista': ['Visita di Controllo', 'Pulizia Dentale', 'Sbiancamento', 'Ortodonzia', 'Implantologia'],
+                'fisioterapista': ['Riabilitazione', 'Massoterapia', 'Terapia Manuale', 'Elettroterapia', 'Posturale'],
+                'veterinario': ['Visite', 'Vaccinazioni', 'Chirurgia', 'Ecografie', 'Toelettatura'],
+                'farmacia': ['Farmaci', 'Parafarmaci', 'Cosmetici', 'Integratori', 'Consulenza'],
+                'ottico': ['Esame Vista', 'Occhiali da Vista', 'Lenti a Contatto', 'Occhiali da Sole', 'Riparazioni'],
+                # Fitness
                 'palestra': ['Sala Pesi', 'Corsi Fitness', 'Personal Training', 'Yoga', 'Pilates'],
+                'centro yoga': ['Hatha Yoga', 'Vinyasa', 'Yin Yoga', 'Meditazione', 'Yoga Nidra'],
+                'pilates': ['Mat Pilates', 'Reformer', 'Pilates Posturale', 'Lezioni Private', 'Corsi Gruppo'],
+                'crossfit': ['WOD', 'Open Gym', 'Personal Training', 'Corsi Base', 'Competizioni'],
+                # Auto
                 'meccanico': ['Tagliando', 'Cambio Gomme', 'Riparazioni', 'Revisione', 'Carrozzeria'],
+                'autolavaggio': ['Lavaggio Esterno', 'Lavaggio Completo', 'Sanificazione', 'Ceratura', 'Detailing'],
+                'gommista': ['Cambio Gomme', 'Equilibratura', 'Convergenza', 'Riparazione Pneumatici', 'Stoccaggio'],
+                'carrozzeria': ['Riparazioni', 'Verniciatura', 'Lucidatura', 'Grandine', 'Restauro'],
+                # Casa
+                'idraulico': ['Riparazioni', 'Installazioni', 'Manutenzione', 'Emergenze', 'Ristrutturazioni'],
+                'elettricista': ['Impianti', 'Riparazioni', 'Domotica', 'Certificazioni', 'Emergenze'],
+                'fabbro': ['Apertura Porte', 'Sostituzione Serrature', 'Casseforti', 'Inferriate', 'Emergenze'],
+                'falegname': ['Mobili su Misura', 'Restauro', 'Infissi', 'Scale', 'Porte'],
+                'imbianchino': ['Tinteggiatura', 'Decorazioni', 'Cartongesso', 'Restauro', 'Esterni'],
+                # Commercio
+                'fiorista': ['Bouquet', 'Composizioni', 'Piante', 'Addobbi Matrimoni', 'Consegna a Domicilio'],
+                'gioielleria': ['Gioielli', 'Orologi', 'Riparazioni', 'Incisioni', 'Valutazioni'],
+                'ferramenta': ['Utensili', 'Vernici', 'Serrature', 'Giardinaggio', 'Elettrico'],
+                # Servizi
+                'fotografo': ['Ritratti', 'Matrimoni', 'Eventi', 'Prodotti', 'Ritocco Foto'],
+                'agenzia immobiliare': ['Vendita', 'Affitto', 'Valutazioni', 'Consulenza', 'Gestione'],
             }
             
             services = services_map.get(category, ['Servizio Premium', 'Consulenza', 'Assistenza Clienti'])
             
+            # Try partial match if exact match not found
+            if services == ['Servizio Premium', 'Consulenza', 'Assistenza Clienti']:
+                for key, value in services_map.items():
+                    if key in category or category in key:
+                        services = value
+                        break
+            
             # Determine booking mode
             booking_categories = {
-                'appointment': ['parrucchiere', 'estetista', 'dentista', 'medico', 'spa', 'massaggio'],
-                'table': ['ristorante', 'pizzeria', 'trattoria', 'osteria']
+                'appointment': ['parrucchiere', 'barbiere', 'estetista', 'centro estetico', 'tatuatore', 'tatuaggi', 
+                               'nail salon', 'spa', 'dentista', 'fisioterapista', 'veterinario', 'ottico',
+                               'palestra', 'centro yoga', 'pilates', 'crossfit', 'fotografo'],
+                'table': ['ristorante', 'pizzeria', 'trattoria', 'osteria', 'hamburgeria', 'sushi', 'poke', 'pub']
             }
             
             booking_mode = 'none'
