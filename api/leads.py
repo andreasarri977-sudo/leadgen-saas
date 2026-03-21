@@ -5,6 +5,7 @@ import os
 import sys
 import traceback
 from urllib.parse import parse_qs, urlparse
+import urllib.request
 
 # Logging
 def log(msg):
@@ -23,6 +24,65 @@ except ImportError as e:
 # Env vars: try MONGO_URL first, then URL_MONGO
 MONGO_URL = os.environ.get("MONGO_URL") or os.environ.get("URL_MONGO")
 DB_NAME = os.environ.get("DB_NAME", "leadhunter")
+GOOGLE_PLACES_API_KEY = os.environ.get("GOOGLE_PLACES_API_KEY")
+
+def get_place_details(place_id, api_key):
+    """Fetch detailed info from Google Places API"""
+    if not place_id or not api_key:
+        return {}
+    
+    try:
+        url = f"https://places.googleapis.com/v1/places/{place_id}"
+        headers = {
+            "X-Goog-Api-Key": api_key,
+            "X-Goog-FieldMask": "id,displayName,formattedAddress,location,rating,userRatingCount,regularOpeningHours,photos,reviews,websiteUri,nationalPhoneNumber,googleMapsUri"
+        }
+        
+        req = urllib.request.Request(url, headers=headers, method='GET')
+        
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            
+        result = {}
+        
+        # Parse hours
+        if 'regularOpeningHours' in data:
+            hours = data['regularOpeningHours']
+            result['hours_text'] = hours.get('weekdayDescriptions', [])
+        
+        # Parse photos (max 10)
+        if 'photos' in data:
+            photos = []
+            for photo in data['photos'][:10]:
+                photo_name = photo.get('name', '')
+                if photo_name:
+                    # Build photo URL
+                    photo_url = f"https://places.googleapis.com/v1/{photo_name}/media?maxHeightPx=800&maxWidthPx=800&key={api_key}"
+                    photos.append({"url": photo_url})
+            result['photos'] = photos
+        
+        # Parse reviews (max 5)
+        if 'reviews' in data:
+            reviews = []
+            for review in data['reviews'][:5]:
+                reviews.append({
+                    "author": review.get('authorAttribution', {}).get('displayName', 'Anonimo'),
+                    "rating": review.get('rating', 5),
+                    "text": review.get('text', {}).get('text', ''),
+                    "time": review.get('relativePublishTimeDescription', '')
+                })
+            result['reviews'] = reviews
+        
+        # Google Maps link
+        if 'googleMapsUri' in data:
+            result['google_maps_link'] = data['googleMapsUri']
+        
+        log(f"Place details fetched: {len(result.get('photos', []))} photos, {len(result.get('reviews', []))} reviews")
+        return result
+        
+    except Exception as e:
+        log(f"Place details error: {e}")
+        return {}
 
 log(f"MONGO_URL set: {bool(MONGO_URL)}")
 log(f"DB_NAME: {DB_NAME}")
@@ -36,7 +96,7 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
-        """Save a new lead to the database"""
+        """Save a new lead to the database with enriched data from Google Places"""
         log(f"POST {self.path}")
         
         if MongoClient is None:
@@ -57,11 +117,47 @@ class handler(BaseHTTPRequestHandler):
             from datetime import datetime, timezone
             
             lead_id = str(uuid.uuid4())[:8]
+            place_id = data.get("place_id", "")
             
-            # Build lead document
+            # Get API key for place details
+            api_key = GOOGLE_PLACES_API_KEY
+            client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+            db = client[DB_NAME]
+            
+            # Try to get API key from settings
+            try:
+                settings = db.api_settings.find_one({"setting_id": "api_settings"})
+                if settings and settings.get('google_maps_api_key'):
+                    api_key = settings.get('google_maps_api_key')
+            except:
+                pass
+            
+            # Check if lead already exists
+            existing = db.leads.find_one({"place_id": place_id})
+            if existing:
+                client.close()
+                log(f"Lead already exists: {data.get('name')}")
+                return self._json_response(200, {
+                    "message": "Lead già esistente",
+                    "lead_id": existing.get("lead_id"),
+                    "already_exists": True
+                })
+            
+            # Fetch additional details from Google Places
+            place_details = {}
+            if place_id and api_key:
+                log(f"Fetching place details for {place_id}")
+                place_details = get_place_details(place_id, api_key)
+            
+            # Build location object
+            location = data.get("location", {})
+            if isinstance(location, dict) and 'latitude' in location:
+                location = {"lat": location['latitude'], "lng": location['longitude']}
+            
+            # Build lead document with enriched data
             lead = {
                 "lead_id": lead_id,
-                "place_id": data.get("place_id", ""),
+                "place_id": place_id,
                 "name": data.get("name", ""),
                 "category": data.get("category", ""),
                 "address": data.get("address", ""),
@@ -72,32 +168,25 @@ class handler(BaseHTTPRequestHandler):
                 "rating": data.get("rating", 0),
                 "reviews_count": data.get("reviews_count", 0),
                 "website": data.get("website"),
-                "location": data.get("location", {}),
+                "location": location,
                 "primary_type": data.get("primary_type", ""),
                 "types": data.get("types", []),
                 "status": "nuovo_lead",
+                "site_language": "it",
+                "booking_mode": "none",
+                # Enriched data from Place Details
+                "hours_text": place_details.get("hours_text", []),
+                "photos": place_details.get("photos", []),
+                "reviews": place_details.get("reviews", []),
+                "google_maps_link": place_details.get("google_maps_link", ""),
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
-            
-            # Check if lead already exists
-            client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
-            db = client[DB_NAME]
-            
-            existing = db.leads.find_one({"place_id": lead["place_id"]})
-            if existing:
-                client.close()
-                log(f"Lead already exists: {lead['name']}")
-                return self._json_response(200, {
-                    "message": "Lead già esistente",
-                    "lead_id": existing.get("lead_id"),
-                    "already_exists": True
-                })
             
             # Insert new lead
             db.leads.insert_one(lead)
             client.close()
             
-            log(f"Lead saved: {lead_id} - {lead['name']}")
+            log(f"Lead saved: {lead_id} - {lead['name']} with {len(lead['photos'])} photos, {len(lead['reviews'])} reviews")
             
             # Remove _id from response
             lead.pop("_id", None)

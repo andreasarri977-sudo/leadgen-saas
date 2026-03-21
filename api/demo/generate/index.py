@@ -88,18 +88,51 @@ class handler(BaseHTTPRequestHandler):
                 "external_booking_url": lead.get('external_booking_url')
             }
             
-            # Generate basic content
+            # Generate content based on category
+            category = lead.get('category', 'servizio').lower()
+            business_name = lead.get('name', 'Attività')
+            city = lead.get('city', '')
+            
+            # Default services based on category
+            services_map = {
+                'parrucchiere': ['Taglio Uomo', 'Taglio Donna', 'Colore', 'Piega', 'Trattamenti', 'Barba'],
+                'ristorante': ['Pranzo', 'Cena', 'Menu Degustazione', 'Catering', 'Eventi Privati'],
+                'pizzeria': ['Pizza Classica', 'Pizza Gourmet', 'Antipasti', 'Dolci', 'Bevande'],
+                'bar': ['Caffetteria', 'Aperitivi', 'Cocktail', 'Brunch', 'Snack'],
+                'estetista': ['Manicure', 'Pedicure', 'Ceretta', 'Trattamenti Viso', 'Massaggi', 'Epilazione Laser'],
+                'dentista': ['Visita di Controllo', 'Pulizia Dentale', 'Sbiancamento', 'Ortodonzia', 'Implantologia'],
+                'palestra': ['Sala Pesi', 'Corsi Fitness', 'Personal Training', 'Yoga', 'Pilates'],
+                'meccanico': ['Tagliando', 'Cambio Gomme', 'Riparazioni', 'Revisione', 'Carrozzeria'],
+            }
+            
+            services = services_map.get(category, ['Servizio Premium', 'Consulenza', 'Assistenza Clienti'])
+            
+            # Determine booking mode
+            booking_categories = {
+                'appointment': ['parrucchiere', 'estetista', 'dentista', 'medico', 'spa', 'massaggio'],
+                'table': ['ristorante', 'pizzeria', 'trattoria', 'osteria']
+            }
+            
+            booking_mode = 'none'
+            for mode, cats in booking_categories.items():
+                if any(c in category for c in cats):
+                    booking_mode = mode
+                    break
+            
+            # Build content
             content = {
-                "tagline": f"Il miglior {lead.get('category', 'servizio')} a {lead.get('city', 'tua città')}",
-                "about": f"{lead.get('name')} offre servizi di alta qualità. Contattaci per maggiori informazioni.",
-                "services": [
-                    {"name": "Servizio 1", "description": "Descrizione servizio", "price": ""},
-                    {"name": "Servizio 2", "description": "Descrizione servizio", "price": ""},
-                    {"name": "Servizio 3", "description": "Descrizione servizio", "price": ""}
-                ],
+                "tagline": f"Il miglior {category} a {city}" if city else f"Qualità e professionalità",
+                "about_text": f"{business_name} è il punto di riferimento per {category} a {city}. Con anni di esperienza e passione, offriamo servizi di alta qualità per soddisfare ogni esigenza dei nostri clienti. Vieni a trovarci!",
+                "homepage_subtitle": f"{category.title()} di qualità a {city}",
+                "services": services,
+                "services_intro": f"Scopri tutti i servizi offerti da {business_name}",
+                "cta_text": "Contattaci Oggi!",
                 "theme": "modern",
                 "color_scheme": "blue"
             }
+            
+            # Update business_data with booking mode
+            business_data["booking_mode"] = booking_mode
             
             # Create demo document
             demo = {
