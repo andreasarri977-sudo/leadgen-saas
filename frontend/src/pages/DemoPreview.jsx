@@ -783,7 +783,7 @@ export default function DemoPreview() {
                   </div>
                 </div>
                 
-                {/* CTA in Contact - WhatsApp if available, otherwise Social */}
+                {/* CTA in Contact - WhatsApp or Call */}
                 <div className="flex flex-col justify-center">
                   {whatsappLink ? (
                     <a href={whatsappLink} target="_blank" rel="noopener noreferrer"
@@ -791,12 +791,12 @@ export default function DemoPreview() {
                       <MessageCircle size={24} />
                       {t('whatsapp.buttonText', lang)}
                     </a>
-                  ) : (
-                    <button onClick={() => scrollToSection('social')}
+                  ) : business.phone && (
+                    <a href={`tel:${business.phone}`}
                        className="inline-flex items-center justify-center gap-3 bg-white/20 hover:bg-white/30 text-white px-6 sm:px-8 py-4 sm:py-5 rounded-full font-bold text-base sm:text-lg hover:shadow-2xl transition-all">
-                      <Instagram size={24} />
-                      {t('sections.socialTitle', lang)}
-                    </button>
+                      <Phone size={24} />
+                      {t('hero.callNow', lang)}
+                    </a>
                   )}
                 </div>
               </div>

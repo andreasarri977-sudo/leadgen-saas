@@ -34,12 +34,10 @@ class handler(BaseHTTPRequestHandler):
         return None
     
     def _get_action(self):
-        """Extract action from path like /api/demos/abc123/publish"""
-        path = urlparse(self.path).path
-        parts = path.strip('/').split('/')
-        if len(parts) >= 4:
-            return parts[3]
-        return None
+        """Extract action from query parameter ?action=xxx"""
+        query = parse_qs(urlparse(self.path).query)
+        action = query.get('action', [None])[0]
+        return action
 
     def do_GET(self):
         if MongoClient is None:

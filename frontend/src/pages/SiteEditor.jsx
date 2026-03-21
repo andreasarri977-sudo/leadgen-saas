@@ -45,7 +45,7 @@ export default function SiteEditor() {
   const loadSiteData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API}/demos/${demoId}/editor-data`);
+      const response = await axios.get(`${API}/demos/${demoId}?action=editor-data`);
       setSiteData(response.data);
       setHasChanges({});
     } catch (error) {
@@ -60,7 +60,7 @@ export default function SiteEditor() {
   const saveSection = async (section, data) => {
     setSaving(prev => ({ ...prev, [section]: true }));
     try {
-      const response = await axios.post(`${API}/demos/${demoId}/update`, {
+      const response = await axios.post(`${API}/demos/${demoId}?action=update`, {
         section,
         data
       });
@@ -83,7 +83,7 @@ export default function SiteEditor() {
   const handleRepublish = async () => {
     setRepublishing(true);
     try {
-      const response = await axios.post(`${API}/demos/${demoId}/republish`);
+      const response = await axios.post(`${API}/demos/${demoId}?action=republish`);
       if (response.data.success) {
         toast.success('Sito ripubblicato con successo!');
         setSiteData(prev => ({
@@ -346,7 +346,7 @@ function LogoEditor({ logoBase64, demoId, onSave, saving, onLogoUpdated }) {
     
     setUploading(true);
     try {
-      const response = await axios.post(`${API}/demos/${demoId}/update`, {
+      const response = await axios.post(`${API}/demos/${demoId}?action=update`, {
         section: 'logo',
         data: { logo_url: logoUrl }
       });
@@ -388,7 +388,7 @@ function LogoEditor({ logoBase64, demoId, onSave, saving, onLogoUpdated }) {
       reader.onload = async (event) => {
         const base64 = event.target.result.split(',')[1]; // Remove data:image/...;base64, prefix
         
-        const response = await axios.post(`${API}/demos/${demoId}/update`, {
+        const response = await axios.post(`${API}/demos/${demoId}?action=update`, {
           section: 'logo',
           data: { logo_base64: base64 }
         });
@@ -415,7 +415,7 @@ function LogoEditor({ logoBase64, demoId, onSave, saving, onLogoUpdated }) {
   const handleRemoveLogo = async () => {
     setUploading(true);
     try {
-      const response = await axios.post(`${API}/demos/${demoId}/update`, {
+      const response = await axios.post(`${API}/demos/${demoId}?action=update`, {
         section: 'logo',
         data: { remove_logo: true }
       });

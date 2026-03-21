@@ -105,7 +105,7 @@ export default function DemoSites() {
   const handlePublish = async (demoId) => {
     setPublishing(prev => ({ ...prev, [demoId]: true }));
     try {
-      const response = await axios.post(`${API}/demos/${demoId}/publish`);
+      const response = await axios.post(`${API}/demos/${demoId}?action=publish`);
       toast.success('🚀 ' + response.data.message);
       await loadDemos();
     } catch (error) {
