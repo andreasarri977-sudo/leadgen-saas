@@ -45,7 +45,7 @@ function LeadDetailModal({ lead, onClose, onSave, isSaving, isSaved, country }) 
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API}/place-details?place_id=${lead.place_id}&country=${country}`);
+      const response = await axios.get(`${API}/leads?action=details&place_id=${lead.place_id}&country=${country}`);
       setDetails(response.data);
     } catch (err) {
       console.error('Errore caricamento dettagli:', err);

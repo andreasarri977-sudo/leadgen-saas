@@ -163,7 +163,7 @@ class handler(BaseHTTPRequestHandler):
                 settings = db.api_settings.find_one({"setting_id": "api_settings"})
                 if settings and settings.get('google_maps_api_key'):
                     api_key = settings.get('google_maps_api_key')
-            except:
+            except Exception:
                 pass
             
             # Check if lead already exists
@@ -263,6 +263,41 @@ class handler(BaseHTTPRequestHandler):
             # Parse query
             parsed = urlparse(self.path)
             params = parse_qs(parsed.query)
+            action = params.get("action", [None])[0]
+            
+            # Handle place-details action
+            if action == "details":
+                place_id = params.get("place_id", [None])[0]
+                country = params.get("country", ["Italia"])[0]
+                
+                if not place_id:
+                    return self._error(400, "place_id richiesto")
+                
+                log(f"Getting place details for: {place_id}, country: {country}")
+                
+                # Get API key
+                api_key = GOOGLE_PLACES_API_KEY
+                client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=3000)
+                db = client[DB_NAME]
+                
+                settings = db.api_settings.find_one({"setting_id": "api_settings"})
+                if settings and settings.get('google_maps_api_key'):
+                    api_key = settings.get('google_maps_api_key')
+                client.close()
+                
+                if not api_key:
+                    return self._error(400, "Google Places API key non configurata")
+                
+                # Fetch details from Google
+                details = get_place_details(place_id, api_key, country)
+                
+                if not details:
+                    return self._error(404, "Dettagli non trovati")
+                
+                details['place_id'] = place_id
+                return self._json_response(200, details)
+            
+            # Default: list leads
             status_filter = params.get("status", [None])[0]
             
             # Query DB
