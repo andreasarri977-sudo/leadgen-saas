@@ -49,7 +49,9 @@ const translations = {
       bookingTitle: 'Prenota',
       bookTableTitle: 'Prenota un Tavolo',
       bookAppointmentTitle: 'Prenota Appuntamento',
-      socialTitle: 'Seguici sui Social'
+      socialTitle: 'Seguici sui Social',
+      whyChooseUs: 'Perché Sceglierci',
+      faqTitle: 'Domande Frequenti'
     },
     // Info bar
     info: {
@@ -200,7 +202,9 @@ const translations = {
       bookingTitle: 'Réservation',
       bookTableTitle: 'Réserver une Table',
       bookAppointmentTitle: 'Prendre Rendez-vous',
-      socialTitle: 'Suivez-nous'
+      socialTitle: 'Suivez-nous',
+      whyChooseUs: 'Pourquoi Nous Choisir',
+      faqTitle: 'Questions Fréquentes'
     },
     // Info bar
     info: {
@@ -348,7 +352,9 @@ const translations = {
       bookingTitle: 'Book',
       bookTableTitle: 'Book a Table',
       bookAppointmentTitle: 'Book Appointment',
-      socialTitle: 'Follow Us'
+      socialTitle: 'Follow Us',
+      whyChooseUs: 'Why Choose Us',
+      faqTitle: 'Frequently Asked Questions'
     },
     // Info bar
     info: {
@@ -496,7 +502,9 @@ const translations = {
       bookingTitle: 'Reservar',
       bookTableTitle: 'Reservar Mesa',
       bookAppointmentTitle: 'Reservar Cita',
-      socialTitle: 'Síguenos'
+      socialTitle: 'Síguenos',
+      whyChooseUs: 'Por Qué Elegirnos',
+      faqTitle: 'Preguntas Frecuentes'
     },
     // Info bar
     info: {
@@ -644,7 +652,9 @@ const translations = {
       bookingTitle: 'Reservierung',
       bookTableTitle: 'Tisch Reservieren',
       bookAppointmentTitle: 'Termin Buchen',
-      socialTitle: 'Folgen Sie Uns'
+      socialTitle: 'Folgen Sie Uns',
+      whyChooseUs: 'Warum Uns Wählen',
+      faqTitle: 'Häufig Gestellte Fragen'
     },
     // Info bar
     info: {

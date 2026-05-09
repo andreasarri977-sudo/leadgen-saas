@@ -334,12 +334,55 @@ class handler(BaseHTTPRequestHandler):
                 content_updates = {}
                 business_updates = {}
                 
-                content_fields = ['tagline', 'about_text', 'homepage_subtitle', 'services_intro', 'services', 'cta_text', 'theme', 'color_scheme']
+                # Handle section-based updates (from editor)
+                section = data.get('section')
+                section_data = data.get('data', {})
+                
+                if section == 'logo':
+                    if section_data.get('logo_base64'):
+                        update_fields['logo_base64'] = section_data['logo_base64']
+                    if section_data.get('logo_url'):
+                        # Download and convert to base64
+                        try:
+                            import urllib.request
+                            import base64
+                            logo_url = section_data['logo_url']
+                            with urllib.request.urlopen(logo_url, timeout=10) as response:
+                                logo_data = response.read()
+                                logo_base64 = base64.b64encode(logo_data).decode('utf-8')
+                                update_fields['logo_base64'] = logo_base64
+                        except Exception as e:
+                            log(f"Error downloading logo: {e}")
+                            client.close()
+                            return self._json_response(200, {"success": False, "errors": [f"Impossibile scaricare il logo: {str(e)}"]})
+                    if section_data.get('remove_logo'):
+                        update_fields['logo_base64'] = None
+                    
+                    if update_fields:
+                        update_fields['updated_at'] = datetime.now(timezone.utc).isoformat()
+                        db.demo_sites.update_one({"demo_id": demo_id}, {"$set": update_fields})
+                    client.close()
+                    return self._json_response(200, {"success": True, "message": "Logo aggiornato"})
+                
+                elif section == 'style':
+                    if section_data.get('color_scheme'):
+                        content_updates['content.color_scheme'] = section_data['color_scheme']
+                    if section_data.get('hero_image'):
+                        content_updates['content.hero_image'] = section_data['hero_image']
+                    if section_data.get('theme'):
+                        content_updates['content.theme'] = section_data['theme']
+                
+                elif section == 'social':
+                    if 'social_links' in section_data:
+                        business_updates['business_data.social_links'] = section_data['social_links']
+                
+                # Standard field updates (backward compatibility)
+                content_fields = ['tagline', 'about_text', 'homepage_subtitle', 'services_intro', 'services', 'cta_text', 'theme', 'color_scheme', 'hero_image', 'why_choose_us', 'faq']
                 for field in content_fields:
                     if field in data:
                         content_updates[f"content.{field}"] = data[field]
                 
-                business_fields = ['phone', 'email', 'address', 'city', 'hours_text', 'booking_mode', 'external_booking_url', 'photos']
+                business_fields = ['phone', 'email', 'address', 'city', 'hours_text', 'booking_mode', 'external_booking_url', 'photos', 'social_links']
                 for field in business_fields:
                     if field in data:
                         business_updates[f"business_data.{field}"] = data[field]
@@ -356,7 +399,7 @@ class handler(BaseHTTPRequestHandler):
                     db.demo_sites.update_one({"demo_id": demo_id}, {"$set": all_updates})
                 
                 client.close()
-                return self._json_response(200, {"message": "Sito aggiornato"})
+                return self._json_response(200, {"success": True, "message": "Sito aggiornato"})
             
             else:
                 client.close()

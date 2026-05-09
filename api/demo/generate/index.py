@@ -185,14 +185,27 @@ class handler(BaseHTTPRequestHandler):
             
             # Build content
             content = {
-                "tagline": f"Il miglior {category} a {city}" if city else f"Qualità e professionalità",
+                "tagline": f"Il miglior {category} a {city}" if city else "Qualità e professionalità",
                 "about_text": f"{business_name} è il punto di riferimento per {category} a {city}. Con anni di esperienza e passione, offriamo servizi di alta qualità per soddisfare ogni esigenza dei nostri clienti. Vieni a trovarci!",
                 "homepage_subtitle": f"{category.title()} di qualità a {city}",
                 "services": services,
                 "services_intro": f"Scopri tutti i servizi offerti da {business_name}",
                 "cta_text": "Contattaci Oggi!",
                 "theme": "modern",
-                "color_scheme": "blue"
+                "color_scheme": "blue",
+                # Nuove sezioni professionali
+                "why_choose_us": [
+                    {"title": "Esperienza", "description": f"Anni di esperienza nel settore {category}"},
+                    {"title": "Qualità", "description": "Utilizziamo solo prodotti e materiali di prima scelta"},
+                    {"title": "Professionalità", "description": "Staff qualificato e sempre aggiornato"},
+                    {"title": "Attenzione al Cliente", "description": "Ascoltiamo le tue esigenze per offrirti il meglio"}
+                ],
+                "faq": [
+                    {"question": "Come posso prenotare?", "answer": "Puoi prenotare telefonicamente, via WhatsApp o direttamente dal nostro sito web."},
+                    {"question": "Quali sono i metodi di pagamento accettati?", "answer": "Accettiamo contanti, carte di credito, bancomat e pagamenti digitali."},
+                    {"question": "Dove vi trovate?", "answer": f"Siamo situati a {city}. Trovi l'indirizzo completo e la mappa nella sezione contatti."},
+                    {"question": "È necessario prendere appuntamento?", "answer": "Per garantirti il miglior servizio, ti consigliamo di prenotare in anticipo."}
+                ]
             }
             
             # Update business_data with booking mode

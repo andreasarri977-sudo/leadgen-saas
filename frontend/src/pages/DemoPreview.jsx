@@ -758,6 +758,26 @@ export default function DemoPreview() {
             </section>
           )}
 
+          {/* Why Choose Us */}
+          {content.why_choose_us && content.why_choose_us.length > 0 && (
+            <section id="why-us" className="py-8 sm:py-12">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-8 tracking-tight text-center">
+                {t('sections.whyChooseUs', lang) || 'Perché Sceglierci'}
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                {content.why_choose_us.map((item, index) => (
+                  <div key={index} className={`p-6 sm:p-8 ${style.cardBg} rounded-xl sm:rounded-2xl border-2 border-neutral-100 text-center hover:shadow-lg transition-shadow`}>
+                    <div className={`w-14 h-14 sm:w-16 sm:h-16 ${style.accentColor} rounded-full flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4`}>
+                      {index === 0 ? '⭐' : index === 1 ? '✓' : index === 2 ? '👨‍💼' : '❤️'}
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-bold mb-2">{item.title}</h3>
+                    <p className="text-neutral-600 text-sm sm:text-base">{item.description}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Gallery */}
           {galleryPhotos.length > 0 && (
             <section id="gallery">
@@ -832,6 +852,28 @@ export default function DemoPreview() {
               <div className={`${style.cardBg} p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl border-2 border-neutral-100 overflow-hidden`}>
                 <BookingForm demoId={demoId} bookingMode={bookingMode} lang={lang} style={style}
                              businessPhone={business.phone} externalBookingUrl={externalBookingUrl} />
+              </div>
+            </section>
+          )}
+
+          {/* FAQ Section */}
+          {content.faq && content.faq.length > 0 && (
+            <section id="faq" className="py-8 sm:py-12">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-8 tracking-tight">
+                {t('sections.faqTitle', lang) || 'Domande Frequenti'}
+              </h2>
+              <div className="space-y-3 sm:space-y-4 max-w-3xl mx-auto">
+                {content.faq.map((item, index) => (
+                  <details key={index} className={`${style.cardBg} rounded-xl sm:rounded-2xl border-2 border-neutral-100 overflow-hidden group`}>
+                    <summary className="p-4 sm:p-6 cursor-pointer font-semibold text-base sm:text-lg flex items-center justify-between hover:bg-neutral-50 transition-colors list-none">
+                      <span>{item.question}</span>
+                      <ChevronDown size={20} className="text-neutral-400 transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="px-4 sm:px-6 pb-4 sm:pb-6 text-neutral-600 text-sm sm:text-base">
+                      {item.answer}
+                    </div>
+                  </details>
+                ))}
               </div>
             </section>
           )}
