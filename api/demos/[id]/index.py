@@ -375,6 +375,12 @@ class handler(BaseHTTPRequestHandler):
                         content_updates['content.hero_image'] = section_data['hero_image']
                     if section_data.get('theme'):
                         content_updates['content.theme'] = section_data['theme']
+                    
+                    if content_updates:
+                        content_updates['updated_at'] = datetime.now(timezone.utc).isoformat()
+                        db.demo_sites.update_one({"demo_id": demo_id}, {"$set": content_updates})
+                    client.close()
+                    return self._json_response(200, {"success": True, "message": "Stile aggiornato"})
                 
                 elif section == 'social':
                     if 'social_links' in section_data:

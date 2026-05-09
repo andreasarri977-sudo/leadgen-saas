@@ -44,16 +44,36 @@ const DAYS = [
 // Style Editor Component
 function StyleEditor({ heroImage, colorScheme, theme, gallery, onUpdate, onSave, saving }) {
   const [selectedColor, setSelectedColor] = useState(colorScheme || 'blue');
-  const [selectedHeroIndex, setSelectedHeroIndex] = useState(0);
+  const [selectedHero, setSelectedHero] = useState(heroImage || '');
+  
+  // Find initial index based on heroImage
+  const findHeroIndex = () => {
+    if (!heroImage || !gallery || gallery.length === 0) return -1;
+    return gallery.findIndex(img => {
+      const imgUrl = typeof img === 'string' ? img : img.url;
+      return imgUrl === heroImage;
+    });
+  };
+  
+  const [selectedHeroIndex, setSelectedHeroIndex] = useState(findHeroIndex());
   
   const handleColorChange = (colorId) => {
     setSelectedColor(colorId);
-    onUpdate({ color_scheme: colorId });
+    onUpdate({ color_scheme: colorId, hero_image: selectedHero, theme });
   };
   
   const handleHeroChange = (imageUrl, index) => {
     setSelectedHeroIndex(index);
-    onUpdate({ hero_image: imageUrl });
+    setSelectedHero(imageUrl);
+    onUpdate({ hero_image: imageUrl, color_scheme: selectedColor, theme });
+  };
+  
+  const handleSave = () => {
+    onSave({
+      hero_image: selectedHero,
+      color_scheme: selectedColor,
+      theme: theme
+    });
   };
   
   return (
@@ -90,16 +110,17 @@ function StyleEditor({ heroImage, colorScheme, theme, gallery, onUpdate, onSave,
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {gallery.map((img, index) => {
               const imageUrl = typeof img === 'string' ? img : img.url;
+              const isSelected = selectedHero === imageUrl || selectedHeroIndex === index;
               return (
                 <button
                   key={index}
                   onClick={() => handleHeroChange(imageUrl, index)}
                   className={`relative aspect-video rounded-lg overflow-hidden border-2 transition-all ${
-                    selectedHeroIndex === index ? 'border-blue-500 ring-2 ring-blue-300' : 'border-neutral-200 hover:border-neutral-400'
+                    isSelected ? 'border-blue-500 ring-2 ring-blue-300' : 'border-neutral-200 hover:border-neutral-400'
                   }`}
                 >
                   <img src={imageUrl} alt={`Opzione ${index + 1}`} className="w-full h-full object-cover" />
-                  {selectedHeroIndex === index && (
+                  {isSelected && (
                     <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
                       <CheckCircle className="text-white" size={24} />
                     </div>
@@ -115,10 +136,18 @@ function StyleEditor({ heroImage, colorScheme, theme, gallery, onUpdate, onSave,
             <p className="text-sm text-neutral-400 mt-1">Aggiungi immagini nella tab "Galleria"</p>
           </div>
         )}
+        
+        {selectedHero && (
+          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-sm text-green-700">
+              ✓ Immagine hero selezionata. Clicca "Salva Stile" per applicare.
+            </p>
+          </div>
+        )}
       </div>
       
       {/* Save Button */}
-      <Button onClick={onSave} disabled={saving} className="w-full">
+      <Button onClick={handleSave} disabled={saving} className="w-full">
         {saving ? (
           <>
             <Loader2 className="mr-2 animate-spin" size={16} />
@@ -339,12 +368,16 @@ export default function SiteEditor() {
             colorScheme={siteData.color_scheme || 'blue'}
             theme={siteData.theme || 'modern'}
             gallery={siteData.gallery || []}
-            onUpdate={(data) => updateSection('style', data)}
-            onSave={() => saveSection('style', { 
-              hero_image: siteData.hero_image, 
-              color_scheme: siteData.color_scheme,
-              theme: siteData.theme 
-            })}
+            onUpdate={(data) => {
+              setSiteData(prev => ({
+                ...prev,
+                hero_image: data.hero_image !== undefined ? data.hero_image : prev.hero_image,
+                color_scheme: data.color_scheme !== undefined ? data.color_scheme : prev.color_scheme,
+                theme: data.theme !== undefined ? data.theme : prev.theme
+              }));
+              setHasChanges(prev => ({ ...prev, style: true }));
+            }}
+            onSave={(styleData) => saveSection('style', styleData)}
             saving={saving.style}
           />
         </TabsContent>
