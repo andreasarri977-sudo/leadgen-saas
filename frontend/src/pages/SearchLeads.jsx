@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Search, Loader2, MapPin, Star, Plus, Check, X, Phone, Globe, Clock, Image, MessageCircle, ChevronRight } from 'lucide-react';
+import { Search, Loader2, MapPin, Star, Plus, Check, X, Phone, Globe, Clock, Image, MessageCircle, ChevronRight, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,68 +18,49 @@ const COUNTRIES = [
 ];
 
 const CATEGORIES = [
-  // Bellezza & Cura della persona
-  'Parrucchiere',
-  'Estetista',
-  'Barbiere',
-  'Centro Estetico',
-  'Tatuatore',
-  'Nail Salon',
-  'Spa',
-  // Ristorazione
-  'Ristorante',
-  'Pizzeria',
-  'Bar',
-  'Caffetteria',
-  'Gelateria',
-  'Pasticceria',
-  'Hamburgeria',
-  'Fast Food',
-  'Kebab',
-  'Imbiss',
-  'Trattoria',
-  'Osteria',
-  'Pub',
-  'Sushi',
-  'Poke',
-  // Salute
-  'Dentista',
-  'Fisioterapista',
-  'Veterinario',
-  'Farmacia',
-  'Ottico',
-  // Fitness & Sport
-  'Palestra',
-  'Centro Yoga',
-  'Pilates',
-  'CrossFit',
-  // Servizi Auto
-  'Meccanico',
-  'Autolavaggio',
-  'Gommista',
-  'Carrozzeria',
-  // Servizi Casa
-  'Idraulico',
-  'Elettricista',
-  'Fabbro',
-  'Falegname',
-  'Imbianchino',
-  // Commercio
-  'Fiorista',
-  'Negozio Abbigliamento',
-  'Gioielleria',
-  'Ferramenta',
-  // Altri Servizi
-  'Fotografo',
-  'Agenzia Immobiliare',
-  'Assicurazioni',
-  'Commercialista',
-  'Avvocato'
+  'Parrucchiere', 'Estetista', 'Barbiere', 'Centro Estetico', 'Tatuatore', 'Nail Salon', 'Spa',
+  'Ristorante', 'Pizzeria', 'Bar', 'Caffetteria', 'Gelateria', 'Pasticceria', 'Hamburgeria', 
+  'Fast Food', 'Kebab', 'Imbiss', 'Trattoria', 'Osteria', 'Pub', 'Sushi', 'Poke',
+  'Dentista', 'Fisioterapista', 'Veterinario', 'Farmacia', 'Ottico',
+  'Palestra', 'Centro Yoga', 'Pilates', 'CrossFit',
+  'Meccanico', 'Autolavaggio', 'Gommista', 'Carrozzeria',
+  'Idraulico', 'Elettricista', 'Fabbro', 'Falegname', 'Imbianchino',
+  'Fiorista', 'Negozio Abbigliamento', 'Gioielleria', 'Ferramenta',
+  'Fotografo', 'Agenzia Immobiliare', 'Assicurazioni', 'Commercialista', 'Avvocato'
 ];
 
-// Modal per dettagli azienda
-function LeadDetailModal({ lead, onClose, onSave, isSaving, isSaved }) {
+// Modal per dettagli azienda con caricamento dati da Google
+function LeadDetailModal({ lead, onClose, onSave, isSaving, isSaved, country }) {
+  const [details, setDetails] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (lead?.place_id) {
+      loadDetails();
+    }
+  }, [lead?.place_id]);
+
+  const loadDetails = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get(`${API}/place-details?place_id=${lead.place_id}&country=${country}`);
+      setDetails(response.data);
+    } catch (err) {
+      console.error('Errore caricamento dettagli:', err);
+      setError('Impossibile caricare i dettagli. Riprova.');
+      // Use basic lead data as fallback
+      setDetails(lead);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!lead) return null;
+
+  // Merge lead data with details
+  const data = { ...lead, ...details };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
@@ -95,148 +76,186 @@ function LeadDetailModal({ lead, onClose, onSave, isSaving, isSaved }) {
           >
             <X size={18} />
           </button>
-          <h2 className="text-2xl font-bold pr-10">{lead.name}</h2>
+          <h2 className="text-2xl font-bold pr-10">{data.name}</h2>
           <p className="text-blue-100 mt-1">{lead.category}</p>
           <div className="flex items-center gap-4 mt-3">
             <span className="flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-sm">
               <Star size={14} className="text-yellow-400 fill-yellow-400" />
-              {lead.rating}
+              {data.rating || lead.rating}
             </span>
             <span className="text-sm text-blue-100">
-              {lead.reviews_count} recensioni
+              {data.reviews_count || lead.reviews_count} recensioni
             </span>
+            {data.open_now !== undefined && (
+              <span className={`text-sm px-2 py-1 rounded-full ${data.open_now ? 'bg-green-500' : 'bg-red-500'}`}>
+                {data.open_now ? 'Aperto ora' : 'Chiuso'}
+              </span>
+            )}
           </div>
         </div>
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[60vh]">
-          {/* Info principali */}
-          <div className="space-y-4 mb-6">
-            <div className="flex items-start gap-3">
-              <MapPin size={20} className="text-neutral-500 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="font-medium text-neutral-800">{lead.address}</p>
-                <p className="text-sm text-neutral-500">{lead.city}, {lead.country}</p>
-              </div>
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader2 size={40} className="animate-spin text-blue-600 mb-4" />
+              <p className="text-neutral-600">Caricamento dettagli da Google...</p>
             </div>
-
-            {lead.phone && (
-              <div className="flex items-center gap-3">
-                <Phone size={20} className="text-neutral-500 flex-shrink-0" />
-                <a href={`tel:${lead.phone}`} className="text-blue-600 hover:underline font-medium">
-                  {lead.phone}
-                </a>
-              </div>
-            )}
-
-            {lead.website && (
-              <div className="flex items-center gap-3">
-                <Globe size={20} className="text-neutral-500 flex-shrink-0" />
-                <a href={lead.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm truncate">
-                  {lead.website}
-                </a>
-              </div>
-            )}
-
-            {lead.google_maps_url && (
-              <a 
-                href={lead.google_maps_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline"
-              >
-                <MapPin size={16} />
-                Apri in Google Maps
-              </a>
-            )}
-          </div>
-
-          {/* Orari se disponibili */}
-          {lead.hours_text && lead.hours_text.length > 0 && (
-            <div className="mb-6">
-              <h3 className="font-semibold text-neutral-800 mb-2 flex items-center gap-2">
-                <Clock size={18} />
-                Orari di apertura
-              </h3>
-              <div className="bg-neutral-50 rounded-lg p-4 text-sm space-y-1">
-                {lead.hours_text.map((hour, idx) => (
-                  <p key={idx} className="text-neutral-700">{hour}</p>
-                ))}
-              </div>
+          ) : error ? (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <p className="text-red-700">{error}</p>
+              <Button size="sm" onClick={loadDetails} className="mt-2">Riprova</Button>
             </div>
-          )}
-
-          {/* Foto se disponibili */}
-          {lead.photos && lead.photos.length > 0 && (
-            <div className="mb-6">
-              <h3 className="font-semibold text-neutral-800 mb-2 flex items-center gap-2">
-                <Image size={18} />
-                Foto ({lead.photos.length})
-              </h3>
-              <div className="grid grid-cols-3 gap-2">
-                {lead.photos.slice(0, 6).map((photo, idx) => (
-                  <div key={idx} className="aspect-square rounded-lg overflow-hidden bg-neutral-100">
-                    <img 
-                      src={photo.url || photo} 
-                      alt={`Foto ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
+          ) : (
+            <>
+              {/* Info principali */}
+              <div className="space-y-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <MapPin size={20} className="text-neutral-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-neutral-800">{data.address || lead.address}</p>
+                    <p className="text-sm text-neutral-500">{lead.city}, {lead.country}</p>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                </div>
 
-          {/* Recensioni se disponibili */}
-          {lead.reviews && lead.reviews.length > 0 && (
-            <div className="mb-6">
-              <h3 className="font-semibold text-neutral-800 mb-2 flex items-center gap-2">
-                <MessageCircle size={18} />
-                Ultime recensioni
-              </h3>
-              <div className="space-y-3">
-                {lead.reviews.slice(0, 3).map((review, idx) => (
-                  <div key={idx} className="bg-neutral-50 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-neutral-800">{review.author}</span>
-                      <div className="flex items-center gap-1">
-                        {[...Array(5)].map((_, i) => (
-                          <Star 
-                            key={i} 
-                            size={12} 
-                            className={i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-neutral-300'} 
-                          />
-                        ))}
+                {(data.phone || lead.phone) && (
+                  <div className="flex items-center gap-3">
+                    <Phone size={20} className="text-neutral-500 flex-shrink-0" />
+                    <a href={`tel:${data.phone || lead.phone}`} className="text-blue-600 hover:underline font-medium">
+                      {data.phone || lead.phone}
+                    </a>
+                  </div>
+                )}
+
+                {data.website && (
+                  <div className="flex items-center gap-3">
+                    <Globe size={20} className="text-neutral-500 flex-shrink-0" />
+                    <a href={data.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm truncate flex items-center gap-1">
+                      {data.website.replace(/^https?:\/\//, '').substring(0, 40)}...
+                      <ExternalLink size={12} />
+                    </a>
+                  </div>
+                )}
+
+                {data.google_maps_url && (
+                  <a 
+                    href={data.google_maps_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm bg-blue-50 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors"
+                  >
+                    <MapPin size={16} />
+                    Apri in Google Maps
+                    <ExternalLink size={14} />
+                  </a>
+                )}
+              </div>
+
+              {/* Orari */}
+              {data.hours_text && data.hours_text.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="font-semibold text-neutral-800 mb-3 flex items-center gap-2">
+                    <Clock size={18} className="text-blue-600" />
+                    Orari di Apertura
+                  </h3>
+                  <div className="bg-neutral-50 rounded-xl p-4 space-y-2">
+                    {data.hours_text.map((hour, idx) => (
+                      <p key={idx} className="text-sm text-neutral-700 flex items-center">
+                        <span className="w-2 h-2 bg-blue-400 rounded-full mr-3"></span>
+                        {hour}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Foto */}
+              {data.photos && data.photos.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="font-semibold text-neutral-800 mb-3 flex items-center gap-2">
+                    <Image size={18} className="text-blue-600" />
+                    Foto dell'Attività ({data.photos.length})
+                  </h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {data.photos.slice(0, 6).map((photo, idx) => (
+                      <div key={idx} className="aspect-square rounded-xl overflow-hidden bg-neutral-100 shadow-sm">
+                        <img 
+                          src={photo.url || photo} 
+                          alt={`Foto ${idx + 1}`}
+                          className="w-full h-full object-cover hover:scale-105 transition-transform"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
                       </div>
-                    </div>
-                    <p className="text-sm text-neutral-600 line-clamp-3">{review.text}</p>
-                    {review.time && (
-                      <p className="text-xs text-neutral-400 mt-2">{review.time}</p>
-                    )}
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                  {data.photos.length > 6 && (
+                    <p className="text-sm text-neutral-500 mt-2 text-center">
+                      +{data.photos.length - 6} altre foto
+                    </p>
+                  )}
+                </div>
+              )}
 
-          {/* Info aggiuntive */}
-          <div className="bg-blue-50 rounded-lg p-4 mb-4">
-            <h3 className="font-semibold text-blue-800 mb-2">Perché è un buon lead?</h3>
-            <ul className="text-sm text-blue-700 space-y-1">
-              {!lead.website && <li>✓ Non ha un sito web</li>}
-              <li>✓ {lead.reviews_count} recensioni positive</li>
-              <li>✓ Rating {lead.rating}/5</li>
-              <li>✓ Attività verificata su Google</li>
-            </ul>
-          </div>
+              {/* Recensioni */}
+              {data.reviews && data.reviews.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="font-semibold text-neutral-800 mb-3 flex items-center gap-2">
+                    <MessageCircle size={18} className="text-blue-600" />
+                    Recensioni Recenti
+                  </h3>
+                  <div className="space-y-3">
+                    {data.reviews.slice(0, 3).map((review, idx) => (
+                      <div key={idx} className="bg-neutral-50 rounded-xl p-4 border border-neutral-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-neutral-800">{review.author}</span>
+                          <div className="flex items-center gap-1">
+                            {[...Array(5)].map((_, i) => (
+                              <Star 
+                                key={i} 
+                                size={14} 
+                                className={i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-neutral-200'} 
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-sm text-neutral-600 line-clamp-3">{review.text}</p>
+                        {review.time && (
+                          <p className="text-xs text-neutral-400 mt-2">{review.time}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Perché è un buon lead */}
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
+                <h3 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
+                  <Check size={18} className="text-green-600" />
+                  Perché è un buon Lead?
+                </h3>
+                <ul className="text-sm text-green-700 space-y-1">
+                  {!data.website && <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Non ha un sito web professionale</li>}
+                  <li className="flex items-center gap-2"><span className="text-green-500">✓</span> {data.reviews_count || lead.reviews_count} recensioni verificate su Google</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Rating {data.rating || lead.rating}/5 stelle</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Attività verificata e attiva</li>
+                  {data.photos && data.photos.length > 0 && (
+                    <li className="flex items-center gap-2"><span className="text-green-500">✓</span> {data.photos.length} foto disponibili per il sito</li>
+                  )}
+                </ul>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Footer con azioni */}
         <div className="p-6 bg-neutral-50 border-t border-neutral-200">
           <Button
-            onClick={() => onSave(lead)}
-            disabled={isSaving || isSaved}
+            onClick={() => onSave({ ...lead, ...details })}
+            disabled={isSaving || isSaved || loading}
             className={`w-full h-12 text-lg ${
               isSaved 
                 ? 'bg-green-100 text-green-700 hover:bg-green-100' 
@@ -246,22 +265,22 @@ function LeadDetailModal({ lead, onClose, onSave, isSaving, isSaved }) {
             {isSaving ? (
               <>
                 <Loader2 size={20} className="mr-2 animate-spin" />
-                Salvataggio...
+                Salvataggio in corso...
               </>
             ) : isSaved ? (
               <>
                 <Check size={20} className="mr-2" />
-                Lead Salvato!
+                Lead Salvato! Vai a "I Miei Lead"
               </>
             ) : (
               <>
                 <Plus size={20} className="mr-2" />
-                Salva Lead e Procedi
+                Salva questo Lead
               </>
             )}
           </Button>
           <p className="text-center text-sm text-neutral-500 mt-3">
-            Salvando il lead potrai generare il sito demo
+            Dopo il salvataggio potrai generare il sito demo
           </p>
         </div>
       </div>
@@ -285,17 +304,25 @@ export default function SearchLeads() {
   const [savedLeads, setSavedLeads] = useState({});
   const [selectedLead, setSelectedLead] = useState(null);
 
+  const getCountryName = (code) => {
+    const country = COUNTRIES.find(c => c.code === code);
+    return country ? country.name : code;
+  };
+
   const handleSaveLead = async (lead) => {
     const leadKey = lead.place_id || lead.name;
     setSavingLeads(prev => ({ ...prev, [leadKey]: true }));
     
     try {
-      const response = await axios.post(`${API}/leads`, lead);
+      const response = await axios.post(`${API}/leads`, {
+        ...lead,
+        country: getCountryName(formData.country)
+      });
       
       if (response.data.already_exists) {
         toast.info(`"${lead.name}" era già nei tuoi lead`);
       } else {
-        toast.success(`"${lead.name}" salvato nei lead!`);
+        toast.success(`"${lead.name}" salvato con successo!`);
       }
       
       setSavedLeads(prev => ({ ...prev, [leadKey]: true }));
@@ -336,45 +363,38 @@ export default function SearchLeads() {
     setLoading(true);
     setError(null);
     setResults([]);
+    setSavedLeads({});
     
     try {
-      const response = await axios.post(`${API}/search/companies`, formData);
+      const response = await axios.post(`${API}/search/companies`, {
+        ...formData,
+        country: getCountryName(formData.country)
+      });
       setResults(response.data);
       
       if (response.data.length === 0) {
-        toast.info('Nessuna azienda trovata con i criteri specificati. Prova a ridurre i filtri.');
+        toast.info('Nessuna azienda trovata. Prova a ridurre i filtri.');
       } else {
-        toast.success(`Trovati ${response.data.length} lead potenziali`);
+        toast.success(`Trovati ${response.data.length} potenziali clienti!`);
       }
     } catch (error) {
       console.error('Errore ricerca:', error);
       
-      const errorData = error.response?.data?.detail;
+      const errorData = error.response?.data?.detail || error.response?.data?.error;
       
-      if (typeof errorData === 'object') {
-        if (errorData.info) {
-          setError({
-            title: errorData.info,
-            isInfo: true,
-            details: `Trovati ${errorData.total_found} posti, ma ${errorData.filtered_by_website} hanno già un sito web e ${errorData.filtered_by_reviews} non rispettano i filtri.`,
-            suggestion: errorData.suggestion
-          });
-          toast.info(errorData.info);
-        } else {
-          setError({
-            title: errorData.user_message || errorData.error || 'Errore API',
-            details: errorData.message,
-            statusCode: errorData.status_code,
-            query: errorData.query
-          });
-          toast.error(errorData.user_message || 'Errore durante la ricerca');
-        }
+      if (typeof errorData === 'object' && errorData.info) {
+        setError({
+          title: errorData.info,
+          isInfo: true,
+          details: `Trovati ${errorData.total_found} posti, ma ${errorData.filtered_by_website} hanno già un sito web.`,
+          suggestion: errorData.suggestion
+        });
       } else {
         setError({
           title: 'Errore durante la ricerca',
-          details: errorData || error.message
+          details: typeof errorData === 'string' ? errorData : error.message
         });
-        toast.error(errorData || 'Errore durante la ricerca');
+        toast.error('Errore durante la ricerca');
       }
     } finally {
       setLoading(false);
@@ -383,11 +403,13 @@ export default function SearchLeads() {
 
   return (
     <div data-testid="search-leads-page">
-      <h1 className="text-3xl sm:text-5xl font-bold mb-8 tracking-tight">Cerca Aziende</h1>
+      <h1 className="text-3xl sm:text-4xl font-bold mb-2 tracking-tight">Cerca Nuovi Clienti</h1>
+      <p className="text-neutral-600 mb-8">Trova attività senza sito web nella tua zona</p>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Search Form */}
         <Card className="p-6 h-fit" data-testid="search-form">
-          <h2 className="text-xl sm:text-2xl font-bold mb-6 tracking-tight">Filtri di Ricerca</h2>
+          <h2 className="text-xl font-bold mb-6 tracking-tight">Filtri di Ricerca</h2>
 
           <div className="space-y-4">
             <div>
@@ -395,10 +417,11 @@ export default function SearchLeads() {
               <Input
                 id="city"
                 data-testid="input-city"
-                placeholder="es. Milano"
+                placeholder="es. Milano, Roma, Napoli..."
                 value={formData.city}
                 onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                 className="mt-1"
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               />
             </div>
 
@@ -420,7 +443,7 @@ export default function SearchLeads() {
             </div>
 
             <div>
-              <Label htmlFor="category">Categoria</Label>
+              <Label htmlFor="category">Tipo di Attività</Label>
               <select
                 id="category"
                 data-testid="select-category"
@@ -436,45 +459,49 @@ export default function SearchLeads() {
               </select>
             </div>
 
-            <div>
-              <Label htmlFor="min_reviews">Recensioni Minime</Label>
-              <Input
-                id="min_reviews"
-                data-testid="input-min-reviews"
-                type="number"
-                value={formData.min_reviews}
-                onChange={(e) => setFormData({ ...formData, min_reviews: parseInt(e.target.value) })}
-                className="mt-1"
-              />
-            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="min_reviews">Min. Recensioni</Label>
+                <Input
+                  id="min_reviews"
+                  data-testid="input-min-reviews"
+                  type="number"
+                  value={formData.min_reviews}
+                  onChange={(e) => setFormData({ ...formData, min_reviews: parseInt(e.target.value) || 0 })}
+                  className="mt-1"
+                />
+              </div>
 
-            <div>
-              <Label htmlFor="min_rating">Rating Minimo</Label>
-              <Input
-                id="min_rating"
-                data-testid="input-min-rating"
-                type="number"
-                step="0.1"
-                value={formData.min_rating}
-                onChange={(e) => setFormData({ ...formData, min_rating: parseFloat(e.target.value) })}
-                className="mt-1"
-              />
+              <div>
+                <Label htmlFor="min_rating">Min. Rating</Label>
+                <Input
+                  id="min_rating"
+                  data-testid="input-min-rating"
+                  type="number"
+                  step="0.1"
+                  min="1"
+                  max="5"
+                  value={formData.min_rating}
+                  onChange={(e) => setFormData({ ...formData, min_rating: parseFloat(e.target.value) || 0 })}
+                  className="mt-1"
+                />
+              </div>
             </div>
 
             <Button
               data-testid="search-button"
               onClick={handleSearch}
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700"
+              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-lg"
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 animate-spin" size={16} />
+                  <Loader2 className="mr-2 animate-spin" size={20} />
                   Ricerca in corso...
                 </>
               ) : (
                 <>
-                  <Search className="mr-2" size={16} />
+                  <Search className="mr-2" size={20} />
                   Cerca Aziende
                 </>
               )}
@@ -482,9 +509,15 @@ export default function SearchLeads() {
           </div>
         </Card>
 
+        {/* Results */}
         <Card className="p-6 lg:col-span-2" data-testid="search-results">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Risultati</h2>
+            <div>
+              <h2 className="text-xl font-bold tracking-tight">Risultati</h2>
+              {results.length > 0 && (
+                <p className="text-sm text-neutral-500">{results.length} attività trovate</p>
+              )}
+            </div>
             {results.length > 0 && (
               <Button 
                 onClick={handleSaveAllLeads}
@@ -498,37 +531,28 @@ export default function SearchLeads() {
           </div>
 
           {error && (
-            <div className={`mb-6 p-4 ${error.isInfo ? 'bg-blue-50 border-2 border-blue-500' : 'bg-red-50 border-2 border-red-500'} rounded-lg`} data-testid="error-banner">
-              <div className="flex items-start gap-3">
-                <div className={`flex-shrink-0 w-6 h-6 ${error.isInfo ? 'bg-blue-500' : 'bg-red-500'} rounded-full flex items-center justify-center text-white font-bold`}>
-                  {error.isInfo ? 'i' : '!'}
-                </div>
-                <div className="flex-1">
-                  <h3 className={`font-bold ${error.isInfo ? 'text-blue-800' : 'text-red-800'} text-lg mb-2`}>{error.title}</h3>
-                  {error.statusCode && (
-                    <p className={`text-sm ${error.isInfo ? 'text-blue-700' : 'text-red-700'} mb-2`}>
-                      <strong>Status Code:</strong> {error.statusCode}
-                    </p>
-                  )}
-                  {error.details && (
-                    <p className={`text-sm ${error.isInfo ? 'text-blue-700' : 'text-red-700'} mb-2`}>
-                      {error.details}
-                    </p>
-                  )}
-                  {error.suggestion && (
-                    <p className={`text-sm ${error.isInfo ? 'text-blue-800' : 'text-red-800'} font-semibold mt-3`}>
-                      Suggerimento: {error.suggestion}
-                    </p>
-                  )}
-                </div>
-              </div>
+            <div className={`mb-6 p-4 rounded-xl ${error.isInfo ? 'bg-blue-50 border-2 border-blue-300' : 'bg-red-50 border-2 border-red-300'}`}>
+              <h3 className={`font-bold text-lg mb-2 ${error.isInfo ? 'text-blue-800' : 'text-red-800'}`}>
+                {error.title}
+              </h3>
+              {error.details && (
+                <p className={`text-sm ${error.isInfo ? 'text-blue-700' : 'text-red-700'}`}>
+                  {error.details}
+                </p>
+              )}
+              {error.suggestion && (
+                <p className="text-sm font-semibold mt-2 text-blue-800">
+                  💡 {error.suggestion}
+                </p>
+              )}
             </div>
           )}
 
           {!error && results.length === 0 && !loading && (
-            <div className="text-center py-12 text-neutral-500">
-              <Search size={48} className="mx-auto mb-4 opacity-50" />
-              <p>Nessun risultato. Inizia una ricerca.</p>
+            <div className="text-center py-16 text-neutral-500">
+              <Search size={56} className="mx-auto mb-4 opacity-30" />
+              <p className="text-lg">Nessun risultato</p>
+              <p className="text-sm mt-2">Inserisci una città e avvia la ricerca</p>
             </div>
           )}
 
@@ -543,37 +567,34 @@ export default function SearchLeads() {
                   key={leadKey}
                   data-testid={`lead-result-${leadKey}`}
                   onClick={() => setSelectedLead(lead)}
-                  className="p-4 border border-neutral-200 rounded-lg hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer group"
+                  className="p-4 border-2 border-neutral-200 rounded-xl hover:shadow-lg hover:border-blue-400 transition-all cursor-pointer group bg-white"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-bold text-lg truncate group-hover:text-blue-600 transition-colors">
                           {lead.name}
                         </h3>
-                        <ChevronRight size={18} className="text-neutral-400 group-hover:text-blue-500 transition-colors flex-shrink-0" />
+                        <ChevronRight size={20} className="text-neutral-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all flex-shrink-0" />
                       </div>
                       <p className="text-sm text-neutral-500 mb-2">{lead.category}</p>
                       <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-600">
                         <span className="flex items-center gap-1">
-                          <MapPin size={14} />
+                          <MapPin size={14} className="text-neutral-400" />
                           {lead.city}
                         </span>
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1 font-medium">
                           <Star size={14} className="text-yellow-500 fill-yellow-500" />
-                          {lead.rating} ({lead.reviews_count})
+                          {lead.rating}
                         </span>
-                        {lead.phone && (
-                          <span className="flex items-center gap-1">
-                            <Phone size={14} />
-                            {lead.phone}
-                          </span>
-                        )}
+                        <span className="text-neutral-400">
+                          ({lead.reviews_count} recensioni)
+                        </span>
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                      <Badge className={`${!lead.website ? 'bg-green-500' : 'bg-neutral-400'} text-white`}>
-                        {!lead.website ? 'No Sito' : 'Ha Sito'}
+                      <Badge className="bg-green-100 text-green-700 border border-green-300">
+                        Senza Sito
                       </Badge>
                       <Button
                         size="sm"
@@ -583,8 +604,8 @@ export default function SearchLeads() {
                         }}
                         disabled={isSaving || isSaved}
                         className={isSaved 
-                          ? "bg-green-100 text-green-700 hover:bg-green-100" 
-                          : "bg-green-600 hover:bg-green-700 text-white"
+                          ? "bg-green-100 text-green-700 hover:bg-green-100 border border-green-300" 
+                          : "bg-blue-600 hover:bg-blue-700 text-white"
                         }
                         data-testid={`save-lead-${leadKey}`}
                       >
@@ -604,8 +625,8 @@ export default function SearchLeads() {
                       </Button>
                     </div>
                   </div>
-                  <p className="text-xs text-blue-500 mt-2 group-hover:underline">
-                    Tocca per vedere tutti i dettagli
+                  <p className="text-xs text-blue-500 mt-3 font-medium group-hover:underline">
+                    👆 Tocca per vedere foto, recensioni e tutti i dettagli
                   </p>
                 </div>
               );
@@ -618,6 +639,7 @@ export default function SearchLeads() {
       {selectedLead && (
         <LeadDetailModal
           lead={selectedLead}
+          country={getCountryName(formData.country)}
           onClose={() => setSelectedLead(null)}
           onSave={handleSaveLead}
           isSaving={savingLeads[selectedLead.place_id || selectedLead.name]}
