@@ -4,7 +4,7 @@ import axios from 'axios';
 import { 
   ArrowLeft, Save, RefreshCw, Clock, UtensilsCrossed, FileText, 
   Phone, Images, Search, Loader2, CheckCircle, AlertCircle, ExternalLink,
-  Plus, Trash2, GripVertical, X, ImageIcon, Upload, Palette
+  Plus, Trash2, GripVertical, X, ImageIcon, Upload, Palette, Star, HelpCircle
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -278,37 +278,45 @@ export default function SiteEditor() {
 
       {/* Tabs Editor */}
       <Tabs defaultValue="logo" className="w-full">
-        <TabsList className="grid w-full grid-cols-8 mb-6">
-          <TabsTrigger value="logo" data-testid="tab-logo" className="flex items-center gap-2">
-            <ImageIcon size={16} />
+        <TabsList className="grid w-full grid-cols-5 sm:grid-cols-10 mb-6 gap-1">
+          <TabsTrigger value="logo" data-testid="tab-logo" className="flex items-center gap-1 text-xs sm:text-sm">
+            <ImageIcon size={14} />
             <span className="hidden sm:inline">Logo</span>
           </TabsTrigger>
-          <TabsTrigger value="style" data-testid="tab-style" className="flex items-center gap-2">
-            <Palette size={16} />
+          <TabsTrigger value="style" data-testid="tab-style" className="flex items-center gap-1 text-xs sm:text-sm">
+            <Palette size={14} />
             <span className="hidden sm:inline">Stile</span>
           </TabsTrigger>
-          <TabsTrigger value="hours" data-testid="tab-hours" className="flex items-center gap-2">
-            <Clock size={16} />
+          <TabsTrigger value="hours" data-testid="tab-hours" className="flex items-center gap-1 text-xs sm:text-sm">
+            <Clock size={14} />
             <span className="hidden sm:inline">Orari</span>
           </TabsTrigger>
-          <TabsTrigger value="menu" data-testid="tab-menu" className="flex items-center gap-2">
-            <UtensilsCrossed size={16} />
+          <TabsTrigger value="menu" data-testid="tab-menu" className="flex items-center gap-1 text-xs sm:text-sm">
+            <UtensilsCrossed size={14} />
             <span className="hidden sm:inline">Menu</span>
           </TabsTrigger>
-          <TabsTrigger value="texts" data-testid="tab-texts" className="flex items-center gap-2">
-            <FileText size={16} />
+          <TabsTrigger value="texts" data-testid="tab-texts" className="flex items-center gap-1 text-xs sm:text-sm">
+            <FileText size={14} />
             <span className="hidden sm:inline">Testi</span>
           </TabsTrigger>
-          <TabsTrigger value="contacts" data-testid="tab-contacts" className="flex items-center gap-2">
-            <Phone size={16} />
+          <TabsTrigger value="whyus" data-testid="tab-whyus" className="flex items-center gap-1 text-xs sm:text-sm">
+            <Star size={14} />
+            <span className="hidden sm:inline">Perché Noi</span>
+          </TabsTrigger>
+          <TabsTrigger value="faq" data-testid="tab-faq" className="flex items-center gap-1 text-xs sm:text-sm">
+            <HelpCircle size={14} />
+            <span className="hidden sm:inline">FAQ</span>
+          </TabsTrigger>
+          <TabsTrigger value="contacts" data-testid="tab-contacts" className="flex items-center gap-1 text-xs sm:text-sm">
+            <Phone size={14} />
             <span className="hidden sm:inline">Contatti</span>
           </TabsTrigger>
-          <TabsTrigger value="gallery" data-testid="tab-gallery" className="flex items-center gap-2">
-            <Images size={16} />
+          <TabsTrigger value="gallery" data-testid="tab-gallery" className="flex items-center gap-1 text-xs sm:text-sm">
+            <Images size={14} />
             <span className="hidden sm:inline">Galleria</span>
           </TabsTrigger>
-          <TabsTrigger value="seo" data-testid="tab-seo" className="flex items-center gap-2">
-            <Search size={16} />
+          <TabsTrigger value="seo" data-testid="tab-seo" className="flex items-center gap-1 text-xs sm:text-sm">
+            <Search size={14} />
             <span className="hidden sm:inline">SEO</span>
           </TabsTrigger>
         </TabsList>
@@ -372,6 +380,28 @@ export default function SiteEditor() {
             onSave={() => saveSection('texts', siteData.texts)}
             saving={saving.texts}
             hasChanges={hasChanges.texts}
+          />
+        </TabsContent>
+
+        {/* PERCHÉ SCEGLIERCI */}
+        <TabsContent value="whyus">
+          <WhyUsEditor
+            whyUs={siteData.why_choose_us}
+            onUpdate={(data) => updateSection('why_choose_us', data)}
+            onSave={() => saveSection('why_choose_us', siteData.why_choose_us)}
+            saving={saving.why_choose_us}
+            hasChanges={hasChanges.why_choose_us}
+          />
+        </TabsContent>
+
+        {/* FAQ */}
+        <TabsContent value="faq">
+          <FaqEditor
+            faq={siteData.faq}
+            onUpdate={(data) => updateSection('faq', data)}
+            onSave={() => saveSection('faq', siteData.faq)}
+            saving={saving.faq}
+            hasChanges={hasChanges.faq}
           />
         </TabsContent>
 
@@ -1147,6 +1177,228 @@ function GalleryEditor({ gallery, onUpdate, onSave, saving, hasChanges }) {
           <p className="text-sm">Aggiungi immagini tramite URL</p>
         </div>
       )}
+
+      <SaveButton onClick={onSave} saving={saving} hasChanges={hasChanges} />
+    </Card>
+  );
+}
+
+// WHY CHOOSE US EDITOR
+function WhyUsEditor({ whyUs, onUpdate, onSave, saving, hasChanges }) {
+  const items = whyUs || [];
+  
+  const addItem = () => {
+    onUpdate([...items, { title: '', description: '' }]);
+  };
+  
+  const updateItem = (index, field, value) => {
+    const newItems = [...items];
+    newItems[index] = { ...newItems[index], [field]: value };
+    onUpdate(newItems);
+  };
+  
+  const removeItem = (index) => {
+    onUpdate(items.filter((_, i) => i !== index));
+  };
+  
+  const moveItem = (index, direction) => {
+    const newItems = [...items];
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= newItems.length) return;
+    [newItems[index], newItems[newIndex]] = [newItems[newIndex], newItems[index]];
+    onUpdate(newItems);
+  };
+
+  return (
+    <Card className="p-6" data-testid="whyus-editor">
+      <h2 className="text-xl font-semibold mb-2">Perché Sceglierci</h2>
+      <p className="text-sm text-neutral-500 mb-6">Aggiungi i punti di forza della tua attività che convinceranno i clienti a sceglierti.</p>
+      
+      <div className="space-y-4">
+        {items.map((item, index) => (
+          <div key={index} className="p-4 border rounded-lg bg-neutral-50">
+            <div className="flex items-start gap-3">
+              <div className="flex flex-col gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => moveItem(index, -1)}
+                  disabled={index === 0}
+                  className="h-6 w-6 p-0"
+                >
+                  ↑
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => moveItem(index, 1)}
+                  disabled={index === items.length - 1}
+                  className="h-6 w-6 p-0"
+                >
+                  ↓
+                </Button>
+              </div>
+              
+              <div className="flex-1 space-y-3">
+                <div>
+                  <Label className="text-xs text-neutral-500">Titolo (es. "Esperienza", "Qualità")</Label>
+                  <Input
+                    placeholder="Titolo punto di forza"
+                    value={item.title || ''}
+                    onChange={(e) => updateItem(index, 'title', e.target.value)}
+                    data-testid={`whyus-title-${index}`}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-neutral-500">Descrizione</Label>
+                  <Textarea
+                    placeholder="Descrivi perché questo è un vantaggio per il cliente..."
+                    value={item.description || ''}
+                    onChange={(e) => updateItem(index, 'description', e.target.value)}
+                    rows={2}
+                    data-testid={`whyus-desc-${index}`}
+                  />
+                </div>
+              </div>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => removeItem(index)}
+                className="text-red-500 hover:text-red-700"
+              >
+                <Trash2 size={16} />
+              </Button>
+            </div>
+          </div>
+        ))}
+        
+        {items.length < 6 && (
+          <Button variant="outline" onClick={addItem} className="w-full" data-testid="whyus-add-btn">
+            <Plus size={16} className="mr-2" />
+            Aggiungi Punto di Forza
+          </Button>
+        )}
+        
+        {items.length === 0 && (
+          <div className="text-center py-8 text-neutral-500">
+            <Star size={48} className="mx-auto mb-2 opacity-30" />
+            <p>Nessun punto di forza aggiunto</p>
+            <p className="text-sm">Aggiungi i motivi per cui i clienti dovrebbero sceglierti</p>
+          </div>
+        )}
+      </div>
+
+      <SaveButton onClick={onSave} saving={saving} hasChanges={hasChanges} />
+    </Card>
+  );
+}
+
+// FAQ EDITOR
+function FaqEditor({ faq, onUpdate, onSave, saving, hasChanges }) {
+  const items = faq || [];
+  
+  const addItem = () => {
+    onUpdate([...items, { question: '', answer: '' }]);
+  };
+  
+  const updateItem = (index, field, value) => {
+    const newItems = [...items];
+    newItems[index] = { ...newItems[index], [field]: value };
+    onUpdate(newItems);
+  };
+  
+  const removeItem = (index) => {
+    onUpdate(items.filter((_, i) => i !== index));
+  };
+  
+  const moveItem = (index, direction) => {
+    const newItems = [...items];
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= newItems.length) return;
+    [newItems[index], newItems[newIndex]] = [newItems[newIndex], newItems[index]];
+    onUpdate(newItems);
+  };
+
+  return (
+    <Card className="p-6" data-testid="faq-editor">
+      <h2 className="text-xl font-semibold mb-2">Domande Frequenti (FAQ)</h2>
+      <p className="text-sm text-neutral-500 mb-6">Rispondi alle domande più comuni che i tuoi clienti potrebbero avere.</p>
+      
+      <div className="space-y-4">
+        {items.map((item, index) => (
+          <div key={index} className="p-4 border rounded-lg bg-neutral-50">
+            <div className="flex items-start gap-3">
+              <div className="flex flex-col gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => moveItem(index, -1)}
+                  disabled={index === 0}
+                  className="h-6 w-6 p-0"
+                >
+                  ↑
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => moveItem(index, 1)}
+                  disabled={index === items.length - 1}
+                  className="h-6 w-6 p-0"
+                >
+                  ↓
+                </Button>
+              </div>
+              
+              <div className="flex-1 space-y-3">
+                <div>
+                  <Label className="text-xs text-neutral-500">Domanda</Label>
+                  <Input
+                    placeholder="Es: Come posso prenotare?"
+                    value={item.question || ''}
+                    onChange={(e) => updateItem(index, 'question', e.target.value)}
+                    data-testid={`faq-question-${index}`}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-neutral-500">Risposta</Label>
+                  <Textarea
+                    placeholder="Scrivi una risposta chiara e utile..."
+                    value={item.answer || ''}
+                    onChange={(e) => updateItem(index, 'answer', e.target.value)}
+                    rows={3}
+                    data-testid={`faq-answer-${index}`}
+                  />
+                </div>
+              </div>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => removeItem(index)}
+                className="text-red-500 hover:text-red-700"
+              >
+                <Trash2 size={16} />
+              </Button>
+            </div>
+          </div>
+        ))}
+        
+        {items.length < 10 && (
+          <Button variant="outline" onClick={addItem} className="w-full" data-testid="faq-add-btn">
+            <Plus size={16} className="mr-2" />
+            Aggiungi Domanda
+          </Button>
+        )}
+        
+        {items.length === 0 && (
+          <div className="text-center py-8 text-neutral-500">
+            <HelpCircle size={48} className="mx-auto mb-2 opacity-30" />
+            <p>Nessuna FAQ aggiunta</p>
+            <p className="text-sm">Aggiungi le domande frequenti dei tuoi clienti</p>
+          </div>
+        )}
+      </div>
 
       <SaveButton onClick={onSave} saving={saving} hasChanges={hasChanges} />
     </Card>
