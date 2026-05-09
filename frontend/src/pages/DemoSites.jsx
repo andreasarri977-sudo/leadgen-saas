@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Globe, Eye, Rocket, Loader2, CheckCircle, AlertCircle, ExternalLink, Shield, Link2, RefreshCw, Pencil, Trash2, Copy, Check } from 'lucide-react';
+import { Globe, Eye, Rocket, Loader2, CheckCircle, AlertCircle, ExternalLink, Shield, Link2, RefreshCw, Pencil, Trash2, Copy, Check, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,9 +25,10 @@ const STATUS_CONFIG = {
 };
 
 const DOMAIN_STATUS_CONFIG = {
-  not_connected: { label: 'Non collegato', color: 'text-neutral-500' },
-  verifying: { label: 'In verifica DNS', color: 'text-yellow-600' },
-  active: { label: 'Attivo', color: 'text-green-600' }
+  not_connected: { label: 'Non collegato', color: 'text-neutral-500', bgColor: 'bg-neutral-100' },
+  pending: { label: 'DNS in attesa', color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+  verifying: { label: 'In verifica DNS', color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+  active: { label: 'Attivo', color: 'text-green-600', bgColor: 'bg-green-50' }
 };
 
 export default function DemoSites() {
@@ -41,6 +42,8 @@ export default function DemoSites() {
   const [deleting, setDeleting] = useState({});
   const [regenerating, setRegenerating] = useState({});
   const [copiedId, setCopiedId] = useState(null);
+  const [verifyingDomain, setVerifyingDomain] = useState({});
+  const [removingDomain, setRemovingDomain] = useState({});
 
   useEffect(() => {
     loadDemos();
@@ -160,18 +163,46 @@ export default function DemoSites() {
     
     setAddingDomain(prev => ({ ...prev, [demoId]: true }));
     try {
-      const response = await axios.post(`${API}/demos/${demoId}/domain`, { domain });
-      if (response.data.verified) {
-        toast.success('🎉 Dominio collegato e attivo!');
-      } else {
-        toast.info('📋 Dominio aggiunto. Configura i record DNS indicati.');
-      }
+      const response = await axios.post(`${API}/demos/${demoId}?action=connect-domain`, { domain });
+      toast.success(`Dominio ${domain} aggiunto! Configura i record DNS.`);
       await loadDemos();
       setDomainInputs(prev => ({ ...prev, [demoId]: '' }));
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Errore aggiunta dominio');
+      toast.error(error.response?.data?.error || 'Errore aggiunta dominio');
     } finally {
       setAddingDomain(prev => ({ ...prev, [demoId]: false }));
+    }
+  };
+
+  const handleVerifyDomain = async (demoId) => {
+    setVerifyingDomain(prev => ({ ...prev, [demoId]: true }));
+    try {
+      const response = await axios.post(`${API}/demos/${demoId}?action=verify-domain`);
+      if (response.data.verified) {
+        toast.success(response.data.message);
+      } else {
+        toast.info(response.data.message);
+      }
+      await loadDemos();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Errore verifica dominio');
+    } finally {
+      setVerifyingDomain(prev => ({ ...prev, [demoId]: false }));
+    }
+  };
+
+  const handleRemoveDomain = async (demoId) => {
+    if (!window.confirm('Sei sicuro di voler rimuovere il dominio custom?')) return;
+    
+    setRemovingDomain(prev => ({ ...prev, [demoId]: true }));
+    try {
+      await axios.post(`${API}/demos/${demoId}?action=remove-domain`);
+      toast.success('Dominio rimosso');
+      await loadDemos();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Errore rimozione dominio');
+    } finally {
+      setRemovingDomain(prev => ({ ...prev, [demoId]: false }));
     }
   };
 
@@ -245,42 +276,97 @@ export default function DemoSites() {
               {demo.publish_status === 'published' && (
                 <div className="mb-4">
                   {demo.custom_domain ? (
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-xs text-blue-700 font-medium">🔗 Dominio Custom</p>
-                        <span className={`text-xs font-medium ${domainConfig.color}`}>
+                    <div className={`p-4 ${domainConfig.bgColor} border border-neutral-200 rounded-lg`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-semibold text-neutral-800">Dominio Custom</p>
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${domainConfig.color} ${domainConfig.bgColor}`}>
                           {domainConfig.label}
                         </span>
                       </div>
-                      <p className="text-sm text-blue-800 font-medium">{demo.custom_domain}</p>
-                      {demo.domain_status === 'verifying' && demo.domain_verification && (
-                        <div className="mt-2 text-xs text-blue-600">
-                          <p className="font-medium mb-1">Configura DNS:</p>
+                      <p className="text-lg font-bold text-neutral-900 mb-3">{demo.custom_domain}</p>
+                      
+                      {/* DNS Instructions for pending domains */}
+                      {(demo.domain_status === 'pending' || demo.domain_status === 'verifying') && demo.domain_verification && (
+                        <div className="bg-white rounded-lg p-3 mb-3 border border-yellow-200">
+                          <p className="text-sm font-semibold text-yellow-800 mb-2">Configura questi record DNS:</p>
                           {demo.domain_verification.map((record, i) => (
-                            <p key={i} className="font-mono bg-white p-1 rounded mb-1">
-                              {record.type}: {record.value}
-                            </p>
+                            <div key={i} className="text-xs bg-yellow-50 p-2 rounded mb-2 font-mono">
+                              <span className="font-bold text-yellow-700">{record.type}</span>
+                              <span className="text-neutral-600 mx-2">→</span>
+                              <span className="text-neutral-800">{record.name}</span>
+                              <span className="text-neutral-600 mx-2">→</span>
+                              <span className="text-yellow-800 font-semibold">{record.value}</span>
+                            </div>
                           ))}
                         </div>
                       )}
+                      
+                      {/* Domain Actions */}
+                      <div className="flex gap-2">
+                        {demo.domain_status !== 'active' && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleVerifyDomain(demo.demo_id)}
+                            disabled={verifyingDomain[demo.demo_id]}
+                            className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white"
+                          >
+                            {verifyingDomain[demo.demo_id] ? (
+                              <Loader2 size={14} className="animate-spin mr-1" />
+                            ) : (
+                              <CheckCircle size={14} className="mr-1" />
+                            )}
+                            Verifica DNS
+                          </Button>
+                        )}
+                        {demo.domain_status === 'active' && (
+                          <a
+                            href={`https://${demo.custom_domain}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-md font-medium"
+                          >
+                            <Globe size={14} />
+                            Apri Sito
+                          </a>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRemoveDomain(demo.demo_id)}
+                          disabled={removingDomain[demo.demo_id]}
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                        >
+                          {removingDomain[demo.demo_id] ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <X size={14} />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   ) : (
-                    <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-lg">
-                      <p className="text-xs text-neutral-600 font-medium mb-2">Collega dominio custom:</p>
+                    <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm font-semibold text-blue-800 mb-1">Collega il tuo dominio</p>
+                      <p className="text-xs text-blue-600 mb-3">Il cliente ha un dominio? Collegalo qui per metterlo online.</p>
                       <div className="flex gap-2">
                         <input
                           type="text"
                           value={domainInputs[demo.demo_id] || ''}
                           onChange={(e) => setDomainInputs(prev => ({ ...prev, [demo.demo_id]: e.target.value }))}
-                          placeholder="www.esempio.it"
-                          className="flex-1 px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500"
+                          placeholder="esempio.it"
+                          className="flex-1 px-3 py-2 text-sm border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                         />
                         <Button
                           size="sm"
                           onClick={() => handleAddDomain(demo.demo_id)}
                           disabled={addingDomain[demo.demo_id]}
+                          className="bg-blue-600 hover:bg-blue-700"
                         >
-                          {addingDomain[demo.demo_id] ? <Loader2 size={14} className="animate-spin" /> : <Link2 size={14} />}
+                          {addingDomain[demo.demo_id] ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <Link2 size={14} />
+                          )}
                         </Button>
                       </div>
                     </div>

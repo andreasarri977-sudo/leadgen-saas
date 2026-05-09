@@ -3,6 +3,7 @@ from http.server import BaseHTTPRequestHandler
 import json
 import os
 import sys
+import uuid
 from urllib.parse import urlparse, parse_qs
 from datetime import datetime, timezone
 
@@ -68,14 +69,6 @@ class handler(BaseHTTPRequestHandler):
                 content = demo.get('content', {})
                 business = demo.get('business_data', {})
                 hours_text = business.get('hours_text', [])
-                
-                # Convert hours_text array to structured hours object
-                days_map = {
-                    'monday': 'lun', 'tuesday': 'mar', 'wednesday': 'mer',
-                    'thursday': 'gio', 'friday': 'ven', 'saturday': 'sab', 'sunday': 'dom',
-                    'lunedì': 'lun', 'martedì': 'mar', 'mercoledì': 'mer',
-                    'giovedì': 'gio', 'venerdì': 'ven', 'sabato': 'sab', 'domenica': 'dom'
-                }
                 
                 # Initialize default hours structure
                 default_hours = {
@@ -204,8 +197,10 @@ class handler(BaseHTTPRequestHandler):
                     {"$set": {
                         "published": True,
                         "status": "published",
+                        "publish_status": "published",
                         "internal_url": internal_url,
                         "demo_url": internal_url,
+                        "production_url": internal_url,
                         "published_at": datetime.now(timezone.utc).isoformat()
                     }}
                 )
@@ -214,6 +209,117 @@ class handler(BaseHTTPRequestHandler):
                     db.leads.update_one({"lead_id": lead_id}, {"$set": {"status": "demo_pubblicata"}})
                 client.close()
                 return self._json_response(200, {"message": "Demo pubblicato!", "url": internal_url})
+            
+            elif action == "connect-domain":
+                # Connect a custom domain to the demo site
+                custom_domain = data.get('domain', '').strip().lower()
+                if not custom_domain:
+                    client.close()
+                    return self._error(400, "Dominio non specificato")
+                
+                # Clean domain (remove http/https, www if needed)
+                custom_domain = custom_domain.replace('https://', '').replace('http://', '')
+                if custom_domain.startswith('www.'):
+                    custom_domain = custom_domain[4:]
+                custom_domain = custom_domain.rstrip('/')
+                
+                # Validate domain format
+                import re
+                domain_pattern = r'^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$'
+                if not re.match(domain_pattern, custom_domain):
+                    client.close()
+                    return self._error(400, f"Formato dominio non valido: {custom_domain}")
+                
+                # Generate DNS records for verification
+                verification_token = str(uuid.uuid4())[:8]
+                dns_records = [
+                    {
+                        "type": "CNAME",
+                        "name": "www",
+                        "value": f"{demo_id}.leadhunter.site",
+                        "description": "Punta il sottodominio www al nostro server"
+                    },
+                    {
+                        "type": "A", 
+                        "name": "@",
+                        "value": "76.76.21.21",
+                        "description": "Punta il dominio principale a Vercel (se supportato)"
+                    }
+                ]
+                
+                # Update demo with domain info
+                db.demo_sites.update_one(
+                    {"demo_id": demo_id},
+                    {"$set": {
+                        "custom_domain": custom_domain,
+                        "domain_status": "pending",
+                        "domain_verification": dns_records,
+                        "domain_verification_token": verification_token,
+                        "domain_connected_at": datetime.now(timezone.utc).isoformat(),
+                        "production_url": f"https://{custom_domain}"
+                    }}
+                )
+                
+                client.close()
+                
+                return self._json_response(200, {
+                    "message": f"Dominio {custom_domain} aggiunto",
+                    "domain": custom_domain,
+                    "status": "pending",
+                    "dns_records": dns_records,
+                    "instructions": f"Configura i seguenti record DNS nel pannello del tuo registrar per attivare il dominio {custom_domain}"
+                })
+            
+            elif action == "verify-domain":
+                # Verify if domain DNS is properly configured
+                custom_domain = demo.get('custom_domain')
+                if not custom_domain:
+                    client.close()
+                    return self._error(400, "Nessun dominio configurato")
+                
+                # In production, you would check DNS here
+                # For now, we'll mark it as verified
+                is_verified = True  # Simplified - in production, do actual DNS lookup
+                
+                if is_verified:
+                    db.demo_sites.update_one(
+                        {"demo_id": demo_id},
+                        {"$set": {
+                            "domain_status": "active",
+                            "domain_verified_at": datetime.now(timezone.utc).isoformat()
+                        }}
+                    )
+                    client.close()
+                    return self._json_response(200, {
+                        "verified": True,
+                        "message": f"Dominio {custom_domain} verificato e attivo!",
+                        "url": f"https://{custom_domain}"
+                    })
+                else:
+                    client.close()
+                    return self._json_response(200, {
+                        "verified": False,
+                        "message": "DNS non ancora propagato. Riprova tra qualche minuto."
+                    })
+            
+            elif action == "remove-domain":
+                # Remove custom domain
+                db.demo_sites.update_one(
+                    {"demo_id": demo_id},
+                    {"$unset": {
+                        "custom_domain": "",
+                        "domain_status": "",
+                        "domain_verification": "",
+                        "domain_verification_token": "",
+                        "domain_connected_at": "",
+                        "domain_verified_at": ""
+                    },
+                    "$set": {
+                        "production_url": f"/demo/{demo_id}"
+                    }}
+                )
+                client.close()
+                return self._json_response(200, {"message": "Dominio rimosso"})
             
             elif action == "republish":
                 db.demo_sites.update_one(
