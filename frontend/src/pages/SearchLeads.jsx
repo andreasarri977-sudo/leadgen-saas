@@ -36,19 +36,30 @@ function LeadDetailModal({ lead, onClose, onSave, isSaving, isSaved, country }) 
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    console.log('[LeadHunter] Modal useEffect - lead:', lead?.name, 'place_id:', lead?.place_id);
     if (lead?.place_id) {
       loadDetails();
+    } else if (lead) {
+      // No place_id, use lead data directly
+      console.log('[LeadHunter] No place_id, using lead data directly');
+      setDetails(lead);
+      setLoading(false);
     }
   }, [lead?.place_id]);
 
   const loadDetails = async () => {
     setLoading(true);
     setError(null);
+    console.log('[LeadHunter] Loading details for:', lead.place_id, 'country:', country);
     try {
-      const response = await axios.get(`${API}/leads?action=details&place_id=${lead.place_id}&country=${country}`);
+      const url = `${API}/leads?action=details&place_id=${encodeURIComponent(lead.place_id)}&country=${encodeURIComponent(country)}`;
+      console.log('[LeadHunter] API URL:', url);
+      const response = await axios.get(url);
+      console.log('[LeadHunter] Details response:', response.data);
       setDetails(response.data);
     } catch (err) {
-      console.error('Errore caricamento dettagli:', err);
+      console.error('[LeadHunter] Errore caricamento dettagli:', err);
+      console.error('[LeadHunter] Error response:', err.response?.data);
       setError('Impossibile caricare i dettagli. Riprova.');
       // Use basic lead data as fallback
       setDetails(lead);
@@ -566,7 +577,10 @@ export default function SearchLeads() {
                 <div
                   key={leadKey}
                   data-testid={`lead-result-${leadKey}`}
-                  onClick={() => setSelectedLead(lead)}
+                  onClick={() => {
+                    console.log('[LeadHunter] Lead clicked:', lead);
+                    setSelectedLead(lead);
+                  }}
                   className="p-4 border-2 border-neutral-200 rounded-xl hover:shadow-lg hover:border-blue-400 transition-all cursor-pointer group bg-white"
                 >
                   <div className="flex items-start justify-between gap-4">
