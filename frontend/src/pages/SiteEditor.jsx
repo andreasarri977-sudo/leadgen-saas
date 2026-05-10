@@ -20,37 +20,39 @@ import API from '@/lib/api';
 
 // Color schemes
 const COLOR_SCHEMES = [
-  // Blu
-  { id: 'blue', name: 'Blu', color: '#2563eb', preview: 'bg-blue-600' },
-  { id: 'sky', name: 'Celeste', color: '#0284c7', preview: 'bg-sky-600' },
-  { id: 'indigo', name: 'Indaco', color: '#4f46e5', preview: 'bg-indigo-600' },
-  // Viola/Rosa
-  { id: 'purple', name: 'Viola', color: '#9333ea', preview: 'bg-purple-600' },
-  { id: 'violet', name: 'Violetto', color: '#7c3aed', preview: 'bg-violet-600' },
-  { id: 'pink', name: 'Rosa', color: '#db2777', preview: 'bg-pink-600' },
-  { id: 'fuchsia', name: 'Fucsia', color: '#c026d3', preview: 'bg-fuchsia-600' },
-  { id: 'rose', name: 'Rosa Antico', color: '#e11d48', preview: 'bg-rose-600' },
-  // Rosso/Arancione
-  { id: 'red', name: 'Rosso', color: '#dc2626', preview: 'bg-red-600' },
-  { id: 'orange', name: 'Arancione', color: '#ea580c', preview: 'bg-orange-600' },
-  { id: 'amber', name: 'Ambra', color: '#d97706', preview: 'bg-amber-600' },
-  // Verde
-  { id: 'green', name: 'Verde', color: '#16a34a', preview: 'bg-green-600' },
-  { id: 'emerald', name: 'Smeraldo', color: '#059669', preview: 'bg-emerald-600' },
-  { id: 'teal', name: 'Verde Acqua', color: '#0d9488', preview: 'bg-teal-600' },
-  { id: 'lime', name: 'Lime', color: '#65a30d', preview: 'bg-lime-600' },
-  // Neutri
-  { id: 'slate', name: 'Ardesia', color: '#475569', preview: 'bg-slate-600' },
-  { id: 'gray', name: 'Grigio', color: '#4b5563', preview: 'bg-gray-600' },
-  { id: 'zinc', name: 'Zinco', color: '#52525b', preview: 'bg-zinc-600' },
-  { id: 'stone', name: 'Pietra', color: '#57534e', preview: 'bg-stone-600' },
-  // Speciali
-  { id: 'black', name: 'Nero', color: '#171717', preview: 'bg-neutral-900' },
-  { id: 'gold', name: 'Oro', color: '#b8860b', preview: 'bg-yellow-700' },
-  { id: 'bronze', name: 'Bronzo', color: '#92400e', preview: 'bg-amber-800' },
-  { id: 'navy', name: 'Blu Navy', color: '#1e3a5f', preview: 'bg-blue-900' },
-  { id: 'maroon', name: 'Bordeaux', color: '#7f1d1d', preview: 'bg-red-900' },
-  { id: 'forest', name: 'Verde Foresta', color: '#14532d', preview: 'bg-green-900' }
+  // Blu Vivaci
+  { id: 'blue', name: 'Blu', color: '#3b82f6', preview: 'bg-blue-500' },
+  { id: 'sky', name: 'Celeste', color: '#0ea5e9', preview: 'bg-sky-500' },
+  { id: 'cyan', name: 'Ciano', color: '#06b6d4', preview: 'bg-cyan-500' },
+  { id: 'indigo', name: 'Indaco', color: '#6366f1', preview: 'bg-indigo-500' },
+  // Viola/Rosa Vivaci
+  { id: 'purple', name: 'Viola', color: '#a855f7', preview: 'bg-purple-500' },
+  { id: 'violet', name: 'Violetto', color: '#8b5cf6', preview: 'bg-violet-500' },
+  { id: 'fuchsia', name: 'Fucsia', color: '#d946ef', preview: 'bg-fuchsia-500' },
+  { id: 'pink', name: 'Rosa', color: '#ec4899', preview: 'bg-pink-500' },
+  { id: 'rose', name: 'Rosa Acceso', color: '#f43f5e', preview: 'bg-rose-500' },
+  // Rosso/Arancione Vivaci
+  { id: 'red', name: 'Rosso', color: '#ef4444', preview: 'bg-red-500' },
+  { id: 'orange', name: 'Arancione', color: '#f97316', preview: 'bg-orange-500' },
+  { id: 'amber', name: 'Ambra', color: '#f59e0b', preview: 'bg-amber-500' },
+  { id: 'yellow', name: 'Giallo', color: '#eab308', preview: 'bg-yellow-500' },
+  // Verde Vivaci
+  { id: 'lime', name: 'Lime', color: '#84cc16', preview: 'bg-lime-500' },
+  { id: 'green', name: 'Verde', color: '#22c55e', preview: 'bg-green-500' },
+  { id: 'emerald', name: 'Smeraldo', color: '#10b981', preview: 'bg-emerald-500' },
+  { id: 'teal', name: 'Verde Acqua', color: '#14b8a6', preview: 'bg-teal-500' },
+  // Colori Speciali/Eleganti
+  { id: 'gold', name: 'Oro', color: '#fbbf24', preview: 'bg-amber-400' },
+  { id: 'coral', name: 'Corallo', color: '#fb7185', preview: 'bg-rose-400' },
+  { id: 'mint', name: 'Menta', color: '#34d399', preview: 'bg-emerald-400' },
+  { id: 'lavender', name: 'Lavanda', color: '#a78bfa', preview: 'bg-violet-400' },
+  { id: 'peach', name: 'Pesca', color: '#fb923c', preview: 'bg-orange-400' },
+  // Scuri/Eleganti
+  { id: 'slate', name: 'Ardesia', color: '#64748b', preview: 'bg-slate-500' },
+  { id: 'navy', name: 'Blu Navy', color: '#1e40af', preview: 'bg-blue-800' },
+  { id: 'maroon', name: 'Bordeaux', color: '#be123c', preview: 'bg-rose-700' },
+  { id: 'forest', name: 'Verde Foresta', color: '#15803d', preview: 'bg-green-700' },
+  { id: 'black', name: 'Nero', color: '#171717', preview: 'bg-neutral-900' }
 ];
 
 const HERO_POSITIONS = [
@@ -445,7 +447,12 @@ export default function SiteEditor() {
 
       {/* Tabs Editor */}
       <Tabs defaultValue="logo" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 sm:grid-cols-10 mb-6 gap-1">
+        <TabsList className="grid w-full grid-cols-5 sm:grid-cols-11 mb-6 gap-1">
+          {/* Tab Cliente in evidenza - primo posto */}
+          <TabsTrigger value="client" data-testid="tab-client" className="flex items-center gap-1 text-xs sm:text-sm bg-orange-100 text-orange-700 data-[state=active]:bg-orange-500 data-[state=active]:text-white border border-orange-300 font-semibold">
+            <Settings size={14} />
+            <span className="hidden sm:inline">Cliente</span>
+          </TabsTrigger>
           <TabsTrigger value="logo" data-testid="tab-logo" className="flex items-center gap-1 text-xs sm:text-sm">
             <ImageIcon size={14} />
             <span className="hidden sm:inline">Logo</span>
@@ -485,10 +492,6 @@ export default function SiteEditor() {
           <TabsTrigger value="seo" data-testid="tab-seo" className="flex items-center gap-1 text-xs sm:text-sm">
             <Search size={14} />
             <span className="hidden sm:inline">SEO</span>
-          </TabsTrigger>
-          <TabsTrigger value="client" data-testid="tab-client" className="flex items-center gap-1 text-xs sm:text-sm">
-            <Settings size={14} />
-            <span className="hidden sm:inline">Cliente</span>
           </TabsTrigger>
         </TabsList>
 
