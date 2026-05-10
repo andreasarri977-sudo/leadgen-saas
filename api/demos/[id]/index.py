@@ -151,6 +151,8 @@ class handler(BaseHTTPRequestHandler):
                     "theme": content.get('theme', 'modern'),
                     "color_scheme": content.get('color_scheme', 'blue'),
                     "hero_image": content.get('hero_image', ''),
+                    "hero_position": content.get('hero_position', 'center'),
+                    "hero_overlay": content.get('hero_overlay', 'medium'),
                     "reviews": business.get('reviews', [])
                 }
                 client.close()
@@ -375,6 +377,10 @@ class handler(BaseHTTPRequestHandler):
                         content_updates['content.color_scheme'] = section_data['color_scheme']
                     if section_data.get('hero_image'):
                         content_updates['content.hero_image'] = section_data['hero_image']
+                    if section_data.get('hero_position'):
+                        content_updates['content.hero_position'] = section_data['hero_position']
+                    if section_data.get('hero_overlay'):
+                        content_updates['content.hero_overlay'] = section_data['hero_overlay']
                     if section_data.get('theme'):
                         content_updates['content.theme'] = section_data['theme']
                     

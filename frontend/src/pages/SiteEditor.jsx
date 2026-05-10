@@ -20,16 +20,57 @@ import API from '@/lib/api';
 
 // Color schemes
 const COLOR_SCHEMES = [
+  // Blu
   { id: 'blue', name: 'Blu', color: '#2563eb', preview: 'bg-blue-600' },
-  { id: 'purple', name: 'Viola', color: '#9333ea', preview: 'bg-purple-600' },
-  { id: 'green', name: 'Verde', color: '#16a34a', preview: 'bg-green-600' },
-  { id: 'orange', name: 'Arancione', color: '#ea580c', preview: 'bg-orange-600' },
-  { id: 'red', name: 'Rosso', color: '#dc2626', preview: 'bg-red-600' },
-  { id: 'pink', name: 'Rosa', color: '#db2777', preview: 'bg-pink-600' },
-  { id: 'teal', name: 'Verde Acqua', color: '#0d9488', preview: 'bg-teal-600' },
+  { id: 'sky', name: 'Celeste', color: '#0284c7', preview: 'bg-sky-600' },
   { id: 'indigo', name: 'Indaco', color: '#4f46e5', preview: 'bg-indigo-600' },
+  // Viola/Rosa
+  { id: 'purple', name: 'Viola', color: '#9333ea', preview: 'bg-purple-600' },
+  { id: 'violet', name: 'Violetto', color: '#7c3aed', preview: 'bg-violet-600' },
+  { id: 'pink', name: 'Rosa', color: '#db2777', preview: 'bg-pink-600' },
+  { id: 'fuchsia', name: 'Fucsia', color: '#c026d3', preview: 'bg-fuchsia-600' },
+  { id: 'rose', name: 'Rosa Antico', color: '#e11d48', preview: 'bg-rose-600' },
+  // Rosso/Arancione
+  { id: 'red', name: 'Rosso', color: '#dc2626', preview: 'bg-red-600' },
+  { id: 'orange', name: 'Arancione', color: '#ea580c', preview: 'bg-orange-600' },
+  { id: 'amber', name: 'Ambra', color: '#d97706', preview: 'bg-amber-600' },
+  // Verde
+  { id: 'green', name: 'Verde', color: '#16a34a', preview: 'bg-green-600' },
+  { id: 'emerald', name: 'Smeraldo', color: '#059669', preview: 'bg-emerald-600' },
+  { id: 'teal', name: 'Verde Acqua', color: '#0d9488', preview: 'bg-teal-600' },
+  { id: 'lime', name: 'Lime', color: '#65a30d', preview: 'bg-lime-600' },
+  // Neutri
   { id: 'slate', name: 'Ardesia', color: '#475569', preview: 'bg-slate-600' },
-  { id: 'amber', name: 'Ambra', color: '#d97706', preview: 'bg-amber-600' }
+  { id: 'gray', name: 'Grigio', color: '#4b5563', preview: 'bg-gray-600' },
+  { id: 'zinc', name: 'Zinco', color: '#52525b', preview: 'bg-zinc-600' },
+  { id: 'stone', name: 'Pietra', color: '#57534e', preview: 'bg-stone-600' },
+  // Speciali
+  { id: 'black', name: 'Nero', color: '#171717', preview: 'bg-neutral-900' },
+  { id: 'gold', name: 'Oro', color: '#b8860b', preview: 'bg-yellow-700' },
+  { id: 'bronze', name: 'Bronzo', color: '#92400e', preview: 'bg-amber-800' },
+  { id: 'navy', name: 'Blu Navy', color: '#1e3a5f', preview: 'bg-blue-900' },
+  { id: 'maroon', name: 'Bordeaux', color: '#7f1d1d', preview: 'bg-red-900' },
+  { id: 'forest', name: 'Verde Foresta', color: '#14532d', preview: 'bg-green-900' }
+];
+
+const HERO_POSITIONS = [
+  { id: 'center', name: 'Centro', value: 'center center' },
+  { id: 'top', name: 'Alto', value: 'center top' },
+  { id: 'bottom', name: 'Basso', value: 'center bottom' },
+  { id: 'left', name: 'Sinistra', value: 'left center' },
+  { id: 'right', name: 'Destra', value: 'right center' },
+  { id: 'top-left', name: 'Alto Sinistra', value: 'left top' },
+  { id: 'top-right', name: 'Alto Destra', value: 'right top' },
+  { id: 'bottom-left', name: 'Basso Sinistra', value: 'left bottom' },
+  { id: 'bottom-right', name: 'Basso Destra', value: 'right bottom' }
+];
+
+const HERO_OVERLAYS = [
+  { id: 'none', name: 'Nessuno', value: 'none' },
+  { id: 'light', name: 'Leggero', value: 'rgba(0,0,0,0.3)' },
+  { id: 'medium', name: 'Medio', value: 'rgba(0,0,0,0.5)' },
+  { id: 'dark', name: 'Scuro', value: 'rgba(0,0,0,0.7)' },
+  { id: 'gradient', name: 'Sfumato', value: 'gradient' }
 ];
 
 const DAYS = [
@@ -43,9 +84,11 @@ const DAYS = [
 ];
 
 // Style Editor Component
-function StyleEditor({ heroImage, colorScheme, theme, gallery, onUpdate, onSave, saving }) {
+function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, gallery, onUpdate, onSave, saving }) {
   const [selectedColor, setSelectedColor] = useState(colorScheme || 'blue');
   const [selectedHero, setSelectedHero] = useState(heroImage || '');
+  const [selectedPosition, setSelectedPosition] = useState(heroPosition || 'center');
+  const [selectedOverlay, setSelectedOverlay] = useState(heroOverlay || 'medium');
   
   // Find initial index based on heroImage
   const findHeroIndex = () => {
@@ -60,22 +103,37 @@ function StyleEditor({ heroImage, colorScheme, theme, gallery, onUpdate, onSave,
   
   const handleColorChange = (colorId) => {
     setSelectedColor(colorId);
-    onUpdate({ color_scheme: colorId, hero_image: selectedHero, theme });
+    onUpdate({ color_scheme: colorId, hero_image: selectedHero, hero_position: selectedPosition, hero_overlay: selectedOverlay, theme });
   };
   
   const handleHeroChange = (imageUrl, index) => {
     setSelectedHeroIndex(index);
     setSelectedHero(imageUrl);
-    onUpdate({ hero_image: imageUrl, color_scheme: selectedColor, theme });
+    onUpdate({ hero_image: imageUrl, color_scheme: selectedColor, hero_position: selectedPosition, hero_overlay: selectedOverlay, theme });
+  };
+
+  const handlePositionChange = (positionId) => {
+    setSelectedPosition(positionId);
+    onUpdate({ hero_position: positionId, hero_image: selectedHero, color_scheme: selectedColor, hero_overlay: selectedOverlay, theme });
+  };
+
+  const handleOverlayChange = (overlayId) => {
+    setSelectedOverlay(overlayId);
+    onUpdate({ hero_overlay: overlayId, hero_image: selectedHero, color_scheme: selectedColor, hero_position: selectedPosition, theme });
   };
   
   const handleSave = () => {
     onSave({
       hero_image: selectedHero,
+      hero_position: selectedPosition,
+      hero_overlay: selectedOverlay,
       color_scheme: selectedColor,
       theme: theme
     });
   };
+
+  // Get position value for preview
+  const positionValue = HERO_POSITIONS.find(p => p.id === selectedPosition)?.value || 'center center';
   
   return (
     <Card className="p-6">
@@ -83,29 +141,29 @@ function StyleEditor({ heroImage, colorScheme, theme, gallery, onUpdate, onSave,
       
       {/* Color Scheme */}
       <div className="mb-8">
-        <Label className="text-base font-medium mb-3 block">Colore Principale</Label>
+        <Label className="text-base font-medium mb-3 block">🎨 Colore Principale</Label>
         <p className="text-sm text-neutral-500 mb-4">Scegli il colore dei pulsanti e degli elementi principali</p>
-        <div className="grid grid-cols-5 sm:grid-cols-10 gap-3">
+        <div className="grid grid-cols-6 sm:grid-cols-9 gap-2">
           {COLOR_SCHEMES.map((scheme) => (
             <button
               key={scheme.id}
               onClick={() => handleColorChange(scheme.id)}
-              className={`w-10 h-10 rounded-full ${scheme.preview} transition-all hover:scale-110 ${
-                selectedColor === scheme.id ? 'ring-4 ring-offset-2 ring-blue-400' : ''
+              className={`w-9 h-9 rounded-full ${scheme.preview} transition-all hover:scale-110 ${
+                selectedColor === scheme.id ? 'ring-4 ring-offset-2 ring-blue-400 scale-110' : ''
               }`}
               title={scheme.name}
             />
           ))}
         </div>
-        <p className="text-sm text-neutral-500 mt-2">
-          Selezionato: <span className="font-medium">{COLOR_SCHEMES.find(c => c.id === selectedColor)?.name}</span>
+        <p className="text-sm text-neutral-500 mt-3">
+          Selezionato: <span className="font-medium text-neutral-800">{COLOR_SCHEMES.find(c => c.id === selectedColor)?.name || 'Blu'}</span>
         </p>
       </div>
       
       {/* Hero Image Selection */}
       <div className="mb-8">
-        <Label className="text-base font-medium mb-3 block">Immagine Hero (Sfondo principale)</Label>
-        <p className="text-sm text-neutral-500 mb-4">Seleziona l'immagine da usare come sfondo nella sezione principale</p>
+        <Label className="text-base font-medium mb-3 block">🖼️ Immagine di Copertina</Label>
+        <p className="text-sm text-neutral-500 mb-4">Seleziona l'immagine per la sezione principale del sito</p>
         
         {gallery && gallery.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -137,15 +195,94 @@ function StyleEditor({ heroImage, colorScheme, theme, gallery, onUpdate, onSave,
             <p className="text-sm text-neutral-400 mt-1">Aggiungi immagini nella tab "Galleria"</p>
           </div>
         )}
-        
-        {selectedHero && (
-          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-sm text-green-700">
-              ✓ Immagine hero selezionata. Clicca "Salva Stile" per applicare.
+      </div>
+
+      {/* Hero Image Adjustments - Show only if image selected */}
+      {selectedHero && (
+        <>
+          {/* Position Control */}
+          <div className="mb-8">
+            <Label className="text-base font-medium mb-3 block">📍 Posizione Immagine</Label>
+            <p className="text-sm text-neutral-500 mb-4">Regola quale parte dell'immagine mostrare</p>
+            
+            {/* Visual Position Selector */}
+            <div className="flex gap-6 items-start">
+              <div className="grid grid-cols-3 gap-1 bg-neutral-100 p-2 rounded-lg">
+                {['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'].map((pos) => (
+                  <button
+                    key={pos}
+                    onClick={() => handlePositionChange(pos)}
+                    className={`w-10 h-10 rounded flex items-center justify-center text-xs transition-all ${
+                      selectedPosition === pos 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-white hover:bg-blue-100 text-neutral-600'
+                    }`}
+                    title={HERO_POSITIONS.find(p => p.id === pos)?.name}
+                  >
+                    {pos === 'center' ? '●' : pos === 'top' ? '↑' : pos === 'bottom' ? '↓' : 
+                     pos === 'left' ? '←' : pos === 'right' ? '→' :
+                     pos === 'top-left' ? '↖' : pos === 'top-right' ? '↗' :
+                     pos === 'bottom-left' ? '↙' : '↘'}
+                  </button>
+                ))}
+              </div>
+              
+              {/* Preview */}
+              <div className="flex-1">
+                <p className="text-xs text-neutral-500 mb-2">Anteprima:</p>
+                <div className="relative w-full h-24 rounded-lg overflow-hidden border border-neutral-200">
+                  <img 
+                    src={selectedHero} 
+                    alt="Preview" 
+                    className="w-full h-full object-cover"
+                    style={{ objectPosition: positionValue }}
+                  />
+                  {selectedOverlay !== 'none' && (
+                    <div 
+                      className="absolute inset-0"
+                      style={{
+                        background: selectedOverlay === 'gradient' 
+                          ? 'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.6) 100%)'
+                          : HERO_OVERLAYS.find(o => o.id === selectedOverlay)?.value
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+            <p className="text-sm text-neutral-500 mt-2">
+              Posizione: <span className="font-medium">{HERO_POSITIONS.find(p => p.id === selectedPosition)?.name || 'Centro'}</span>
             </p>
           </div>
-        )}
-      </div>
+
+          {/* Overlay Control */}
+          <div className="mb-8">
+            <Label className="text-base font-medium mb-3 block">🌫️ Oscuramento Immagine</Label>
+            <p className="text-sm text-neutral-500 mb-4">Aggiungi un velo scuro per migliorare la leggibilità del testo</p>
+            <div className="flex gap-2 flex-wrap">
+              {HERO_OVERLAYS.map((overlay) => (
+                <button
+                  key={overlay.id}
+                  onClick={() => handleOverlayChange(overlay.id)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    selectedOverlay === overlay.id
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-700'
+                  }`}
+                >
+                  {overlay.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-6 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-sm text-green-700">
+              ✓ Immagine configurata. Clicca "Salva Stile" per applicare le modifiche.
+            </p>
+          </div>
+        </>
+      )}
       
       {/* Save Button */}
       <Button onClick={handleSave} disabled={saving} className="w-full">
@@ -370,6 +507,8 @@ export default function SiteEditor() {
         <TabsContent value="style">
           <StyleEditor 
             heroImage={siteData.hero_image}
+            heroPosition={siteData.hero_position || 'center'}
+            heroOverlay={siteData.hero_overlay || 'medium'}
             colorScheme={siteData.color_scheme || 'blue'}
             theme={siteData.theme || 'modern'}
             gallery={siteData.gallery || []}
@@ -377,6 +516,8 @@ export default function SiteEditor() {
               setSiteData(prev => ({
                 ...prev,
                 hero_image: data.hero_image !== undefined ? data.hero_image : prev.hero_image,
+                hero_position: data.hero_position !== undefined ? data.hero_position : prev.hero_position,
+                hero_overlay: data.hero_overlay !== undefined ? data.hero_overlay : prev.hero_overlay,
                 color_scheme: data.color_scheme !== undefined ? data.color_scheme : prev.color_scheme,
                 theme: data.theme !== undefined ? data.theme : prev.theme
               }));

@@ -16,6 +16,33 @@ const TikTokIcon = ({ size = 24, className = '' }) => (
   </svg>
 );
 
+// Helper functions for hero customization
+const getHeroPosition = (position) => {
+  const positions = {
+    'center': 'center center',
+    'top': 'center top',
+    'bottom': 'center bottom',
+    'left': 'left center',
+    'right': 'right center',
+    'top-left': 'left top',
+    'top-right': 'right top',
+    'bottom-left': 'left bottom',
+    'bottom-right': 'right bottom'
+  };
+  return positions[position] || 'center center';
+};
+
+const getHeroOverlay = (overlay) => {
+  const overlays = {
+    'none': 'transparent',
+    'light': 'linear-gradient(to top, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)',
+    'medium': 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 50%, transparent 100%)',
+    'dark': 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.2) 100%)',
+    'gradient': 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 40%, transparent 100%)'
+  };
+  return overlays[overlay] || overlays['medium'];
+};
+
 // Language config
 const AVAILABLE_LANGUAGES = {
   it: { name: 'Italiano', flag: '🇮🇹' },
@@ -571,10 +598,19 @@ export default function DemoPreview() {
         <header className="relative bg-white overflow-hidden">
           {heroPhoto ? (
             <>
-              {/* Full width image with subtle gradient overlay at bottom only */}
+              {/* Full width image with configurable overlay */}
               <div className="relative h-[50vh] md:h-[60vh]">
-                <img src={heroPhoto} alt={demo.business_name} className="w-full h-full object-cover" loading="eager" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                <img 
+                  src={heroPhoto} 
+                  alt={demo.business_name} 
+                  className="w-full h-full object-cover" 
+                  style={{ objectPosition: getHeroPosition(content.hero_position) }}
+                  loading="eager" 
+                />
+                <div 
+                  className="absolute inset-0"
+                  style={{ background: getHeroOverlay(content.hero_overlay) }}
+                ></div>
               </div>
               {/* Content overlaid at bottom */}
               <div className="absolute bottom-0 left-0 right-0 z-10 py-8 sm:py-12 px-4 sm:px-6">
