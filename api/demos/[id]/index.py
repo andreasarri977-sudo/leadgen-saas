@@ -145,6 +145,8 @@ class handler(BaseHTTPRequestHandler):
                     # New sections
                     "why_choose_us": content.get('why_choose_us', []),
                     "faq": content.get('faq', []),
+                    # Client settings
+                    "client_settings": demo.get('client_settings', {}),
                     # Raw data
                     "theme": content.get('theme', 'modern'),
                     "color_scheme": content.get('color_scheme', 'blue'),
@@ -401,6 +403,16 @@ class handler(BaseHTTPRequestHandler):
                         db.demo_sites.update_one({"demo_id": demo_id}, {"$set": content_updates})
                     client.close()
                     return self._json_response(200, {"success": True, "message": "FAQ aggiornate"})
+                
+                elif section == 'client_settings':
+                    # Save client settings for booking notifications
+                    update_data = {
+                        'client_settings': section_data,
+                        'updated_at': datetime.now(timezone.utc).isoformat()
+                    }
+                    db.demo_sites.update_one({"demo_id": demo_id}, {"$set": update_data})
+                    client.close()
+                    return self._json_response(200, {"success": True, "message": "Impostazioni cliente salvate"})
                 
                 # Standard field updates (backward compatibility)
                 content_fields = ['tagline', 'about_text', 'homepage_subtitle', 'services_intro', 'services', 'cta_text', 'theme', 'color_scheme', 'hero_image', 'why_choose_us', 'faq']

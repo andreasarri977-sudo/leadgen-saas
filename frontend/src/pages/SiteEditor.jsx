@@ -4,7 +4,8 @@ import axios from 'axios';
 import { 
   ArrowLeft, Save, RefreshCw, Clock, UtensilsCrossed, FileText, 
   Phone, Images, Search, Loader2, CheckCircle, AlertCircle, ExternalLink,
-  Plus, Trash2, GripVertical, X, ImageIcon, Upload, Palette, Star, HelpCircle
+  Plus, Trash2, GripVertical, X, ImageIcon, Upload, Palette, Star, HelpCircle,
+  Settings, Mail, Users
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -348,6 +349,10 @@ export default function SiteEditor() {
             <Search size={14} />
             <span className="hidden sm:inline">SEO</span>
           </TabsTrigger>
+          <TabsTrigger value="client" data-testid="tab-client" className="flex items-center gap-1 text-xs sm:text-sm">
+            <Settings size={14} />
+            <span className="hidden sm:inline">Cliente</span>
+          </TabsTrigger>
         </TabsList>
 
         {/* LOGO */}
@@ -469,6 +474,18 @@ export default function SiteEditor() {
             onSave={() => saveSection('seo', siteData.seo)}
             saving={saving.seo}
             hasChanges={hasChanges.seo}
+          />
+        </TabsContent>
+
+        {/* IMPOSTAZIONI CLIENTE */}
+        <TabsContent value="client">
+          <ClientSettingsEditor
+            settings={siteData.client_settings}
+            bookingMode={siteData.contacts?.booking_mode || 'none'}
+            onUpdate={(data) => updateSection('client_settings', data)}
+            onSave={() => saveSection('client_settings', siteData.client_settings)}
+            saving={saving.client_settings}
+            hasChanges={hasChanges.client_settings}
           />
         </TabsContent>
       </Tabs>
@@ -1431,6 +1448,168 @@ function FaqEditor({ faq, onUpdate, onSave, saving, hasChanges }) {
             <p className="text-sm">Aggiungi le domande frequenti dei tuoi clienti</p>
           </div>
         )}
+      </div>
+
+      <SaveButton onClick={onSave} saving={saving} hasChanges={hasChanges} />
+    </Card>
+  );
+}
+
+// CLIENT SETTINGS EDITOR - Per configurare dove arrivano le prenotazioni
+function ClientSettingsEditor({ settings, bookingMode, onUpdate, onSave, saving, hasChanges }) {
+  const data = settings || {};
+  
+  const updateField = (field, value) => {
+    onUpdate({ ...data, [field]: value });
+  };
+
+  return (
+    <Card className="p-6" data-testid="client-settings-editor">
+      <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
+        <Settings size={20} />
+        Impostazioni Cliente
+      </h2>
+      <p className="text-sm text-neutral-500 mb-6">
+        Configura dove il cliente riceverà le notifiche delle prenotazioni. Questi dati vengono usati quando il sito è venduto e online.
+      </p>
+      
+      {bookingMode === 'none' && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+          <p className="text-yellow-800 text-sm">
+            ⚠️ Le prenotazioni non sono attive per questo sito. Vai nella tab "Contatti" per abilitarle.
+          </p>
+        </div>
+      )}
+      
+      <div className="space-y-6">
+        {/* Client Name */}
+        <div>
+          <Label htmlFor="client_name" className="flex items-center gap-2">
+            <Users size={16} />
+            Nome del Cliente / Titolare
+          </Label>
+          <Input
+            id="client_name"
+            placeholder="es. Mario Rossi"
+            value={data.client_name || ''}
+            onChange={(e) => updateField('client_name', e.target.value)}
+            className="mt-2"
+            data-testid="client-name-input"
+          />
+          <p className="text-xs text-neutral-500 mt-1">Il nome che apparirà nelle comunicazioni</p>
+        </div>
+
+        {/* Notification Email */}
+        <div>
+          <Label htmlFor="notification_email" className="flex items-center gap-2">
+            <Mail size={16} />
+            Email per Notifiche Prenotazioni *
+          </Label>
+          <Input
+            id="notification_email"
+            type="email"
+            placeholder="cliente@email.com"
+            value={data.notification_email || ''}
+            onChange={(e) => updateField('notification_email', e.target.value)}
+            className="mt-2"
+            data-testid="notification-email-input"
+          />
+          <p className="text-xs text-neutral-500 mt-1">Le prenotazioni arriveranno a questa email</p>
+        </div>
+
+        {/* WhatsApp Number */}
+        <div>
+          <Label htmlFor="notification_whatsapp" className="flex items-center gap-2">
+            <Phone size={16} />
+            WhatsApp per Notifiche (opzionale)
+          </Label>
+          <Input
+            id="notification_whatsapp"
+            type="tel"
+            placeholder="+39 333 1234567"
+            value={data.notification_whatsapp || ''}
+            onChange={(e) => updateField('notification_whatsapp', e.target.value)}
+            className="mt-2"
+            data-testid="notification-whatsapp-input"
+          />
+          <p className="text-xs text-neutral-500 mt-1">Numero WhatsApp del cliente (con prefisso internazionale)</p>
+        </div>
+
+        <hr className="my-6" />
+
+        <h3 className="font-semibold text-lg mb-4">Capacità e Disponibilità</h3>
+
+        {/* Max Capacity */}
+        <div>
+          <Label htmlFor="max_capacity" className="flex items-center gap-2">
+            <Users size={16} />
+            {bookingMode === 'table' ? 'Numero Massimo Coperti per Fascia Oraria' : 'Appuntamenti Massimi per Fascia Oraria'}
+          </Label>
+          <Input
+            id="max_capacity"
+            type="number"
+            min="0"
+            placeholder={bookingMode === 'table' ? 'es. 30' : 'es. 3'}
+            value={data.max_capacity || ''}
+            onChange={(e) => updateField('max_capacity', parseInt(e.target.value) || 0)}
+            className="mt-2 w-32"
+            data-testid="max-capacity-input"
+          />
+          <p className="text-xs text-neutral-500 mt-1">
+            {bookingMode === 'table' 
+              ? 'Quante persone possono prenotare per ogni fascia oraria (0 = illimitato)'
+              : 'Quanti appuntamenti puoi gestire per ogni fascia oraria (0 = illimitato)'
+            }
+          </p>
+        </div>
+
+        {/* Slot Duration */}
+        <div>
+          <Label htmlFor="slot_duration">Durata Fascia Oraria (minuti)</Label>
+          <select
+            id="slot_duration"
+            value={data.slot_duration || 60}
+            onChange={(e) => updateField('slot_duration', parseInt(e.target.value))}
+            className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm mt-2"
+            data-testid="slot-duration-select"
+          >
+            <option value={30}>30 minuti</option>
+            <option value={60}>1 ora</option>
+            <option value={90}>1 ora e 30 minuti</option>
+            <option value={120}>2 ore</option>
+          </select>
+          <p className="text-xs text-neutral-500 mt-1">Ogni quanto si ripetono gli slot di prenotazione</p>
+        </div>
+
+        {/* Advance Booking Days */}
+        <div>
+          <Label htmlFor="advance_days">Prenotazioni con Anticipo Massimo</Label>
+          <select
+            id="advance_days"
+            value={data.advance_days || 30}
+            onChange={(e) => updateField('advance_days', parseInt(e.target.value))}
+            className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm mt-2"
+            data-testid="advance-days-select"
+          >
+            <option value={7}>1 settimana</option>
+            <option value={14}>2 settimane</option>
+            <option value={30}>1 mese</option>
+            <option value={60}>2 mesi</option>
+            <option value={90}>3 mesi</option>
+          </select>
+          <p className="text-xs text-neutral-500 mt-1">Quanto in anticipo i clienti possono prenotare</p>
+        </div>
+      </div>
+
+      {/* Info Box */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
+        <h4 className="font-semibold text-blue-800 mb-2">📧 Come funzionano le notifiche?</h4>
+        <ul className="text-sm text-blue-700 space-y-1">
+          <li>• Quando un cliente prenota, riceve una <strong>conferma immediata</strong></li>
+          <li>• Il titolare riceve un'<strong>email con tutti i dettagli</strong></li>
+          <li>• L'email include un <strong>link WhatsApp</strong> per rispondere al cliente</li>
+          <li>• Il sistema blocca automaticamente gli slot pieni</li>
+        </ul>
       </div>
 
       <SaveButton onClick={onSave} saving={saving} hasChanges={hasChanges} />
