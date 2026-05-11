@@ -191,6 +191,7 @@ class handler(BaseHTTPRequestHandler):
                     "hero_image": content.get('hero_image', ''),
                     "hero_position": content.get('hero_position', 'center'),
                     "hero_overlay": content.get('hero_overlay', 'medium'),
+                    "hide_watermark": bool(content.get('hide_watermark', False)),
                     "reviews": business.get('reviews', [])
                 }
                 client.close()
@@ -421,6 +422,8 @@ class handler(BaseHTTPRequestHandler):
                         content_updates['content.hero_overlay'] = section_data['hero_overlay']
                     if section_data.get('theme'):
                         content_updates['content.theme'] = section_data['theme']
+                    if 'hide_watermark' in section_data:
+                        content_updates['content.hide_watermark'] = bool(section_data['hide_watermark'])
                     
                     if content_updates:
                         content_updates['updated_at'] = datetime.now(timezone.utc).isoformat()
@@ -482,6 +485,31 @@ class handler(BaseHTTPRequestHandler):
                 
                 client.close()
                 return self._json_response(200, {"success": True, "message": "Sito aggiornato"})
+            
+            elif action == "template_apply":
+                # Apply a saved template to this demo's content
+                template_id = data.get('template_id')
+                if not template_id:
+                    client.close()
+                    return self._error(400, "template_id richiesto")
+                tpl = db.templates.find_one({"template_id": template_id}, {"_id": 0})
+                if not tpl:
+                    client.close()
+                    return self._error(404, "Template non trovato")
+                tdata = tpl.get('data') or {}
+                content_updates = {}
+                for k, v in tdata.items():
+                    if v is None:
+                        continue
+                    content_updates[f"content.{k}"] = v
+                content_updates['updated_at'] = datetime.now(timezone.utc).isoformat()
+                db.demo_sites.update_one({"demo_id": demo_id}, {"$set": content_updates})
+                client.close()
+                return self._json_response(200, {
+                    "success": True,
+                    "applied": list(tdata.keys()),
+                    "template_name": tpl.get('name')
+                })
             
             elif action == "quote":
                 # Generate a PDF quote/preventivo for this demo and optionally email it

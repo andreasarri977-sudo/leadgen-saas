@@ -180,11 +180,12 @@ function LiveSitePreview({ colorScheme, heroImage, heroPosition, heroOverlay, bu
 }
 
 // Style Editor Component
-function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, gallery, businessName, demoId, productionUrl, onUpdate, onSave, saving }) {
+function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, gallery, businessName, demoId, productionUrl, hideWatermark, onUpdate, onSave, saving }) {
   const [selectedColor, setSelectedColor] = useState(colorScheme || 'blue');
   const [selectedHero, setSelectedHero] = useState(heroImage || '');
   const [selectedPosition, setSelectedPosition] = useState(heroPosition || 'center');
   const [selectedOverlay, setSelectedOverlay] = useState(heroOverlay || 'medium');
+  const [hideMark, setHideMark] = useState(Boolean(hideWatermark));
   
   // Find initial index based on heroImage
   const findHeroIndex = () => {
@@ -224,8 +225,14 @@ function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme,
       hero_position: selectedPosition,
       hero_overlay: selectedOverlay,
       color_scheme: selectedColor,
-      theme: theme
+      theme: theme,
+      hide_watermark: hideMark
     });
+  };
+
+  const toggleWatermark = (val) => {
+    setHideMark(val);
+    onUpdate({ hide_watermark: val, color_scheme: selectedColor, hero_image: selectedHero, hero_position: selectedPosition, hero_overlay: selectedOverlay, theme });
   };
 
   // Get position value for preview
@@ -414,6 +421,27 @@ function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme,
         </>
       )}
       
+      {/* Watermark toggle */}
+      <div className="mb-6 p-4 border-2 border-neutral-200 rounded-lg bg-neutral-50">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <Label className="text-base font-medium block">Firma "Realizzato da WebFinder Studio"</Label>
+            <p className="text-xs text-neutral-500 mt-1">
+              Mostra una piccola firma cliccabile nel footer del sito. Ogni cliente diventa una vetrina per nuovi lead.
+              Disattivala se il cliente paga per la versione white-label.
+            </p>
+          </div>
+          <Switch
+            checked={!hideMark}
+            onCheckedChange={(v) => toggleWatermark(!v)}
+            data-testid="toggle-watermark"
+          />
+        </div>
+        <p className="text-xs mt-2 font-medium" style={{ color: hideMark ? '#dc2626' : '#16a34a' }}>
+          {hideMark ? '⚠️ Firma nascosta (white-label attivo)' : '✓ Firma attiva sul sito'}
+        </p>
+      </div>
+
       {/* Save Button */}
       <Button onClick={handleSave} disabled={saving} className="w-full">
         {saving ? (
@@ -613,6 +641,152 @@ function QuoteModal({ open, onClose, demoId, businessName, defaultRecipient }) {
   );
 }
 
+// Template Manager Modal
+function TemplateModal({ open, onClose, demoId, currentContent, onApplied }) {
+  const [templates, setTemplates] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('');
+  const [view, setView] = useState('list'); // 'list' or 'save'
+
+  useEffect(() => {
+    if (open) refresh();
+  }, [open]);
+
+  const refresh = async () => {
+    setLoading(true);
+    try {
+      const r = await axios.get(`${API}/demos?action=templates`);
+      setTemplates(r.data || []);
+    } catch {
+      toast.error('Errore caricamento template');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveTemplate = async () => {
+    if (!name.trim()) { toast.error('Inserisci un nome'); return; }
+    setSaving(true);
+    try {
+      const payload = {
+        name: name.trim(), category: category.trim(),
+        color_scheme: currentContent.color_scheme,
+        hero_position: currentContent.hero_position,
+        hero_overlay: currentContent.hero_overlay,
+        theme: currentContent.theme,
+        why_choose_us: currentContent.why_choose_us,
+        faq: currentContent.faq,
+        about_text: currentContent.texts?.about_text,
+        homepage_subtitle: currentContent.texts?.homepage_subtitle,
+        services_intro: currentContent.texts?.services_intro,
+        cta_text: currentContent.texts?.cta_text,
+        tagline: currentContent.texts?.tagline
+      };
+      await axios.post(`${API}/demos?action=template_save`, payload);
+      toast.success('Template salvato');
+      setName(''); setCategory(''); setView('list');
+      refresh();
+    } catch (e) {
+      toast.error('Errore salvataggio template');
+    } finally { setSaving(false); }
+  };
+
+  const applyTemplate = async (tid) => {
+    try {
+      const r = await axios.post(`${API}/demos/${demoId}?action=template_apply`, { template_id: tid });
+      toast.success(`Template "${r.data.template_name}" applicato`);
+      onApplied?.();
+      onClose();
+    } catch { toast.error('Errore applicazione template'); }
+  };
+
+  const deleteTemplate = async (tid) => {
+    if (!window.confirm('Eliminare questo template?')) return;
+    try {
+      await axios.delete(`${API}/demos?action=template_delete&id=${tid}`);
+      toast.success('Template eliminato');
+      refresh();
+    } catch { toast.error('Errore eliminazione'); }
+  };
+
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" data-testid="template-modal">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-neutral-200 sticky top-0 bg-white">
+          <div>
+            <h2 className="text-xl font-bold">Template di Sito</h2>
+            <p className="text-sm text-neutral-500">Riusa stile + contenuti su nuovi siti in 1 click</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full"><X size={20} /></button>
+        </div>
+
+        <div className="p-2 flex gap-2 border-b border-neutral-100">
+          <Button variant={view === 'list' ? 'default' : 'ghost'} size="sm" onClick={() => setView('list')} data-testid="tpl-tab-list">📚 I miei template</Button>
+          <Button variant={view === 'save' ? 'default' : 'ghost'} size="sm" onClick={() => setView('save')} data-testid="tpl-tab-save">💾 Salva questo sito come template</Button>
+        </div>
+
+        <div className="p-5">
+          {view === 'save' ? (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="tpl-name">Nome template *</Label>
+                <Input id="tpl-name" data-testid="tpl-name" value={name} onChange={(e) => setName(e.target.value)}
+                  placeholder='Es: "Pizzeria Premium 800€" oppure "Parrucchiere Lusso"' />
+              </div>
+              <div>
+                <Label htmlFor="tpl-cat">Categoria (opzionale)</Label>
+                <Input id="tpl-cat" data-testid="tpl-cat" value={category} onChange={(e) => setCategory(e.target.value)}
+                  placeholder="Es: ristorante, parrucchiere, dentista..." />
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                Verranno salvati: <strong>colore</strong>, posizione hero, oscuramento, sezione "Perché Sceglierci", FAQ, testo about/sottotitolo/CTA. Le immagini, gli orari e i contatti sono sempre specifici per ogni cliente e non vengono memorizzati.
+              </div>
+              <Button onClick={saveTemplate} disabled={saving} data-testid="tpl-save-btn" className="w-full">
+                {saving ? <Loader2 className="mr-2 animate-spin" size={16} /> : <Save className="mr-2" size={16} />}
+                Salva come Template
+              </Button>
+            </div>
+          ) : (
+            <>
+              {loading ? (
+                <div className="flex justify-center py-8"><Loader2 className="animate-spin" size={28} /></div>
+              ) : templates.length === 0 ? (
+                <div className="text-center py-10 text-neutral-500">
+                  <p>Nessun template ancora.</p>
+                  <p className="text-sm mt-2">Vai su "Salva questo sito come template" per crearne uno.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {templates.map((t) => (
+                    <div key={t.template_id} className="flex items-center justify-between p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50" data-testid={`tpl-row-${t.template_id}`}>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold truncate">{t.name}</p>
+                        <p className="text-xs text-neutral-500 truncate">
+                          {t.category && <span className="mr-2 px-1.5 py-0.5 bg-neutral-100 rounded">{t.category}</span>}
+                          Colore: <span className="font-medium">{t.data?.color_scheme || '—'}</span>
+                          {' · '}FAQ: {(t.data?.faq || []).length} · Perché: {(t.data?.why_choose_us || []).length}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button size="sm" onClick={() => applyTemplate(t.template_id)} data-testid={`tpl-apply-${t.template_id}`}>Applica</Button>
+                        <button onClick={() => deleteTemplate(t.template_id)} data-testid={`tpl-del-${t.template_id}`}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded"><Trash2 size={14} /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SiteEditor() {
   const { demoId } = useParams();
   const navigate = useNavigate();
@@ -623,6 +797,7 @@ export default function SiteEditor() {
   const [siteData, setSiteData] = useState(null);
   const [hasChanges, setHasChanges] = useState({});
   const [quoteOpen, setQuoteOpen] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
 
   // Load site data
   useEffect(() => {
@@ -739,6 +914,15 @@ export default function SiteEditor() {
         
         <div className="flex items-center gap-3">
           <Button
+            onClick={() => setTemplateOpen(true)}
+            data-testid="open-templates-btn"
+            variant="outline"
+            className="border-purple-300 text-purple-700 hover:bg-purple-50"
+          >
+            <FileText size={16} className="mr-2" />
+            Template
+          </Button>
+          <Button
             onClick={() => setQuoteOpen(true)}
             data-testid="open-quote-btn"
             className="bg-green-600 hover:bg-green-700 text-white"
@@ -769,6 +953,14 @@ export default function SiteEditor() {
         demoId={demoId}
         businessName={siteData.business_name}
         defaultRecipient={siteData.client_settings?.client_email || siteData.contacts?.email || ''}
+      />
+
+      <TemplateModal
+        open={templateOpen}
+        onClose={() => setTemplateOpen(false)}
+        demoId={demoId}
+        currentContent={siteData}
+        onApplied={loadSiteData}
       />
 
       {/* Tabs Editor */}
@@ -844,6 +1036,7 @@ export default function SiteEditor() {
             businessName={siteData.business_name}
             demoId={demoId}
             productionUrl={siteData.production_url}
+            hideWatermark={siteData.hide_watermark}
             onUpdate={(data) => {
               setSiteData(prev => ({
                 ...prev,

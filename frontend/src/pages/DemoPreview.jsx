@@ -1141,10 +1141,23 @@ export default function DemoPreview() {
                 </div>
               </div>
             </div>
-            <div className="border-t border-neutral-800 pt-6 sm:pt-8 text-center">
+            <div className="border-t border-neutral-800 pt-6 sm:pt-8 text-center space-y-3">
               <p className="text-neutral-500 text-xs sm:text-sm">
                 © {new Date().getFullYear()} {demo.business_name}. {t('footer.allRightsReserved', lang)}.
               </p>
+              {!content.hide_watermark && (
+                <a
+                  href="https://webfinderstudio.it"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="webfinder-watermark"
+                  className="inline-flex items-center gap-1.5 text-[11px] text-neutral-600 hover:text-white transition-colors opacity-70 hover:opacity-100"
+                >
+                  <span>Realizzato da</span>
+                  <span className="font-semibold tracking-wide" style={{ color: '#d4a76a' }}>WebFinder</span>
+                  <span className="font-light text-neutral-400">Studio</span>
+                </a>
+              )}
             </div>
           </div>
         </footer>
