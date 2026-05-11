@@ -202,6 +202,189 @@ function LiveSitePreview({ colorScheme, heroImage, heroPosition, heroOverlay, bu
   );
 }
 
+// Site Settings Editor (languages + section visibility)
+const LANGUAGE_OPTIONS = [
+  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
+  { code: 'en', label: 'English', flag: '🇬🇧' },
+  { code: 'fr', label: 'Français', flag: '🇫🇷' },
+  { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
+  { code: 'es', label: 'Español', flag: '🇪🇸' },
+  { code: 'pt', label: 'Português', flag: '🇵🇹' },
+  { code: 'nl', label: 'Nederlands', flag: '🇳🇱' },
+  { code: 'pl', label: 'Polski', flag: '🇵🇱' },
+  { code: 'ro', label: 'Română', flag: '🇷🇴' },
+  { code: 'zh', label: '中文', flag: '🇨🇳' },
+  { code: 'ja', label: '日本語', flag: '🇯🇵' },
+  { code: 'ar', label: 'العربية', flag: '🇸🇦' },
+  { code: 'ru', label: 'Русский', flag: '🇷🇺' }
+];
+
+function SiteSettingsEditor({ siteLanguage, translations, bookingMode, externalBookingUrl, showReviews, showGallery, showWhyus, showFaq, showHours, showMap, showServices, onUpdate, onSave, saving }) {
+  const [primaryLang, setPrimaryLang] = useState(siteLanguage || 'it');
+  const [trList, setTrList] = useState(translations || []);
+  const [booking, setBooking] = useState(bookingMode || 'none');
+  const [bookingUrl, setBookingUrl] = useState(externalBookingUrl || '');
+  const [flags, setFlags] = useState({
+    show_reviews: showReviews !== false,
+    show_gallery: showGallery !== false,
+    show_whyus: showWhyus !== false,
+    show_faq: showFaq !== false,
+    show_hours: showHours !== false,
+    show_map: showMap !== false,
+    show_services: showServices !== false
+  });
+
+  const toggleTr = (code) => {
+    if (code === primaryLang) return;
+    setTrList((prev) => {
+      if (prev.includes(code)) return prev.filter((c) => c !== code);
+      if (prev.length >= 4) {
+        toast.error('Massimo 4 traduzioni');
+        return prev;
+      }
+      return [...prev, code];
+    });
+  };
+
+  const changePrimary = (code) => {
+    setPrimaryLang(code);
+    setTrList((prev) => prev.filter((c) => c !== code));
+  };
+
+  const toggleFlag = (key) => setFlags((f) => ({ ...f, [key]: !f[key] }));
+
+  const handleSave = () => {
+    onSave({
+      site_language: primaryLang,
+      translations: trList,
+      booking_mode: booking,
+      external_booking_url: bookingUrl,
+      ...flags
+    });
+  };
+
+  return (
+    <Card className="p-6">
+      <h3 className="text-lg font-semibold mb-2">⚙️ Impostazioni Sito</h3>
+      <p className="text-sm text-neutral-500 mb-6">Configura lingue, sezioni visibili e prenotazioni del sito demo.</p>
+
+      {/* LANGUAGES */}
+      <div className="mb-8">
+        <Label className="text-base font-bold mb-2 block">🌐 Lingue del Sito</Label>
+
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <Label className="text-sm">Lingua principale</Label>
+          <select
+            data-testid="primary-language"
+            value={primaryLang}
+            onChange={(e) => changePrimary(e.target.value)}
+            className="w-full mt-1 border-2 border-blue-300 rounded-md px-3 py-2 bg-white font-semibold"
+          >
+            {LANGUAGE_OPTIONS.map((l) => (
+              <option key={l.code} value={l.code}>{l.flag} {l.label}</option>
+            ))}
+          </select>
+          <p className="text-xs text-neutral-500 mt-1">La lingua predefinita con cui apre il sito.</p>
+        </div>
+
+        <div>
+          <Label className="text-sm mb-2 block">Traduzioni aggiuntive (max 4) — selezionate: <span className="font-bold">{trList.length}/4</span></Label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {LANGUAGE_OPTIONS.filter((l) => l.code !== primaryLang).map((l) => {
+              const active = trList.includes(l.code);
+              return (
+                <button
+                  key={l.code}
+                  data-testid={`translation-${l.code}`}
+                  onClick={() => toggleTr(l.code)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm transition-colors ${active ? 'border-blue-500 bg-blue-50 font-semibold' : 'border-neutral-200 hover:border-neutral-300'}`}
+                >
+                  <span>{l.flag}</span>
+                  <span>{l.label}</span>
+                  {active && <CheckCircle size={14} className="ml-auto text-blue-600" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* BOOKING */}
+      <div className="mb-8">
+        <Label className="text-base font-bold mb-2 block">📅 Sistema Prenotazioni</Label>
+        <div className="space-y-2">
+          {[
+            { id: 'none', label: 'Nessuna prenotazione', desc: 'Solo telefono/WhatsApp' },
+            { id: 'table', label: 'Prenotazione Tavolo', desc: 'Per ristoranti, bar, pizzerie' },
+            { id: 'appointment', label: 'Prenotazione Appuntamento', desc: 'Per parrucchieri, dentisti, estetiste' },
+            { id: 'external', label: 'Link esterno', desc: 'TheFork, Booking.com, ecc.' }
+          ].map((opt) => (
+            <label key={opt.id} className={`flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer ${booking === opt.id ? 'border-blue-500 bg-blue-50' : 'border-neutral-200 hover:border-neutral-300'}`}>
+              <input
+                type="radio"
+                name="booking"
+                value={opt.id}
+                checked={booking === opt.id}
+                onChange={() => setBooking(opt.id)}
+                data-testid={`booking-${opt.id}`}
+                className="mt-1"
+              />
+              <div className="flex-1">
+                <p className="font-semibold text-sm">{opt.label}</p>
+                <p className="text-xs text-neutral-500">{opt.desc}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+        {booking === 'external' && (
+          <div className="mt-3">
+            <Label htmlFor="booking-url">URL piattaforma esterna</Label>
+            <Input
+              id="booking-url"
+              data-testid="booking-url"
+              value={bookingUrl}
+              onChange={(e) => setBookingUrl(e.target.value)}
+              placeholder="https://thefork.com/..."
+            />
+          </div>
+        )}
+      </div>
+
+      {/* SECTION VISIBILITY */}
+      <div className="mb-8">
+        <Label className="text-base font-bold mb-3 block">👁️ Sezioni Visibili sul Sito</Label>
+        <div className="space-y-2">
+          {[
+            { id: 'show_services', label: 'Servizi', desc: 'Lista dei servizi offerti' },
+            { id: 'show_whyus', label: 'Perché Sceglierci', desc: '4 motivi di scelta con emoji' },
+            { id: 'show_gallery', label: 'Galleria', desc: 'Foto dei lavori/locali' },
+            { id: 'show_reviews', label: 'Recensioni Google', desc: 'Recensioni autentiche da Google' },
+            { id: 'show_hours', label: 'Orari di Apertura', desc: 'Tabella settimanale orari' },
+            { id: 'show_faq', label: 'Domande Frequenti', desc: 'Sezione FAQ accordion' },
+            { id: 'show_map', label: 'Mappa Google', desc: 'Mappa interattiva indirizzo' }
+          ].map((s) => (
+            <label key={s.id} className="flex items-center justify-between p-3 border border-neutral-200 rounded-lg cursor-pointer hover:bg-neutral-50">
+              <div className="flex-1">
+                <p className="font-semibold text-sm">{s.label}</p>
+                <p className="text-xs text-neutral-500">{s.desc}</p>
+              </div>
+              <Switch
+                checked={flags[s.id]}
+                onCheckedChange={() => toggleFlag(s.id)}
+                data-testid={`toggle-${s.id}`}
+              />
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <Button onClick={handleSave} disabled={saving} className="w-full bg-blue-600 hover:bg-blue-700" data-testid="save-site-settings">
+        {saving ? <><Loader2 className="mr-2 animate-spin" size={16} /> Salvataggio...</> : <><Save className="mr-2" size={16} /> Salva Impostazioni Sito</>}
+      </Button>
+    </Card>
+  );
+}
+
 // Style Editor Component
 function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, gallery, businessName, demoId, productionUrl, hideWatermark, onUpdate, onSave, saving }) {
   const [selectedColor, setSelectedColor] = useState(colorScheme || 'blue');
@@ -1155,6 +1338,10 @@ export default function SiteEditor() {
             <Search size={14} />
             <span className="hidden sm:inline">SEO</span>
           </TabsTrigger>
+          <TabsTrigger value="settings" data-testid="tab-settings" className="flex items-center gap-1 text-xs sm:text-sm bg-blue-100 text-blue-700 data-[state=active]:bg-blue-600 data-[state=active]:text-white border border-blue-300 font-semibold">
+            <Settings size={14} />
+            <span className="hidden sm:inline">Impostazioni</span>
+          </TabsTrigger>
         </TabsList>
 
         {/* LOGO */}
@@ -1296,6 +1483,25 @@ export default function SiteEditor() {
             onSave={() => saveSection('client_settings', siteData.client_settings)}
             saving={saving.client_settings}
             hasChanges={hasChanges.client_settings}
+          />
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <SiteSettingsEditor
+            siteLanguage={siteData.site_language}
+            translations={siteData.translations}
+            bookingMode={siteData.booking_mode}
+            externalBookingUrl={siteData.external_booking_url}
+            showReviews={siteData.show_reviews}
+            showGallery={siteData.show_gallery}
+            showWhyus={siteData.show_whyus}
+            showFaq={siteData.show_faq}
+            showHours={siteData.show_hours}
+            showMap={siteData.show_map}
+            showServices={siteData.show_services}
+            onUpdate={(d) => updateSection('site_settings', d)}
+            onSave={(d) => saveSection('site_settings', d)}
+            saving={saving.site_settings}
           />
         </TabsContent>
       </Tabs>

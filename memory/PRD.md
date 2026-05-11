@@ -227,6 +227,18 @@ Booking(
 - ✅ API Google Places ora richiede contenuti nella lingua del paese
 - ✅ Versione EN mantiene contenuti originali in inglese
 
+### 2026-02-11 (part 8): Kanban-only + Tab Impostazioni Sito Completo
+- ✅ **Lead → solo vista Kanban** (rimossa List view): toggle bottoni eliminato. Le carte Kanban ora hanno checkbox per selezione multipla (per bulk demo) + drag handle + click area dedicata per aprire dettagli.
+- 🐛 **Fix Kanban drag&drop**: gli status nel DB sono italiani (`demo_creata`, `contattato`, `client`) mentre le colonne usavano inglese (`demo_created`, `contacted`). Aggiunti `aliases` per ogni colonna così il matching funziona in entrambe le direzioni.
+- ✨ **Nuovo Tab "⚙️ Impostazioni"** nel SiteEditor (badge blu evidenziato) con:
+  - 🌐 **Lingue del sito**: dropdown lingua principale (13 lingue) + multi-select fino a 4 traduzioni
+  - 📅 **Sistema Prenotazioni**: 4 modalità radio (Nessuna / Tavolo / Appuntamento / Link esterno con URL)
+  - 👁️ **Sezioni Visibili**: toggle on/off per Servizi, Perché Sceglierci, Galleria, Recensioni, Orari, FAQ, Mappa
+- ✨ Endpoint backend `?action=update&section=site_settings` in `demos/[id]/index.py` valida le traduzioni (max 4, dedupe da primary).
+- ✨ DemoPreview rispetta i toggle: ogni sezione si nasconde se `content.show_*` è false.
+- ✨ Endpoint editor-data espone i nuovi campi: site_language, translations, booking_mode, external_booking_url, show_*.
+
+
 ### 2026-02-11 (part 7): 3 Bug Critici Risolti
 - 🐛 **PATCH /api/leads/{id} non esisteva** → Kanban drag&drop falliva e anche il toggle "Segna come cliente" era rotto da prima (silenziosamente). Aggiunto `do_PATCH` in `leads.py` con parsing intelligente di `lead_id` (query string Vercel rewrite + fallback path).
 - 🛠️ **Rewrite Vercel** aggiunta in `vercel.json` per mappare `/api/leads/:lead_id` → `/api/leads?lead_id=:lead_id` (altrimenti Vercel 404 perché non c'è `/api/leads/[id]/index.py`).

@@ -224,7 +224,19 @@ class handler(BaseHTTPRequestHandler):
                     "hero_position": content.get('hero_position', 'center'),
                     "hero_overlay": content.get('hero_overlay', 'medium'),
                     "hide_watermark": bool(content.get('hide_watermark', False)),
-                    "reviews": business.get('reviews', [])
+                    "reviews": business.get('reviews', []),
+                    # Site settings (languages + section visibility)
+                    "site_language": business.get('site_language', 'it'),
+                    "translations": business.get('translations', []),
+                    "booking_mode": business.get('booking_mode', 'none'),
+                    "external_booking_url": business.get('external_booking_url', ''),
+                    "show_reviews": content.get('show_reviews', True),
+                    "show_gallery": content.get('show_gallery', True),
+                    "show_whyus": content.get('show_whyus', True),
+                    "show_faq": content.get('show_faq', True),
+                    "show_hours": content.get('show_hours', True),
+                    "show_map": content.get('show_map', True),
+                    "show_services": content.get('show_services', True)
                 }
                 client.close()
                 return self._json_response(200, editor_data)
@@ -492,6 +504,33 @@ class handler(BaseHTTPRequestHandler):
                     db.demo_sites.update_one({"demo_id": demo_id}, {"$set": update_data})
                     client.close()
                     return self._json_response(200, {"success": True, "message": "Impostazioni cliente salvate"})
+                
+                elif section == 'site_settings':
+                    # Save general site settings: languages, sections visibility, booking mode
+                    updates = {}
+                    if 'site_language' in section_data:
+                        updates['business_data.site_language'] = section_data['site_language']
+                    if 'translations' in section_data:
+                        # Validate: array of unique language codes, max 4
+                        tr = section_data['translations'] or []
+                        if not isinstance(tr, list):
+                            tr = []
+                        primary = section_data.get('site_language', '')
+                        tr = [x for x in tr if x and x != primary][:4]
+                        updates['business_data.translations'] = tr
+                    if 'booking_mode' in section_data:
+                        updates['business_data.booking_mode'] = section_data['booking_mode']
+                    if 'external_booking_url' in section_data:
+                        updates['business_data.external_booking_url'] = section_data['external_booking_url']
+                    # Section visibility toggles
+                    for flag in ['show_reviews', 'show_gallery', 'show_whyus', 'show_faq', 'show_hours', 'show_map', 'show_services']:
+                        if flag in section_data:
+                            updates[f'content.{flag}'] = bool(section_data[flag])
+                    if updates:
+                        updates['updated_at'] = datetime.now(timezone.utc).isoformat()
+                        db.demo_sites.update_one({"demo_id": demo_id}, {"$set": updates})
+                    client.close()
+                    return self._json_response(200, {"success": True, "message": "Impostazioni sito salvate"})
                 
                 # Standard field updates (backward compatibility)
                 content_fields = ['tagline', 'about_text', 'homepage_subtitle', 'services_intro', 'services', 'cta_text', 'theme', 'color_scheme', 'hero_image', 'why_choose_us', 'faq']

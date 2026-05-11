@@ -25,22 +25,22 @@ const STATUS_LABELS = {
 };
 
 const KANBAN_COLUMNS = [
-  { id: 'new', label: '🆕 Nuovo', color: 'border-blue-300 bg-blue-50' },
-  { id: 'demo_created', label: '🌐 Demo Creata', color: 'border-purple-300 bg-purple-50' },
-  { id: 'contacted', label: '📞 Contattato', color: 'border-yellow-300 bg-yellow-50' },
-  { id: 'client', label: '💰 Cliente', color: 'border-green-300 bg-green-50' }
+  { id: 'new', label: '🆕 Nuovo', color: 'border-blue-300 bg-blue-50', aliases: ['new', null, ''] },
+  { id: 'demo_creata', label: '🌐 Demo Creata', color: 'border-purple-300 bg-purple-50', aliases: ['demo_creata', 'demo_created'] },
+  { id: 'contattato', label: '📞 Contattato', color: 'border-yellow-300 bg-yellow-50', aliases: ['contattato', 'contacted'] },
+  { id: 'client', label: '💰 Cliente', color: 'border-green-300 bg-green-50', aliases: ['client', 'cliente'] }
 ];
 
-function KanbanBoard({ leads, onMove, onView, draggingLead, setDraggingLead, updatingLead }) {
+function KanbanBoard({ leads, onMove, onView, draggingLead, setDraggingLead, updatingLead, selectedLeads = [], onToggleSelect }) {
   const grouped = KANBAN_COLUMNS.reduce((acc, c) => { acc[c.id] = []; return acc; }, {});
   leads.forEach((l) => {
-    const s = l.status || 'new';
-    if (grouped[s]) grouped[s].push(l);
-    else grouped['new'].push(l);
+    const s = l.status;
+    const col = KANBAN_COLUMNS.find((c) => c.aliases.includes(s)) || KANBAN_COLUMNS[0];
+    grouped[col.id].push(l);
   });
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 p-3 bg-neutral-50 min-h-[500px]" data-testid="kanban-board">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 p-3 bg-neutral-50 min-h-[500px]" data-testid="kanban-board">
       {KANBAN_COLUMNS.map((col) => (
         <div
           key={col.id}
@@ -48,7 +48,8 @@ function KanbanBoard({ leads, onMove, onView, draggingLead, setDraggingLead, upd
           className={`border-2 ${col.color} rounded-lg p-3`}
           onDragOver={(e) => e.preventDefault()}
           onDrop={() => {
-            if (draggingLead && draggingLead.status !== col.id) {
+            const currentCol = KANBAN_COLUMNS.find((c) => c.aliases.includes(draggingLead?.status));
+            if (draggingLead && currentCol?.id !== col.id) {
               onMove(draggingLead.lead_id, col.id);
             }
             setDraggingLead(null);
@@ -59,32 +60,42 @@ function KanbanBoard({ leads, onMove, onView, draggingLead, setDraggingLead, upd
             <span className="text-xs bg-white px-2 py-0.5 rounded-full font-semibold">{grouped[col.id].length}</span>
           </div>
           <div className="space-y-2 min-h-[300px]">
-            {grouped[col.id].map((l) => (
-              <div
-                key={l.lead_id}
-                draggable
-                onDragStart={() => setDraggingLead(l)}
-                onDragEnd={() => setDraggingLead(null)}
-                onClick={() => onView(l.lead_id)}
-                data-testid={`kanban-card-${l.lead_id}`}
-                className={`bg-white border border-neutral-200 rounded-lg p-3 cursor-pointer hover:shadow-md transition-shadow ${draggingLead?.lead_id === l.lead_id ? 'opacity-50' : ''} ${updatingLead === l.lead_id ? 'opacity-60' : ''}`}
-              >
-                <div className="flex items-start gap-1">
-                  <GripVertical size={14} className="text-neutral-300 shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">{l.name}</p>
-                    <p className="text-xs text-neutral-500 truncate">{l.category || ''}</p>
-                    <p className="text-xs text-neutral-500 truncate">{l.city || ''}</p>
-                    {l.rating != null && (
-                      <p className="text-xs text-yellow-600 mt-1 flex items-center gap-1">
-                        <Star size={10} fill="currentColor" />
-                        <span>{l.rating}</span>
-                      </p>
-                    )}
+            {grouped[col.id].map((l) => {
+              const isSelected = selectedLeads.includes(l.lead_id);
+              return (
+                <div
+                  key={l.lead_id}
+                  draggable
+                  onDragStart={() => setDraggingLead(l)}
+                  onDragEnd={() => setDraggingLead(null)}
+                  data-testid={`kanban-card-${l.lead_id}`}
+                  className={`bg-white border ${isSelected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-neutral-200'} rounded-lg p-3 hover:shadow-md transition-shadow ${draggingLead?.lead_id === l.lead_id ? 'opacity-50' : ''} ${updatingLead === l.lead_id ? 'opacity-60' : ''}`}
+                >
+                  <div className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => { e.stopPropagation(); onToggleSelect(l.lead_id); }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mt-1 shrink-0"
+                      data-testid={`kanban-checkbox-${l.lead_id}`}
+                    />
+                    <GripVertical size={14} className="text-neutral-300 shrink-0 mt-1 cursor-grab" />
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onView(l.lead_id)}>
+                      <p className="font-semibold text-sm truncate">{l.name}</p>
+                      <p className="text-xs text-neutral-500 truncate">{l.category || ''}</p>
+                      <p className="text-xs text-neutral-500 truncate">{l.city || ''}</p>
+                      {l.rating != null && (
+                        <p className="text-xs text-yellow-600 mt-1 flex items-center gap-1">
+                          <Star size={10} fill="currentColor" />
+                          <span>{l.rating}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {grouped[col.id].length === 0 && (
               <p className="text-xs text-neutral-400 text-center mt-4">Trascina qui i lead</p>
             )}
@@ -108,11 +119,7 @@ export default function LeadsList() {
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [batchResult, setBatchResult] = useState(null);
-  const [viewMode, setViewMode] = useState(localStorage.getItem('leads_view') || 'list');
   const [draggingLead, setDraggingLead] = useState(null);
-
-  // Persist view mode
-  useEffect(() => { localStorage.setItem('leads_view', viewMode); }, [viewMode]);
 
   const moveLeadToColumn = async (leadId, newStatus) => {
     setUpdatingLead(leadId);
@@ -252,22 +259,6 @@ export default function LeadsList() {
           <p className="text-neutral-600 mt-2 text-lg">{pageSubtitle}</p>
         </div>
         <div className="flex gap-2">
-          <div className="flex bg-neutral-100 rounded-lg p-1 mr-2">
-            <button
-              data-testid="view-list-btn"
-              onClick={() => setViewMode('list')}
-              className={`px-3 py-1.5 rounded text-sm font-medium flex items-center gap-1.5 ${viewMode === 'list' ? 'bg-white shadow-sm' : 'text-neutral-500'}`}
-            >
-              <ListIcon size={14} /> Lista
-            </button>
-            <button
-              data-testid="view-kanban-btn"
-              onClick={() => setViewMode('kanban')}
-              className={`px-3 py-1.5 rounded text-sm font-medium flex items-center gap-1.5 ${viewMode === 'kanban' ? 'bg-white shadow-sm' : 'text-neutral-500'}`}
-            >
-              <LayoutGrid size={14} /> Kanban
-            </button>
-          </div>
           <Button
             data-testid="batch-generate-button"
             onClick={openBatchModal}
@@ -312,123 +303,16 @@ export default function LeadsList() {
         </div>
 
         <div className="border rounded-lg overflow-hidden">
-          {viewMode === 'kanban' ? (
-            <KanbanBoard
-              leads={leads}
-              onMove={moveLeadToColumn}
-              onView={(id) => navigate(`/leads/${id}`)}
-              draggingLead={draggingLead}
-              setDraggingLead={setDraggingLead}
-              updatingLead={updatingLead}
-            />
-          ) : (
-          <table className="w-full">
-            <thead className="bg-neutral-50 border-b">
-              <tr>
-                <th className="p-3 text-left text-sm font-bold">
-                  <input
-                    type="checkbox"
-                    data-testid="select-all-checkbox"
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedLeads(leads.map(l => l.lead_id));
-                      } else {
-                        setSelectedLeads([]);
-                      }
-                    }}
-                    checked={selectedLeads.length === leads.length && leads.length > 0}
-                  />
-                </th>
-                <th className="p-3 text-left text-sm font-bold">Pagato</th>
-                <th className="p-3 text-left text-sm font-bold">Nome Attività</th>
-                <th className="p-3 text-left text-sm font-bold">Categoria</th>
-                <th className="p-3 text-left text-sm font-bold">Città</th>
-                <th className="p-3 text-left text-sm font-bold">Rating</th>
-                <th className="p-3 text-left text-sm font-bold">Stato</th>
-                <th className="p-3 text-left text-sm font-bold">Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leads.map((lead) => (
-                <tr
-                  key={lead.lead_id}
-                  data-testid={`lead-row-${lead.lead_id}`}
-                  className={`border-b hover:bg-neutral-50 transition-colors ${lead.status === 'client' ? 'bg-green-50' : ''}`}
-                >
-                  <td className="p-3">
-                    <input
-                      type="checkbox"
-                      data-testid={`checkbox-${lead.lead_id}`}
-                      checked={selectedLeads.includes(lead.lead_id)}
-                      onChange={() => toggleLeadSelection(lead.lead_id)}
-                    />
-                  </td>
-                  <td className="p-3">
-                    <button
-                      data-testid={`paid-toggle-${lead.lead_id}`}
-                      onClick={() => toggleClientStatus(lead)}
-                      disabled={updatingLead === lead.lead_id}
-                      className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-neutral-100 transition-colors"
-                      title={lead.status === 'client' ? 'Rimuovi da clienti' : 'Segna come pagato'}
-                    >
-                      {updatingLead === lead.lead_id ? (
-                        <Loader2 size={20} className="animate-spin text-neutral-400" />
-                      ) : lead.status === 'client' ? (
-                        <CheckCircle size={20} className="text-green-600" />
-                      ) : (
-                        <Circle size={20} className="text-neutral-300 hover:text-green-400" />
-                      )}
-                    </button>
-                  </td>
-                  <td className="p-3 font-medium">
-                    {lead.name}
-                    {lead.status === 'client' && (
-                      <span className="ml-2 text-xs text-green-600 font-normal">Cliente</span>
-                    )}
-                  </td>
-                  <td className="p-3 text-sm text-neutral-600">{lead.category}</td>
-                  <td className="p-3 text-sm text-neutral-600">{lead.city}</td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-1">
-                      <Star size={14} className="text-yellow-500" />
-                      <span className="text-sm font-medium">{lead.rating}</span>
-                      <span className="text-xs text-neutral-500">({lead.reviews_count})</span>
-                    </div>
-                  </td>
-                  <td className="p-3">
-                    <Badge className={`${STATUS_COLORS[lead.status] || 'bg-gray-500'} text-white`}>
-                      {STATUS_LABELS[lead.status] || lead.status}
-                    </Badge>
-                  </td>
-                  <td className="p-3">
-                    <Button
-                      data-testid={`view-details-${lead.lead_id}`}
-                      onClick={() => navigate(`/leads/${lead.lead_id}`)}
-                      variant="ghost"
-                      size="sm"
-                    >
-                      Dettagli
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          )}
-
-          {leads.length === 0 && viewMode === 'list' && (
-            <div className="text-center py-12 text-neutral-500">
-              {filterStatus === 'client' ? (
-                <div>
-                  <CheckCircle size={48} className="mx-auto mb-4 text-neutral-300" />
-                  <p>Nessun cliente acquisito ancora</p>
-                  <p className="text-sm mt-2">Clicca sulla spunta accanto al nome per segnare un lead come "pagato"</p>
-                </div>
-              ) : (
-                <p>Nessun lead trovato</p>
-              )}
-            </div>
-          )}
+          <KanbanBoard
+            leads={leads}
+            onMove={moveLeadToColumn}
+            onView={(id) => navigate(`/leads/${id}`)}
+            draggingLead={draggingLead}
+            setDraggingLead={setDraggingLead}
+            updatingLead={updatingLead}
+            selectedLeads={selectedLeads}
+            onToggleSelect={(id) => setSelectedLeads((s) => s.includes(id) ? s.filter((x) => x !== id) : [...s, id])}
+          />
         </div>
       </Card>
 

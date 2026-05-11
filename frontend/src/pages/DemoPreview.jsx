@@ -805,7 +805,7 @@ export default function DemoPreview() {
           )}
 
           {/* Menu (for restaurants) */}
-          {hasMenu && (
+          {hasMenu && content.show_services !== false && (
             <section id="services">
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">{t('sections.menuTitle', lang)}</h2>
               <div className="space-y-6 sm:space-y-8">
@@ -827,7 +827,7 @@ export default function DemoPreview() {
           )}
 
           {/* Services (for non-restaurants) */}
-          {!hasMenu && content.services && content.services.length > 0 && (
+          {!hasMenu && content.show_services !== false && content.services && content.services.length > 0 && (
             <section id="services">
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">{t('sections.servicesTitle', lang)}</h2>
               {content.services_intro && (
@@ -857,7 +857,7 @@ export default function DemoPreview() {
           )}
 
           {/* Why Choose Us */}
-          {content.why_choose_us && content.why_choose_us.length > 0 && (
+          {content.show_whyus !== false && content.why_choose_us && content.why_choose_us.length > 0 && (
             <section id="why-us" className="py-8 sm:py-12">
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-8 tracking-tight text-center">
                 {t('sections.whyChooseUs', lang) || 'Perché Sceglierci'}
@@ -877,7 +877,7 @@ export default function DemoPreview() {
           )}
 
           {/* Gallery */}
-          {galleryPhotos.length > 0 && (
+          {content.show_gallery !== false && galleryPhotos.length > 0 && (
             <section id="gallery">
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">{t('sections.galleryTitle', lang)}</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
@@ -894,7 +894,7 @@ export default function DemoPreview() {
           )}
 
           {/* Reviews */}
-          {reviews.length > 0 && (
+          {content.show_reviews !== false && reviews.length > 0 && (
             <section id="reviews">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">{t('sections.reviewsTitle', lang)}</h2>
@@ -925,7 +925,7 @@ export default function DemoPreview() {
           )}
 
           {/* Hours */}
-          {localizedHours.length > 0 && (
+          {content.show_hours !== false && localizedHours.length > 0 && (
             <section id="hours">
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">{t('sections.hoursTitle', lang)}</h2>
               <div className={`${style.cardBg} p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl border-2 border-neutral-100`}>
@@ -955,7 +955,7 @@ export default function DemoPreview() {
           )}
 
           {/* FAQ Section */}
-          {content.faq && content.faq.length > 0 && (
+          {content.show_faq !== false && content.faq && content.faq.length > 0 && (
             <section id="faq" className="py-8 sm:py-12">
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-8 tracking-tight">
                 {t('sections.faqTitle', lang) || 'Domande Frequenti'}
@@ -977,7 +977,7 @@ export default function DemoPreview() {
           )}
 
           {/* Map */}
-          {business.location && (
+          {content.show_map !== false && business.location && (
             <section id="location">
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">{t('sections.locationTitle', lang)}</h2>
               <div className="rounded-xl sm:rounded-2xl overflow-hidden shadow-xl border-2 border-neutral-200">
