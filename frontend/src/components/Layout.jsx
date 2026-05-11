@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Search, Users, Globe, Mail, Settings as SettingsIcon, Menu, CalendarCheck } from 'lucide-react';
+import { LayoutDashboard, Search, Users, Globe, Mail, Settings as SettingsIcon, Menu, CalendarCheck, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 const navItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -16,8 +15,13 @@ const navItems = [
 
 export default function Layout() {
   const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const SidebarContent = () => (
+  // Get current page title
+  const currentPage = navItems.find(item => item.path === location.pathname);
+  const pageTitle = currentPage?.label || 'Dashboard';
+
+  const SidebarContent = ({ onNavigate }) => (
     <>
       <div className="p-6 border-b border-neutral-800">
         <h1 className="text-2xl font-bold tracking-tight">LeadHunter Pro</h1>
@@ -28,7 +32,7 @@ export default function Layout() {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
           return (
-            <Link key={item.path} to={item.path}>
+            <Link key={item.path} to={item.path} onClick={onNavigate}>
               <div
                 data-testid={`nav-${item.label.toLowerCase().replace(' ', '-')}`}
                 className={`flex items-center gap-3 px-4 py-3 rounded-md transition-all ${
@@ -48,32 +52,59 @@ export default function Layout() {
   );
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="hidden md:block w-64 sidebar border-r border-neutral-800">
+    <div className="flex min-h-screen min-h-[100dvh] bg-neutral-50">
+      {/* Desktop Sidebar - Fixed */}
+      <aside className="hidden md:flex md:flex-col w-64 sidebar border-r border-neutral-800 fixed inset-y-0 left-0 z-30">
         <SidebarContent />
       </aside>
 
-      <div className="md:hidden">
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              data-testid="mobile-menu-button"
-              variant="ghost"
-              size="icon"
-              className="fixed top-4 left-4 z-50 bg-white shadow-md"
-            >
-              <Menu size={24} />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-64 p-0 sidebar">
-            <SidebarContent />
-          </SheetContent>
-        </Sheet>
-      </div>
+      {/* Mobile Header - Fixed/Sticky */}
+      <header className="md:hidden fixed top-0 left-0 right-0 z-40 bg-neutral-900 text-white shadow-lg">
+        <div className="flex items-center justify-between px-4 py-3">
+          <Button
+            data-testid="mobile-menu-button"
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileMenuOpen(true)}
+            className="text-white hover:bg-neutral-800"
+          >
+            <Menu size={24} />
+          </Button>
+          <h1 className="text-lg font-semibold">{pageTitle}</h1>
+          <div className="w-10"></div> {/* Spacer for centering */}
+        </div>
+      </header>
 
-      <main className="flex-1 overflow-auto">
-        <div className="container mx-auto p-6 md:p-8 lg:p-12">
-          <Outlet />
+      {/* Mobile Sidebar Overlay */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-50">
+          <div 
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          <aside className="absolute left-0 top-0 bottom-0 w-64 sidebar">
+            <div className="flex justify-end p-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-white hover:bg-neutral-800"
+              >
+                <X size={24} />
+              </Button>
+            </div>
+            <SidebarContent onNavigate={() => setMobileMenuOpen(false)} />
+          </aside>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <main className="flex-1 md:ml-64 min-h-screen min-h-[100dvh]">
+        {/* Padding top for mobile header */}
+        <div className="pt-14 md:pt-0">
+          <div className="container mx-auto p-4 sm:p-6 md:p-8 lg:p-12 pb-8">
+            <Outlet />
+          </div>
         </div>
       </main>
     </div>

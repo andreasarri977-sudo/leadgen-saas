@@ -128,7 +128,7 @@ sudo supervisorctl status
 ```
 
 ### 6. Accedi all'applicazione
-Apri il browser su: `https://booking-manager-app.preview.emergentagent.com`
+Apri il browser su: `https://color-preview-fix.preview.emergentagent.com`
 
 ---
 
@@ -273,10 +273,10 @@ yarn test
 ### Test API con cURL
 ```bash
 # Test health check
-curl https://booking-manager-app.preview.emergentagent.com/api/
+curl https://color-preview-fix.preview.emergentagent.com/api/
 
 # Test statistiche
-curl https://booking-manager-app.preview.emergentagent.com/api/stats/dashboard
+curl https://color-preview-fix.preview.emergentagent.com/api/stats/dashboard
 ```
 
 ---
