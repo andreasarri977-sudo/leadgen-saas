@@ -270,11 +270,23 @@ class handler(BaseHTTPRequestHandler):
                     
                     if lead.get('email') and _resend and resend_key:
                         try:
+                            demo_link_html = ""
+                            if demo_url and demo_url.startswith('http'):
+                                demo_link_html = '<p>Puoi rivederlo qui: <a href="' + demo_url + '">' + demo_url + '</a></p>'
+                            html_body = (
+                                "<div style='font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;color:#1a1a1a'>"
+                                f"<p>Ciao {lead.get('name','')},</p>"
+                                "<p>volevo gentilmente ricordarti la proposta di sito web che ti avevo inviato qualche giorno fa.</p>"
+                                f"{demo_link_html}"
+                                "<p>Resto a disposizione per qualsiasi domanda.</p>"
+                                f"<p style='margin-top:30px'>Cordiali saluti,<br><strong>{sender_name}</strong></p>"
+                                "</div>"
+                            )
                             _resend.Emails.send({
                                 "from": f"{sender_name} <onboarding@resend.dev>",
                                 "to": [lead.get('email')],
                                 "subject": "Hai dato un'occhiata al sito che ti abbiamo inviato?",
-                                "html": f"<div style='font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;color:#1a1a1a'><p>Ciao {lead.get('name','')},</p><p>volevo gentilmente ricordarti la proposta di sito web che ti avevo inviato qualche giorno fa.</p>{('<p>Puoi rivederlo qui: <a href=\"' + demo_url + '\">' + demo_url + '</a></p>') if demo_url and demo_url.startswith('http') else ''}<p>Resto a disposizione per qualsiasi domanda.</p><p style='margin-top:30px'>Cordiali saluti,<br><strong>{sender_name}</strong></p></div>"
+                                "html": html_body
                             })
                             email_sent = True
                         except Exception as _e:

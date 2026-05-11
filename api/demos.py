@@ -106,19 +106,14 @@ class handler(BaseHTTPRequestHandler):
             return self._error(500, str(e))
     
     def _template_ai_generate(self, data):
-        """Generate a template via Emergent LLM (Claude Sonnet)."""
-        import asyncio
+        """Generate a template via Emergent LLM proxy (Claude Sonnet) using a lightweight HTTPS call."""
+        import requests as _r
         category = (data.get('category') or 'attività locale').strip()[:60]
         style = (data.get('style') or 'moderno e professionale').strip()[:60]
         save = bool(data.get('save', True))
         api_key = os.environ.get('EMERGENT_LLM_KEY')
         if not api_key:
             return self._error(500, "EMERGENT_LLM_KEY mancante negli env Vercel")
-        
-        try:
-            from emergentintegrations.llm.chat import LlmChat, UserMessage
-        except ImportError:
-            return self._error(500, "emergentintegrations non installata")
         
         prompt = (
             f"Devi generare un template di sito web in italiano per: '{category}', stile '{style}'.\n"
@@ -146,20 +141,27 @@ class handler(BaseHTTPRequestHandler):
             f"Adatta colore e contenuti alla categoria '{category}' (es: pizzeria → red/orange + FAQ su prenotazioni/asporto; dentista → blue/teal + FAQ su appuntamenti/dolore; parrucchiere → fuchsia/rose + FAQ su prezzi/tagli)."
         )
         
-        async def call_llm():
-            chat = LlmChat(
-                api_key=api_key,
-                session_id=f"tpl-{uuid.uuid4().hex[:8]}",
-                system_message="Sei un esperto di web design e copy in italiano. Rispondi SEMPRE solo con JSON valido."
-            ).with_model("anthropic", "claude-sonnet-4-5-20250929")
-            return await chat.send_message(UserMessage(text=prompt))
-        
         try:
-            response = asyncio.run(call_llm())
+            llm_response = _r.post(
+                "https://integrations.emergentagent.com/llm/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={
+                    "model": "claude-sonnet-4-5-20250929",
+                    "messages": [
+                        {"role": "system", "content": "Sei un esperto di web design e copy in italiano. Rispondi SEMPRE solo con JSON valido."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "max_tokens": 2000
+                },
+                timeout=45
+            )
+            if llm_response.status_code != 200:
+                return self._error(500, f"LLM error {llm_response.status_code}: {llm_response.text[:200]}")
+            llm_data = llm_response.json()
+            content = llm_data['choices'][0]['message']['content']
             # Strip code fences if present
-            cleaned = response.strip()
+            cleaned = content.strip()
             if cleaned.startswith('```'):
-                # Remove first line and trailing fence
                 lines = cleaned.split('\n')
                 if lines[0].startswith('```'):
                     lines = lines[1:]
@@ -168,8 +170,8 @@ class handler(BaseHTTPRequestHandler):
                 cleaned = '\n'.join(lines)
             parsed = json.loads(cleaned)
         except Exception as e:
-            log(f"AI template parse error: {e}")
-            return self._error(500, f"Risposta AI non valida: {str(e)[:200]}")
+            log(f"AI template error: {e}")
+            return self._error(500, f"Errore generazione AI: {str(e)[:200]}")
         
         # Filter to allowed fields only
         tpl_data = {k: parsed[k] for k in TEMPLATE_FIELDS if k in parsed}
