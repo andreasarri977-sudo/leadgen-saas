@@ -209,6 +209,96 @@ class handler(BaseHTTPRequestHandler):
                 )
                 client.close()
                 return self._json_response(200, {"success": True, "message": "Dati salvati"})
+
+            if action == "mark_contacted":
+                # Mark a single lead as contacted (just stamp last_contact_at)
+                lead_id = data.get('lead_id')
+                if not lead_id:
+                    return self._error(400, "lead_id richiesto")
+                from datetime import datetime, timezone
+                client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+                db = client[DB_NAME]
+                db.leads.update_one(
+                    {"lead_id": lead_id},
+                    {"$set": {"last_contact_at": datetime.now(timezone.utc).isoformat(), "status": "contattato"}}
+                )
+                client.close()
+                return self._json_response(200, {"success": True})
+
+            if action == "send_followups":
+                # Send batch follow-up: returns the message + WhatsApp links so user can fire from device.
+                # We don't actually send via Resend here unless emails are provided.
+                from datetime import datetime, timezone
+                lead_ids = data.get('lead_ids') or []
+                if not lead_ids:
+                    return self._error(400, "lead_ids richiesti (array)")
+                
+                client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+                db = client[DB_NAME]
+                
+                # Load user profile for sender name
+                profile = db.user_settings.find_one({"setting_id": "invoice_profile"}, {"_id": 0}) or {}
+                sender_name = profile.get('company_name') or 'WebFinder Studio'
+                
+                # Try Resend email send for those with email
+                resend_key = os.environ.get('RESEND_API_KEY')
+                try:
+                    import resend as _resend
+                    if resend_key:
+                        _resend.api_key = resend_key
+                except ImportError:
+                    _resend = None
+                
+                results = []
+                for lid in lead_ids:
+                    lead = db.leads.find_one({"lead_id": lid}, {"_id": 0})
+                    if not lead:
+                        results.append({"lead_id": lid, "status": "not_found"})
+                        continue
+                    demo = db.demo_sites.find_one({"lead_id": lid}, {"_id": 0})
+                    demo_url = ""
+                    if demo:
+                        demo_url = demo.get('production_url') or demo.get('vercel_url') or f"/demo/{demo.get('demo_id')}"
+                    msg = f"Ciao {lead.get('name', '')}, hai avuto modo di guardare la proposta di sito web che ti avevamo inviato? Resto a disposizione per qualsiasi domanda. {demo_url}"
+                    
+                    email_sent = False
+                    wa_link = None
+                    phone = (lead.get('phone') or '').replace(' ', '').replace('+', '')
+                    if phone:
+                        from urllib.parse import quote as _q
+                        wa_link = f"https://wa.me/{phone}?text={_q(msg)}"
+                    
+                    if lead.get('email') and _resend and resend_key:
+                        try:
+                            _resend.Emails.send({
+                                "from": f"{sender_name} <onboarding@resend.dev>",
+                                "to": [lead.get('email')],
+                                "subject": "Hai dato un'occhiata al sito che ti abbiamo inviato?",
+                                "html": f"<div style='font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;color:#1a1a1a'><p>Ciao {lead.get('name','')},</p><p>volevo gentilmente ricordarti la proposta di sito web che ti avevo inviato qualche giorno fa.</p>{('<p>Puoi rivederlo qui: <a href=\"' + demo_url + '\">' + demo_url + '</a></p>') if demo_url and demo_url.startswith('http') else ''}<p>Resto a disposizione per qualsiasi domanda.</p><p style='margin-top:30px'>Cordiali saluti,<br><strong>{sender_name}</strong></p></div>"
+                            })
+                            email_sent = True
+                        except Exception as _e:
+                            log(f"Resend follow-up failed for {lid}: {_e}")
+                    
+                    db.leads.update_one(
+                        {"lead_id": lid},
+                        {"$set": {"last_contact_at": datetime.now(timezone.utc).isoformat(), "status": "contattato"}}
+                    )
+                    results.append({
+                        "lead_id": lid, "name": lead.get('name'),
+                        "email_sent": email_sent, "whatsapp_link": wa_link,
+                        "message": msg
+                    })
+                client.close()
+                emails_done = sum(1 for r in results if r.get('email_sent'))
+                wa_ready = sum(1 for r in results if r.get('whatsapp_link'))
+                return self._json_response(200, {
+                    "success": True,
+                    "total": len(results),
+                    "emails_sent": emails_done,
+                    "whatsapp_ready": wa_ready,
+                    "results": results
+                })
             
             # Generate lead_id
             import uuid
@@ -328,6 +418,67 @@ class handler(BaseHTTPRequestHandler):
             parsed = urlparse(self.path)
             params = parse_qs(parsed.query)
             action = params.get("action", [None])[0]
+            
+            # Handle hot leads (with tracking score) action
+            if action == "hot_leads":
+                client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+                db = client[DB_NAME]
+                # Aggregate views per lead
+                lead_scores = {}
+                for ev in db.demo_views.find({}, {"_id": 0}):
+                    lid = ev.get('lead_id')
+                    if not lid:
+                        continue
+                    if lid not in lead_scores:
+                        lead_scores[lid] = {'lead_id': lid, 'views': 0, 'sessions': set(), 'clicks': 0, 'last_view': None}
+                    et = ev.get('event_type', '')
+                    if et == 'view':
+                        lead_scores[lid]['views'] += 1
+                        if ev.get('session_id'):
+                            lead_scores[lid]['sessions'].add(ev.get('session_id'))
+                    elif et.startswith('click_'):
+                        lead_scores[lid]['clicks'] += 1
+                    ts = ev.get('ts')
+                    if ts and (not lead_scores[lid]['last_view'] or ts > lead_scores[lid]['last_view']):
+                        lead_scores[lid]['last_view'] = ts
+
+                hot = []
+                for lid, s in lead_scores.items():
+                    sessions = len(s['sessions'])
+                    score = s['views'] + sessions * 3 + s['clicks'] * 5
+                    if score == 0:
+                        continue
+                    lead = db.leads.find_one({"lead_id": lid}, {"_id": 0, "name": 1, "category": 1, "city": 1, "phone": 1, "status": 1, "lead_id": 1})
+                    if lead:
+                        hot.append({**lead, 'views': s['views'], 'sessions': sessions, 'clicks': s['clicks'], 'last_view': s['last_view'], 'score': score})
+                hot.sort(key=lambda x: x['score'], reverse=True)
+                client.close()
+                return self._json_response(200, hot[:20])
+            
+            # Handle followups GET (leads to recontact - status=demo_creata OR contattato AND last_contact older than X days)
+            if action == "followups":
+                from datetime import datetime, timezone, timedelta
+                days = int(params.get("days", ["3"])[0] or 3)
+                client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+                db = client[DB_NAME]
+                cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+                # Leads with status indicating an active funnel but no recent contact
+                target_statuses = ['demo_creata', 'contattato', 'demo_created', 'contacted']
+                cursor = db.leads.find({
+                    "status": {"$in": target_statuses},
+                    "$or": [
+                        {"last_contact_at": {"$exists": False}},
+                        {"last_contact_at": None},
+                        {"last_contact_at": {"$lt": cutoff}}
+                    ]
+                }, {"_id": 0}).sort("created_at", -1).limit(50)
+                items = []
+                for lead in cursor:
+                    if 'created_at' in lead:
+                        lead['created_at'] = str(lead['created_at'])
+                    items.append(lead)
+                client.close()
+                return self._json_response(200, items)
             
             # Handle user_settings GET (invoice profile for quote PDF)
             if action == "user_settings":

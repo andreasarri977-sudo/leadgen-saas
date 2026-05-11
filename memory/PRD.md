@@ -227,6 +227,16 @@ Booking(
 - ✅ API Google Places ora richiede contenuti nella lingua del paese
 - ✅ Versione EN mantiene contenuti originali in inglese
 
+### 2026-02-11 (part 4): Pixel Tracking + Kanban + Follow-up + Gallery Upload + Mobile Toggle
+- ✅ **Pixel di tracciamento**: nuovo endpoint `?action=track` su `demos/[id]/index.py` con collection `demo_views`. Click delegation in `DemoPreview.jsx` cattura view + click WhatsApp/phone/maps in fire-and-forget (session ID per dedupe). Endpoint `?action=stats` per visualizzare statistiche.
+- ✅ **Hot Leads widget** in Dashboard: nuovo `?action=hot_leads` in `leads.py` che aggrega le views per lead e calcola uno score (1 view = 1pt, sessione = 3pt, click = 5pt). Top 20 visibili con emoji 🔥 sopra 15 punti.
+- ✅ **Follow-up semi-automatici**: `?action=followups` lista lead status=demo_created/contacted con last_contact_at > 3 giorni. `?action=send_followups` batch: invia email automatiche via Resend + prepara link WhatsApp pronti da aprire in sequenza. Widget "Da Ricontattare" in Dashboard con button bulk.
+- ✅ **Pipeline Kanban dei Lead**: toggle Lista/Kanban in `LeadsList.jsx`. View Kanban con 4 colonne (Nuovo → Demo → Contattato → Cliente) + drag&drop HTML5 nativo. Preferenza salvata in `localStorage`.
+- ✅ **Upload diretto galleria**: in `GalleryEditor` aggiunto input file multiplo (max 1.5MB/img) che converte in base64 → salva in `content.gallery`. Coesiste con l'inserimento via URL classico.
+- ✅ **Mobile/Desktop toggle in LivePreview**: toggle in alto al pannello anteprima del Tab Stile che restringe la preview a 200px (mobile) o full-width (desktop).
+- ✅ Tutto entro 12/12 funzioni Vercel.
+
+
 ### 2026-02-11 (part 3): Watermark + Template + Bulk Generation Pro
 - ✅ **Watermark "Realizzato da WebFinder Studio"** nel footer dei siti demo (`DemoPreview.jsx`), con toggle on/off dal Tab "Stile" del SiteEditor (`content.hide_watermark`). Backend aggiornato (`demos/[id]/index.py`) per persistere il flag.
 - ✅ **Sistema Template**: collection `templates` MongoDB. CRUD completo in `demos.py` (`?action=templates`, `?action=template_save`, `?action=template_delete`). Apply in `demos/[id]/index.py` (`?action=template_apply`). Modal "Template" nel SiteEditor (pulsante viola) per salvare lo stato attuale come preset (colore + hero + perché sceglierci + FAQ + testi) e applicare un template a un sito esistente in 1 click.

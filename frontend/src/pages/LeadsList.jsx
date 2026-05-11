@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { Filter, Download, RefreshCw, Loader2, Star, CheckCircle, Circle, X, Zap, FileText } from 'lucide-react';
+import { Filter, Download, RefreshCw, Loader2, Star, CheckCircle, Circle, X, Zap, FileText, LayoutGrid, List as ListIcon, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -24,6 +24,77 @@ const STATUS_LABELS = {
   client: 'Cliente Acquisito'
 };
 
+const KANBAN_COLUMNS = [
+  { id: 'new', label: '🆕 Nuovo', color: 'border-blue-300 bg-blue-50' },
+  { id: 'demo_created', label: '🌐 Demo Creata', color: 'border-purple-300 bg-purple-50' },
+  { id: 'contacted', label: '📞 Contattato', color: 'border-yellow-300 bg-yellow-50' },
+  { id: 'client', label: '💰 Cliente', color: 'border-green-300 bg-green-50' }
+];
+
+function KanbanBoard({ leads, onMove, onView, draggingLead, setDraggingLead, updatingLead }) {
+  const grouped = KANBAN_COLUMNS.reduce((acc, c) => { acc[c.id] = []; return acc; }, {});
+  leads.forEach((l) => {
+    const s = l.status || 'new';
+    if (grouped[s]) grouped[s].push(l);
+    else grouped['new'].push(l);
+  });
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 p-3 bg-neutral-50 min-h-[500px]" data-testid="kanban-board">
+      {KANBAN_COLUMNS.map((col) => (
+        <div
+          key={col.id}
+          data-testid={`kanban-col-${col.id}`}
+          className={`border-2 ${col.color} rounded-lg p-3`}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={() => {
+            if (draggingLead && draggingLead.status !== col.id) {
+              onMove(draggingLead.lead_id, col.id);
+            }
+            setDraggingLead(null);
+          }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-sm">{col.label}</h3>
+            <span className="text-xs bg-white px-2 py-0.5 rounded-full font-semibold">{grouped[col.id].length}</span>
+          </div>
+          <div className="space-y-2 min-h-[300px]">
+            {grouped[col.id].map((l) => (
+              <div
+                key={l.lead_id}
+                draggable
+                onDragStart={() => setDraggingLead(l)}
+                onDragEnd={() => setDraggingLead(null)}
+                onClick={() => onView(l.lead_id)}
+                data-testid={`kanban-card-${l.lead_id}`}
+                className={`bg-white border border-neutral-200 rounded-lg p-3 cursor-pointer hover:shadow-md transition-shadow ${draggingLead?.lead_id === l.lead_id ? 'opacity-50' : ''} ${updatingLead === l.lead_id ? 'opacity-60' : ''}`}
+              >
+                <div className="flex items-start gap-1">
+                  <GripVertical size={14} className="text-neutral-300 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">{l.name}</p>
+                    <p className="text-xs text-neutral-500 truncate">{l.category || ''}</p>
+                    <p className="text-xs text-neutral-500 truncate">{l.city || ''}</p>
+                    {l.rating != null && (
+                      <p className="text-xs text-yellow-600 mt-1 flex items-center gap-1">
+                        <Star size={10} fill="currentColor" />
+                        <span>{l.rating}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {grouped[col.id].length === 0 && (
+              <p className="text-xs text-neutral-400 text-center mt-4">Trascina qui i lead</p>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function LeadsList() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -37,6 +108,24 @@ export default function LeadsList() {
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [batchResult, setBatchResult] = useState(null);
+  const [viewMode, setViewMode] = useState(localStorage.getItem('leads_view') || 'list');
+  const [draggingLead, setDraggingLead] = useState(null);
+
+  // Persist view mode
+  useEffect(() => { localStorage.setItem('leads_view', viewMode); }, [viewMode]);
+
+  const moveLeadToColumn = async (leadId, newStatus) => {
+    setUpdatingLead(leadId);
+    const prevLeads = leads;
+    setLeads((arr) => arr.map((l) => l.lead_id === leadId ? { ...l, status: newStatus } : l));
+    try {
+      await axios.patch(`${API}/leads/${leadId}`, { status: newStatus });
+      toast.success('Stato aggiornato');
+    } catch {
+      toast.error('Errore aggiornamento');
+      setLeads(prevLeads);
+    } finally { setUpdatingLead(null); }
+  };
 
   useEffect(() => {
     // Sync filter with URL params
@@ -163,6 +252,22 @@ export default function LeadsList() {
           <p className="text-neutral-600 mt-2 text-lg">{pageSubtitle}</p>
         </div>
         <div className="flex gap-2">
+          <div className="flex bg-neutral-100 rounded-lg p-1 mr-2">
+            <button
+              data-testid="view-list-btn"
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1.5 rounded text-sm font-medium flex items-center gap-1.5 ${viewMode === 'list' ? 'bg-white shadow-sm' : 'text-neutral-500'}`}
+            >
+              <ListIcon size={14} /> Lista
+            </button>
+            <button
+              data-testid="view-kanban-btn"
+              onClick={() => setViewMode('kanban')}
+              className={`px-3 py-1.5 rounded text-sm font-medium flex items-center gap-1.5 ${viewMode === 'kanban' ? 'bg-white shadow-sm' : 'text-neutral-500'}`}
+            >
+              <LayoutGrid size={14} /> Kanban
+            </button>
+          </div>
           <Button
             data-testid="batch-generate-button"
             onClick={openBatchModal}
@@ -207,6 +312,16 @@ export default function LeadsList() {
         </div>
 
         <div className="border rounded-lg overflow-hidden">
+          {viewMode === 'kanban' ? (
+            <KanbanBoard
+              leads={leads}
+              onMove={moveLeadToColumn}
+              onView={(id) => navigate(`/leads/${id}`)}
+              draggingLead={draggingLead}
+              setDraggingLead={setDraggingLead}
+              updatingLead={updatingLead}
+            />
+          ) : (
           <table className="w-full">
             <thead className="bg-neutral-50 border-b">
               <tr>
@@ -299,8 +414,9 @@ export default function LeadsList() {
               ))}
             </tbody>
           </table>
+          )}
 
-          {leads.length === 0 && (
+          {leads.length === 0 && viewMode === 'list' && (
             <div className="text-center py-12 text-neutral-500">
               {filterStatus === 'client' ? (
                 <div>

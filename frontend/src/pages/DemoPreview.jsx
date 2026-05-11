@@ -443,6 +443,45 @@ export default function DemoPreview() {
     loadDemo();
   }, [demoId]);
 
+  // Tracking pixel — fires once per session per demo
+  useEffect(() => {
+    if (!demo) return;
+    try {
+      const sessionKey = `wf_sess_${demoId}`;
+      let sessionId = sessionStorage.getItem(sessionKey);
+      if (!sessionId) {
+        sessionId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+        sessionStorage.setItem(sessionKey, sessionId);
+      }
+      axios.post(`${API}/demos/${demoId}?action=track`, {
+        event_type: 'view',
+        session_id: sessionId
+      }).catch(() => {});
+      window.__wf_session_id = sessionId;
+
+      // Click delegation: intercept WA / tel / booking link clicks
+      const handler = (e) => {
+        const a = e.target.closest('a');
+        if (!a) return;
+        const href = a.getAttribute('href') || '';
+        let eventType = null;
+        if (href.includes('wa.me') || href.includes('whatsapp')) eventType = 'click_whatsapp';
+        else if (href.startsWith('tel:')) eventType = 'click_phone';
+        else if (href.includes('google.com/maps') || href.startsWith('https://maps')) eventType = 'click_maps';
+        if (eventType) {
+          axios.post(`${API}/demos/${demoId}?action=track`, {
+            event_type: eventType,
+            session_id: sessionId
+          }).catch(() => {});
+        }
+      };
+      document.addEventListener('click', handler, { capture: true });
+      return () => document.removeEventListener('click', handler, { capture: true });
+    } catch (e) {
+      // ignore
+    }
+  }, [demo, demoId]);
+
   const handleOpenLightbox = (index) => {
     setScrollY(window.scrollY);
     setLightboxIndex(index);

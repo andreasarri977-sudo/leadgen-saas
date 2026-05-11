@@ -102,6 +102,38 @@ class handler(BaseHTTPRequestHandler):
                 client.close()
                 return self._error(404, "Demo non trovato")
             
+            # Handle stats action (visitor tracking)
+            if action == "stats":
+                try:
+                    from datetime import timedelta
+                    events = list(db.demo_views.find({"demo_id": demo_id}, {"_id": 0}).sort("ts", -1).limit(500))
+                    total_views = len([e for e in events if e.get('event_type') == 'view'])
+                    sessions = set(e.get('session_id') for e in events if e.get('event_type') == 'view' and e.get('session_id'))
+                    clicks_wa = len([e for e in events if e.get('event_type') == 'click_whatsapp'])
+                    clicks_phone = len([e for e in events if e.get('event_type') == 'click_phone'])
+                    clicks_booking = len([e for e in events if e.get('event_type') == 'click_booking'])
+                    devices = {'mobile': 0, 'desktop': 0}
+                    for e in events:
+                        d = e.get('device', 'desktop')
+                        devices[d] = devices.get(d, 0) + 1
+                    last_view = events[0].get('ts') if events else None
+                    # Hot lead score: weighted (views x 1) + (sessions x 3) + (whatsapp x 5) + (phone x 5) + (booking x 10)
+                    score = total_views + (len(sessions) * 3) + (clicks_wa * 5) + (clicks_phone * 5) + (clicks_booking * 10)
+                    client.close()
+                    return self._json_response(200, {
+                        "total_views": total_views,
+                        "unique_sessions": len(sessions),
+                        "clicks": {"whatsapp": clicks_wa, "phone": clicks_phone, "booking": clicks_booking},
+                        "devices": devices,
+                        "last_view": last_view,
+                        "score": score,
+                        "events": events[:20]
+                    })
+                except Exception as _e:
+                    log(f"Stats error: {_e}")
+                    client.close()
+                    return self._error(500, str(_e))
+            
             # Handle editor-data action
             if action == "editor-data":
                 content = demo.get('content', {})
@@ -485,6 +517,28 @@ class handler(BaseHTTPRequestHandler):
                 
                 client.close()
                 return self._json_response(200, {"success": True, "message": "Sito aggiornato"})
+            
+            elif action == "track":
+                # Track a visitor event on the demo site (view, click_whatsapp, click_phone, etc.)
+                event_type = (data.get('event_type') or 'view').strip()
+                session_id = (data.get('session_id') or '')[:36]
+                section = (data.get('section') or '')[:50]
+                user_agent = self.headers.get('User-Agent', '')[:200]
+                device = 'mobile' if any(m in user_agent.lower() for m in ['mobile', 'iphone', 'android']) else 'desktop'
+                try:
+                    db.demo_views.insert_one({
+                        "demo_id": demo_id,
+                        "lead_id": demo.get('lead_id'),
+                        "event_type": event_type,
+                        "section": section,
+                        "session_id": session_id,
+                        "device": device,
+                        "ts": datetime.now(timezone.utc).isoformat()
+                    })
+                except Exception as _e:
+                    log(f"Track insert failed: {_e}")
+                client.close()
+                return self._json_response(200, {"ok": True})
             
             elif action == "template_apply":
                 # Apply a saved template to this demo's content

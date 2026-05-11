@@ -118,6 +118,7 @@ const DAYS = [
 
 // Live preview - mini rendition of the public demo (hero + button + accent card)
 function LiveSitePreview({ colorScheme, heroImage, heroPosition, heroOverlay, businessName }) {
+  const [device, setDevice] = useState('mobile');
   const style = COLOR_SCHEME_MAP[colorScheme] || COLOR_SCHEME_MAP['blue'];
   const positionValue = HERO_POSITIONS.find(p => p.id === heroPosition)?.value || 'center center';
   const overlayBg = heroOverlay === 'gradient'
@@ -127,8 +128,29 @@ function LiveSitePreview({ colorScheme, heroImage, heroPosition, heroOverlay, bu
     : heroOverlay === 'dark' ? 'rgba(0,0,0,0.75)'
     : 'transparent';
 
+  const widthClass = device === 'mobile' ? 'max-w-[200px] mx-auto' : 'w-full';
+
   return (
-    <div className="border-2 border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
+    <div>
+      {/* Device toggle */}
+      <div className="flex bg-neutral-100 rounded-lg p-1 mb-2 w-fit mx-auto">
+        <button
+          data-testid="preview-mobile-btn"
+          onClick={() => setDevice('mobile')}
+          className={`px-3 py-1 rounded text-xs font-medium ${device === 'mobile' ? 'bg-white shadow-sm' : 'text-neutral-500'}`}
+        >
+          📱 Mobile
+        </button>
+        <button
+          data-testid="preview-desktop-btn"
+          onClick={() => setDevice('desktop')}
+          className={`px-3 py-1 rounded text-xs font-medium ${device === 'desktop' ? 'bg-white shadow-sm' : 'text-neutral-500'}`}
+        >
+          🖥️ Desktop
+        </button>
+      </div>
+
+      <div className={`border-2 border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm transition-all ${widthClass}`}>
       {/* Fake browser bar */}
       <div className="flex items-center gap-1.5 px-3 py-2 bg-neutral-100 border-b border-neutral-200">
         <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
@@ -174,6 +196,7 @@ function LiveSitePreview({ colorScheme, heroImage, heroPosition, heroOverlay, bu
         <button className={`w-full text-white text-xs font-semibold py-2 rounded-full ${style.buttonColor} transition-colors`}>
           Prenota Ora
         </button>
+      </div>
       </div>
     </div>
   );
@@ -1789,6 +1812,7 @@ function ContactsEditor({ contacts, onUpdate, onSave, saving, hasChanges }) {
 // GALLERY EDITOR
 function GalleryEditor({ gallery, onUpdate, onSave, saving, hasChanges }) {
   const [newUrl, setNewUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   const addImage = () => {
     if (!newUrl || !newUrl.startsWith('http')) {
@@ -1801,6 +1825,41 @@ function GalleryEditor({ gallery, onUpdate, onSave, saving, hasChanges }) {
     ];
     onUpdate(newGallery);
     setNewUrl('');
+  };
+
+  const handleFiles = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setUploading(true);
+    try {
+      const results = await Promise.all(
+        files.map((file) => {
+          return new Promise((resolve, reject) => {
+            if (file.size > 1024 * 1024 * 1.5) {
+              toast.error(`${file.name} supera 1.5 MB - comprimila prima`);
+              return resolve(null);
+            }
+            const reader = new FileReader();
+            reader.onload = (ev) => resolve(ev.target.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        })
+      );
+      const validUrls = results.filter(Boolean);
+      const start = (gallery || []).length;
+      const newGallery = [
+        ...(gallery || []),
+        ...validUrls.map((u, i) => ({ url: u, caption: '', order: start + i }))
+      ];
+      onUpdate(newGallery);
+      toast.success(`${validUrls.length} immagine/i caricate`);
+    } catch {
+      toast.error('Errore caricamento');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
   };
 
   const removeImage = (index) => {
@@ -1825,17 +1884,38 @@ function GalleryEditor({ gallery, onUpdate, onSave, saving, hasChanges }) {
       <h2 className="text-xl font-semibold mb-4">Galleria Immagini</h2>
       
       {/* Add new image */}
-      <div className="flex gap-2 mb-6">
-        <Input
-          placeholder="URL immagine (https://...)"
-          value={newUrl}
-          onChange={(e) => setNewUrl(e.target.value)}
-          data-testid="gallery-new-url"
-        />
-        <Button onClick={addImage} data-testid="gallery-add-btn">
-          <Plus size={16} className="mr-2" />
-          Aggiungi
-        </Button>
+      <div className="space-y-3 mb-6">
+        <div className="flex gap-2">
+          <Input
+            placeholder="URL immagine (https://...)"
+            value={newUrl}
+            onChange={(e) => setNewUrl(e.target.value)}
+            data-testid="gallery-new-url"
+          />
+          <Button onClick={addImage} data-testid="gallery-add-btn">
+            <Plus size={16} className="mr-2" />
+            Aggiungi URL
+          </Button>
+        </div>
+        <div className="relative">
+          <label className="cursor-pointer flex items-center justify-center gap-2 py-3 px-4 border-2 border-dashed border-neutral-300 hover:border-blue-400 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium">
+            {uploading ? (
+              <><Loader2 className="animate-spin" size={16} /> Caricamento...</>
+            ) : (
+              <><Plus size={16} /> Carica immagini dal tuo dispositivo (max 1.5 MB ciascuna)</>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleFiles}
+              disabled={uploading}
+              className="hidden"
+              data-testid="gallery-upload-input"
+            />
+          </label>
+          <p className="text-xs text-neutral-500 mt-1 text-center">Puoi selezionare più immagini contemporaneamente.</p>
+        </div>
       </div>
 
       {/* Image grid */}

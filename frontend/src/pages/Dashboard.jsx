@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { TrendingUp, Users, Globe, CheckCircle, Target, Search, Mail, RefreshCw, WifiOff, Wifi } from 'lucide-react';
+import { TrendingUp, Users, Globe, CheckCircle, Target, Search, Mail, RefreshCw, WifiOff, Wifi, Flame, Bell, ExternalLink, Send, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import API from '@/lib/api';
 
 // Log URL for debugging
@@ -84,6 +85,46 @@ export default function Dashboard() {
   const [lastHealthCheck, setLastHealthCheck] = useState(null);
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [hotLeads, setHotLeads] = useState([]);
+  const [followups, setFollowups] = useState([]);
+  const [sendingFollowups, setSendingFollowups] = useState(false);
+
+  const loadHotLeads = useCallback(async () => {
+    try {
+      const r = await axios.get(`${API}/leads?action=hot_leads`);
+      setHotLeads(r.data || []);
+    } catch (e) { /* silent */ }
+  }, []);
+
+  const loadFollowups = useCallback(async () => {
+    try {
+      const r = await axios.get(`${API}/leads?action=followups&days=3`);
+      setFollowups(r.data || []);
+    } catch (e) { /* silent */ }
+  }, []);
+
+  const sendBatchFollowups = async () => {
+    if (followups.length === 0) return;
+    if (!window.confirm(`Inviare follow-up automatici a ${followups.length} lead?`)) return;
+    setSendingFollowups(true);
+    try {
+      const r = await axios.post(`${API}/leads?action=send_followups`, {
+        lead_ids: followups.map((l) => l.lead_id)
+      });
+      const d = r.data || {};
+      toast.success(`Email inviate: ${d.emails_sent || 0} / WhatsApp pronti: ${d.whatsapp_ready || 0}`);
+      // Open WhatsApp links sequentially with a small delay
+      const waLinks = (d.results || []).filter((x) => x.whatsapp_link).map((x) => x.whatsapp_link);
+      if (waLinks.length > 0 && window.confirm(`Aprire ${waLinks.length} chat WhatsApp ora?`)) {
+        waLinks.forEach((url, i) => setTimeout(() => window.open(url, '_blank'), i * 400));
+      }
+      setTimeout(loadFollowups, 1000);
+    } catch (e) {
+      toast.error('Errore invio follow-up');
+    } finally {
+      setSendingFollowups(false);
+    }
+  };
 
   // Health check con timeout
   const checkHealth = useCallback(async () => {
@@ -177,6 +218,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadStats();
+    loadHotLeads();
+    loadFollowups();
     
     // Keep-alive ping ogni 4 minuti per mantenere il backend attivo
     const keepAliveInterval = setInterval(() => {
@@ -184,7 +227,7 @@ export default function Dashboard() {
     }, 4 * 60 * 1000);
     
     return () => clearInterval(keepAliveInterval);
-  }, [loadStats, checkHealth]);
+  }, [loadStats, checkHealth, loadHotLeads, loadFollowups]);
 
   const handleRetry = () => {
     loadStats(true);
@@ -314,6 +357,83 @@ export default function Dashboard() {
           href="/leads?status=client"
         />
       </div>
+
+      {/* Hot Leads + Follow-ups widgets */}
+      {(hotLeads.length > 0 || followups.length > 0) && (
+        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Hot Leads */}
+          <Card className="p-6" data-testid="hot-leads-widget">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Flame size={20} className="text-orange-500" />
+                <h2 className="text-xl font-bold">Lead Caldi</h2>
+              </div>
+              <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full font-medium">{hotLeads.length}</span>
+            </div>
+            {hotLeads.length === 0 ? (
+              <p className="text-sm text-neutral-500">Ancora nessun lead ha visualizzato un sito demo. Invia i primi demo!</p>
+            ) : (
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                {hotLeads.slice(0, 6).map((l) => (
+                  <Link key={l.lead_id} to={`/leads`} className="flex items-center justify-between p-2 hover:bg-orange-50 rounded-lg" data-testid={`hot-lead-${l.lead_id}`}>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm truncate flex items-center gap-1">
+                        {l.score >= 15 && <span title="Lead bollente">🔥</span>}
+                        {l.score >= 8 && l.score < 15 && <span title="Lead caldo">🌶️</span>}
+                        {l.name}
+                      </p>
+                      <p className="text-xs text-neutral-500 truncate">
+                        {l.views} viste · {l.sessions} sessioni · {l.clicks} click
+                      </p>
+                    </div>
+                    <ExternalLink size={14} className="text-neutral-400" />
+                  </Link>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {/* Follow-ups */}
+          <Card className="p-6" data-testid="followups-widget">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Bell size={20} className="text-blue-500" />
+                <h2 className="text-xl font-bold">Da Ricontattare</h2>
+              </div>
+              <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">{followups.length}</span>
+            </div>
+            {followups.length === 0 ? (
+              <p className="text-sm text-neutral-500">Nessun lead da ricontattare oggi.</p>
+            ) : (
+              <>
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1 mb-3">
+                  {followups.slice(0, 8).map((l) => (
+                    <div key={l.lead_id} className="flex items-center justify-between p-2 hover:bg-blue-50 rounded-lg" data-testid={`followup-${l.lead_id}`}>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-sm truncate">{l.name}</p>
+                        <p className="text-xs text-neutral-500 truncate">{l.category || ''} · {l.city || ''}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  onClick={sendBatchFollowups}
+                  disabled={sendingFollowups}
+                  data-testid="send-batch-followups"
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  size="sm"
+                >
+                  {sendingFollowups ? <Loader2 className="mr-2 animate-spin" size={14} /> : <Send className="mr-2" size={14} />}
+                  Invia Follow-up a Tutti ({followups.length})
+                </Button>
+                <p className="text-[10px] text-neutral-500 mt-2 text-center">
+                  Email automatiche via Resend + apertura sequenziale chat WhatsApp
+                </p>
+              </>
+            )}
+          </Card>
+        </div>
+      )}
 
       <Card className="mt-8 p-6" data-testid="quick-actions-card">
         <h2 className="text-2xl font-bold mb-4 tracking-tight">Azioni Rapide</h2>
