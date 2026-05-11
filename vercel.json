@@ -10,6 +10,7 @@
     }
   },
   "rewrites": [
+    { "source": "/api/leads/:lead_id", "destination": "/api/leads?lead_id=:lead_id" },
     { "source": "/api/:path*", "destination": "/api/:path*" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]

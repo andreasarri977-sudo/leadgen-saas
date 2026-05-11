@@ -165,10 +165,59 @@ class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 
+    def do_PATCH(self):
+        """PATCH /api/leads/{lead_id} - update lead fields (status, last_contact_at, etc)"""
+        if MongoClient is None:
+            return self._error(500, "pymongo not installed")
+        if not MONGO_URL:
+            return self._error(500, "Missing MONGO_URL env var")
+        try:
+            from urllib.parse import urlparse, parse_qs
+            parsed = urlparse(self.path)
+            # 1) Try query string first (Vercel rewrite passes lead_id as query)
+            params = parse_qs(parsed.query)
+            lead_id = (params.get("lead_id", [None])[0])
+            # 2) Fallback: parse from path /api/leads/{id}
+            if not lead_id:
+                parts = [p for p in parsed.path.split('/') if p]
+                if len(parts) >= 2 and parts[-2] == 'leads':
+                    lead_id = parts[-1]
+            if not lead_id:
+                return self._error(400, f"lead_id mancante (path={parsed.path})")
+            
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            data = json.loads(body) if body else {}
+            
+            allowed = ['status', 'name', 'phone', 'email', 'notes', 'last_contact_at',
+                       'booking_mode', 'external_booking_url', 'site_language', 'category', 'city']
+            update_data = {k: data.get(k) for k in allowed if k in data}
+            if not update_data:
+                return self._error(400, "Nessun campo aggiornabile fornito")
+            
+            from datetime import datetime, timezone
+            update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+            
+            client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+            db = client[DB_NAME]
+            result = db.leads.update_one(
+                {"lead_id": lead_id},
+                {"$set": update_data}
+            )
+            client.close()
+            
+            if result.matched_count == 0:
+                return self._error(404, "Lead non trovato")
+            
+            return self._json_response(200, {"success": True, "updated": list(update_data.keys())})
+        except Exception as e:
+            log(f"PATCH error: {e}")
+            return self._error(500, str(e))
+    
     def do_POST(self):
         """Save a new lead to the database with enriched data from Google Places"""
         log(f"POST {self.path}")

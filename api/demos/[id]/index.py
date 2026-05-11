@@ -542,11 +542,13 @@ class handler(BaseHTTPRequestHandler):
             
             elif action == "template_apply_inline":
                 # Apply provided template data (e.g. just-generated AI) directly to this demo
+                # Preserves existing fields (services, booking_mode, reviews, etc.) - only updates the ones provided.
                 tdata = data.get('data') or {}
                 if not tdata:
                     client.close()
                     return self._error(400, "data richiesto")
                 content_updates = {}
+                # AI generates ONLY these content fields. Everything else (services, gallery, hide_watermark, etc) preserved.
                 allowed = {'color_scheme', 'hero_position', 'hero_overlay', 'theme',
                            'tagline', 'homepage_subtitle', 'about_text', 'services_intro',
                            'cta_text', 'why_choose_us', 'faq'}
@@ -554,6 +556,21 @@ class handler(BaseHTTPRequestHandler):
                     if v is None or k not in allowed:
                         continue
                     content_updates[f"content.{k}"] = v
+                
+                # Safety: ensure booking_mode is set if missing/empty (old batch-generated demos may lack it)
+                bd = demo.get('business_data') or {}
+                if not bd.get('booking_mode') or bd.get('booking_mode') == 'none':
+                    cat = (bd.get('category') or '').lower()
+                    bk_appointment = {'parrucchiere','barbiere','estetista','centro estetico','tatuatore','nail salon','spa',
+                                       'dentista','fisioterapista','veterinario','ottico','palestra','fotografo','medico',
+                                       'psicologo','osteopata','personal trainer'}
+                    bk_table = {'ristorante','pizzeria','trattoria','osteria','hamburgeria','sushi','pub','bar',
+                                 'caffetteria','gelateria','pasticceria'}
+                    if any(c in cat for c in bk_appointment):
+                        content_updates['business_data.booking_mode'] = 'appointment'
+                    elif any(c in cat for c in bk_table):
+                        content_updates['business_data.booking_mode'] = 'table'
+                
                 content_updates['updated_at'] = datetime.now(timezone.utc).isoformat()
                 db.demo_sites.update_one({"demo_id": demo_id}, {"$set": content_updates})
                 client.close()

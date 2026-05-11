@@ -227,6 +227,13 @@ Booking(
 - ✅ API Google Places ora richiede contenuti nella lingua del paese
 - ✅ Versione EN mantiene contenuti originali in inglese
 
+### 2026-02-11 (part 7): 3 Bug Critici Risolti
+- 🐛 **PATCH /api/leads/{id} non esisteva** → Kanban drag&drop falliva e anche il toggle "Segna come cliente" era rotto da prima (silenziosamente). Aggiunto `do_PATCH` in `leads.py` con parsing intelligente di `lead_id` (query string Vercel rewrite + fallback path).
+- 🛠️ **Rewrite Vercel** aggiunta in `vercel.json` per mappare `/api/leads/:lead_id` → `/api/leads?lead_id=:lead_id` (altrimenti Vercel 404 perché non c'è `/api/leads/[id]/index.py`).
+- ✨ **AI template_apply_inline preserva tutto**: l'apply AI ora aggiorna SOLO i campi che la AI genera (color_scheme, tagline, FAQ, why_choose_us, testi) e NON tocca services, gallery, hide_watermark, reviews, ecc. In più, se `business_data.booking_mode` è 'none' su un vecchio demo, lo ricomputa automaticamente da `category` (così la sezione prenotazione torna a comparire).
+- 📝 Batch ancora richiede deploy del fix part 6 per funzionare correttamente.
+
+
 ### 2026-02-11 (part 6): Fix Batch + AI per-Business
 - 🐛 **Fix critico Batch Generation**: il generatore batch creava demo con campi minimi (`about` invece di `about_text`, `services=[]` vuoto, no FAQ, no why_choose_us) → pagina bianca quando si apriva il demo. Riscritto `/api/demo/batch/index.py` per usare la stessa logica ricca di `/api/demo/generate` (services map per categoria, booking_mode auto, FAQ + why_choose_us di default), con override opzionale via template.
 - ✨ **AI Template contestualizzato all'attività**: tab "Genera con AI" nel modal Template adesso usa automaticamente `business_name`, `category`, `city` del sito corrente (no più input manuale). 2 azioni: "Applica subito a questo sito" (genera + applica al volo) o "Salva come template" (riutilizzabile). Style ora dropdown con 7 preset.
