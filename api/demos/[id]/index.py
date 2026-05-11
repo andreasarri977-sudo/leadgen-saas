@@ -511,13 +511,16 @@ class handler(BaseHTTPRequestHandler):
                 currency_symbol = {'EUR': 'EUR', 'USD': 'USD', 'GBP': 'GBP', 'CHF': 'CHF'}.get(currency, currency)
                 
                 if not features:
+                    has_booking = business.get('booking_mode', 'none') != 'none' or bool(business.get('external_booking_url'))
                     features = [
                         "Sito web professionale responsive (mobile + desktop)",
                         "Galleria fotografica + recensioni Google integrate",
-                        "Sistema prenotazioni online con notifica email",
+                    ]
+                    if has_booking:
+                        features.append("Sistema prenotazioni online con notifica email")
+                    features += [
                         "Pulsanti WhatsApp e chiamata diretta",
                         "Mappa interattiva e indicazioni stradali",
-                        "Pannello editing autonomo per modifiche future",
                         "Hosting incluso primo anno + dominio personalizzato",
                         "Ottimizzazione SEO base per Google",
                         "Supporto via email per 6 mesi"
