@@ -48,6 +48,8 @@ export default function LeadDetail() {
   const [generatingWhatsapp, setGeneratingWhatsapp] = useState(false);
   const [emailContent, setEmailContent] = useState(null);
   const [whatsappMessage, setWhatsappMessage] = useState('');
+  const [whatsappRegenerateCount, setWhatsappRegenerateCount] = useState(0);
+  const [whatsappVariant, setWhatsappVariant] = useState(null);
   const [updatingSettings, setUpdatingSettings] = useState(false);
   const [externalBookingUrl, setExternalBookingUrl] = useState('');
 
@@ -115,15 +117,47 @@ export default function LeadDetail() {
 
     setGeneratingWhatsapp(true);
     try {
-      const response = await axios.post(`${API}/whatsapp/generate?lead_id=${leadId}&demo_url=${demo.demo_url}`);
+      // Demo URL può essere relativo o assente — costruisco URL pubblico assoluto
+      const rawUrl = demo.vercel_url || demo.demo_url || `/demo/${demo.demo_id}`;
+      const liveUrl = rawUrl.startsWith('http') ? rawUrl : `${window.location.origin}${rawUrl}`;
+      const nextCount = whatsappMessage ? whatsappRegenerateCount + 1 : 0;
+      const response = await axios.post(
+        `${API}/whatsapp/generate?lead_id=${leadId}&demo_url=${encodeURIComponent(liveUrl)}&regenerate=${nextCount}`
+      );
       setWhatsappMessage(response.data.message);
-      toast.success('Messaggio WhatsApp generato!');
+      setWhatsappVariant(response.data.variant || (nextCount === 0 ? 'standard' : 'ai'));
+      setWhatsappRegenerateCount(nextCount);
+      if (nextCount === 0) {
+        toast.success('Messaggio standard pronto!');
+      } else {
+        toast.success('Nuova variante generata');
+      }
     } catch (error) {
       console.error('Errore generazione WhatsApp:', error);
       toast.error('Errore generazione messaggio');
     } finally {
       setGeneratingWhatsapp(false);
     }
+  };
+
+  const handleCopyWhatsapp = async () => {
+    if (!whatsappMessage) return;
+    try {
+      await navigator.clipboard.writeText(whatsappMessage);
+      toast.success('Messaggio copiato!');
+    } catch {
+      toast.error('Impossibile copiare');
+    }
+  };
+
+  const handleOpenWhatsapp = () => {
+    if (!whatsappMessage) return;
+    const phone = (lead?.phone || '').replace(/[^\d+]/g, '');
+    const text = encodeURIComponent(whatsappMessage);
+    const url = phone
+      ? `https://wa.me/${phone.replace(/^\+/, '')}?text=${text}`
+      : `https://wa.me/?text=${text}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const handleUpdateStatus = async (newStatus) => {
@@ -365,14 +399,40 @@ export default function LeadDetail() {
                   ) : (
                     <>
                       <MessageCircle className="mr-2" size={16} />
-                      Genera Messaggio WhatsApp
+                      {whatsappMessage ? 'Genera Variante (AI)' : 'Genera Messaggio WhatsApp'}
                     </>
                   )}
                 </Button>
 
                 {whatsappMessage && (
-                  <div data-testid="whatsapp-preview" className="bg-green-50 p-4 rounded-lg border border-green-200">
-                    <p className="text-sm text-neutral-700 whitespace-pre-wrap">
+                  <div data-testid="whatsapp-preview" className="bg-green-50 p-4 rounded-lg border border-green-200 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-green-700">
+                        {whatsappVariant === 'ai' ? 'Variante AI' : 'Messaggio standard'}
+                      </span>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={handleCopyWhatsapp}
+                          data-testid="copy-whatsapp-btn"
+                          className="h-7 text-xs"
+                        >
+                          Copia
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleOpenWhatsapp}
+                          data-testid="open-whatsapp-btn"
+                          className="h-7 text-xs bg-green-600 hover:bg-green-700"
+                        >
+                          Apri su WhatsApp
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="text-sm text-neutral-700 whitespace-pre-wrap" data-testid="whatsapp-message-body">
                       {whatsappMessage}
                     </p>
                   </div>

@@ -1224,37 +1224,66 @@ async def send_email(template: EmailTemplate):
         logger.error(f"Errore invio email: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Errore invio email: {str(e)}")
 
+STANDARD_WHATSAPP_TEMPLATE = """Buongiorno! 👋
+Mi chiamo {founder_name} e sono il fondatore di {company_name}, un progetto che aiuta attività locali a migliorare la propria presenza online con siti web moderni e ottimizzati per smartphone 🚀
+
+Ho trovato la vostra attività su Google Maps e ho creato un esempio veloce di come potrebbe apparire con un sito professionale:
+
+Link: {demo_url}
+
+Qui trovate anche alcuni esempi e demo pubblicate su Instagram:
+@{instagram_handle}
+
+Se vi fa piacere posso anche personalizzarlo gratuitamente con i vostri colori, servizi e stile 🙂
+
+Buona giornata!"""
+
+
 @api_router.post("/whatsapp/generate")
-async def generate_whatsapp_message(lead_id: str, demo_url: str):
+async def generate_whatsapp_message(lead_id: str, demo_url: str, regenerate: int = 0):
     lead = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
     if not lead:
         raise HTTPException(status_code=404, detail="Lead non trovato")
-    
-    business_name = lead['name']
-    language = lead.get('language', 'italiano')
-    
-    chat = LlmChat(
-        api_key=EMERGENT_LLM_KEY,
-        session_id=f"whatsapp_{uuid.uuid4()}",
-        system_message=f"Sei un esperto che scrive messaggi WhatsApp professionali ma concisi in {language}."
-    ).with_model("openai", "gpt-5.2")
-    
-    prompt = f"""Scrivi un breve messaggio WhatsApp in {language} (max 150 parole) per contattare {business_name}.
 
-Obiettivo: presentare il sito web demo creato per loro.
+    business_name = lead.get('name', 'la tua attività')
 
-Includere:
-- Saluto
-- Breve presentazione
-- Link demo: {demo_url}
-- Call to action
+    # Sender profile (founder details)
+    profile = await db.user_settings.find_one({"setting_id": "invoice_profile"}, {"_id": 0}) or {}
+    founder_name = profile.get('founder_name') or profile.get('owner_name') or 'Andrea'
+    company_name = profile.get('company_name') or 'WebFinder Studio'
+    instagram_handle = (profile.get('instagram_handle') or 'webfinderstudio').lstrip('@')
 
-Tono: cordiale e diretto."""
+    standard_msg = STANDARD_WHATSAPP_TEMPLATE.format(
+        founder_name=founder_name,
+        company_name=company_name,
+        demo_url=demo_url,
+        instagram_handle=instagram_handle,
+    )
 
-    message = UserMessage(text=prompt)
-    response = await chat.send_message(message)
-    
-    return {"message": response}
+    if regenerate <= 0:
+        return {"message": standard_msg, "variant": "standard"}
+
+    # Variante AI: riformula mantenendo la struttura
+    try:
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"whatsapp_{uuid.uuid4()}",
+            system_message="Sei un copywriter italiano specializzato in messaggi WhatsApp cordiali e professionali."
+        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+
+        prompt = (
+            f"Riscrivi questo messaggio WhatsApp mantenendo struttura, tono cordiale ed emoji simili, "
+            f"ma con parole leggermente diverse per evitare ripetizioni. NON modificare il link demo "
+            f"({demo_url}), il nome del founder ({founder_name}), il nome della società ({company_name}) "
+            f"e l'handle Instagram (@{instagram_handle}). Personalizza eventualmente con il nome attività "
+            f"\"{business_name}\". Rispondi SOLO con il messaggio finale, senza preamboli.\n\n"
+            f"Messaggio originale:\n{standard_msg}"
+        )
+        response = await chat.send_message(UserMessage(text=prompt))
+        return {"message": response.strip() if isinstance(response, str) else str(response).strip(), "variant": "ai"}
+    except Exception as e:
+        logger.error(f"WhatsApp LLM variant error: {e}")
+        return {"message": standard_msg, "variant": "standard_fallback"}
 
 @api_router.get("/stats/dashboard", response_model=DashboardStats)
 async def get_dashboard_stats():
