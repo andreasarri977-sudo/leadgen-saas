@@ -180,7 +180,7 @@ function LiveSitePreview({ colorScheme, heroImage, heroPosition, heroOverlay, bu
 }
 
 // Style Editor Component
-function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, gallery, businessName, onUpdate, onSave, saving }) {
+function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, gallery, businessName, demoId, productionUrl, onUpdate, onSave, saving }) {
   const [selectedColor, setSelectedColor] = useState(colorScheme || 'blue');
   const [selectedHero, setSelectedHero] = useState(heroImage || '');
   const [selectedPosition, setSelectedPosition] = useState(heroPosition || 'center');
@@ -263,7 +263,20 @@ function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme,
 
         {/* Live Preview Panel */}
         <div className="lg:sticky lg:top-4 self-start">
-          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">Anteprima Live</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Anteprima Live</p>
+            <a
+              href={productionUrl || `/demo/${demoId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="open-fullscreen-preview"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+              title="Apri anteprima a schermo intero in una nuova scheda"
+            >
+              <ExternalLink size={12} />
+              Schermo intero
+            </a>
+          </div>
           <LiveSitePreview
             colorScheme={selectedColor}
             heroImage={selectedHero}
@@ -631,6 +644,8 @@ export default function SiteEditor() {
             theme={siteData.theme || 'modern'}
             gallery={siteData.gallery || []}
             businessName={siteData.business_name}
+            demoId={demoId}
+            productionUrl={siteData.production_url}
             onUpdate={(data) => {
               setSiteData(prev => ({
                 ...prev,
