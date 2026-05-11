@@ -55,6 +55,37 @@ const COLOR_SCHEMES = [
   { id: 'black', name: 'Nero', color: '#171717', preview: 'bg-neutral-900' }
 ];
 
+// Color scheme map (mirror of DemoPreview) - used for the LIVE PREVIEW
+const COLOR_SCHEME_MAP = {
+  'blue':     { primaryColor: 'from-blue-600 to-blue-800',       accentColor: 'bg-blue-600',     buttonColor: 'bg-blue-600 hover:bg-blue-700',       cardBg: 'bg-blue-50',     textAccent: 'text-blue-600' },
+  'sky':      { primaryColor: 'from-sky-500 to-sky-700',         accentColor: 'bg-sky-500',      buttonColor: 'bg-sky-500 hover:bg-sky-600',        cardBg: 'bg-sky-50',      textAccent: 'text-sky-600' },
+  'cyan':     { primaryColor: 'from-cyan-500 to-cyan-700',       accentColor: 'bg-cyan-500',     buttonColor: 'bg-cyan-500 hover:bg-cyan-600',      cardBg: 'bg-cyan-50',     textAccent: 'text-cyan-600' },
+  'indigo':   { primaryColor: 'from-indigo-600 to-indigo-800',   accentColor: 'bg-indigo-600',   buttonColor: 'bg-indigo-600 hover:bg-indigo-700',  cardBg: 'bg-indigo-50',   textAccent: 'text-indigo-600' },
+  'purple':   { primaryColor: 'from-purple-600 to-purple-800',   accentColor: 'bg-purple-600',   buttonColor: 'bg-purple-600 hover:bg-purple-700',  cardBg: 'bg-purple-50',   textAccent: 'text-purple-600' },
+  'violet':   { primaryColor: 'from-violet-600 to-violet-800',   accentColor: 'bg-violet-600',   buttonColor: 'bg-violet-600 hover:bg-violet-700',  cardBg: 'bg-violet-50',   textAccent: 'text-violet-600' },
+  'fuchsia':  { primaryColor: 'from-fuchsia-600 to-fuchsia-800', accentColor: 'bg-fuchsia-600',  buttonColor: 'bg-fuchsia-600 hover:bg-fuchsia-700', cardBg: 'bg-fuchsia-50', textAccent: 'text-fuchsia-600' },
+  'pink':     { primaryColor: 'from-pink-600 to-pink-800',       accentColor: 'bg-pink-600',     buttonColor: 'bg-pink-600 hover:bg-pink-700',      cardBg: 'bg-pink-50',     textAccent: 'text-pink-600' },
+  'rose':     { primaryColor: 'from-rose-600 to-rose-800',       accentColor: 'bg-rose-600',     buttonColor: 'bg-rose-600 hover:bg-rose-700',      cardBg: 'bg-rose-50',     textAccent: 'text-rose-600' },
+  'red':      { primaryColor: 'from-red-600 to-red-800',         accentColor: 'bg-red-600',      buttonColor: 'bg-red-600 hover:bg-red-700',        cardBg: 'bg-red-50',      textAccent: 'text-red-600' },
+  'orange':   { primaryColor: 'from-orange-600 to-orange-800',   accentColor: 'bg-orange-600',   buttonColor: 'bg-orange-600 hover:bg-orange-700',  cardBg: 'bg-orange-50',   textAccent: 'text-orange-600' },
+  'amber':    { primaryColor: 'from-amber-600 to-amber-800',     accentColor: 'bg-amber-600',    buttonColor: 'bg-amber-600 hover:bg-amber-700',    cardBg: 'bg-amber-50',    textAccent: 'text-amber-600' },
+  'yellow':   { primaryColor: 'from-yellow-500 to-yellow-700',   accentColor: 'bg-yellow-500',   buttonColor: 'bg-yellow-500 hover:bg-yellow-600',  cardBg: 'bg-yellow-50',   textAccent: 'text-yellow-600' },
+  'lime':     { primaryColor: 'from-lime-500 to-lime-700',       accentColor: 'bg-lime-500',     buttonColor: 'bg-lime-500 hover:bg-lime-600',      cardBg: 'bg-lime-50',     textAccent: 'text-lime-600' },
+  'green':    { primaryColor: 'from-green-600 to-green-800',     accentColor: 'bg-green-600',    buttonColor: 'bg-green-600 hover:bg-green-700',    cardBg: 'bg-green-50',    textAccent: 'text-green-600' },
+  'emerald':  { primaryColor: 'from-emerald-600 to-emerald-800', accentColor: 'bg-emerald-600',  buttonColor: 'bg-emerald-600 hover:bg-emerald-700', cardBg: 'bg-emerald-50', textAccent: 'text-emerald-600' },
+  'teal':     { primaryColor: 'from-teal-600 to-teal-800',       accentColor: 'bg-teal-600',     buttonColor: 'bg-teal-600 hover:bg-teal-700',      cardBg: 'bg-teal-50',     textAccent: 'text-teal-600' },
+  'gold':     { primaryColor: 'from-amber-400 to-amber-600',     accentColor: 'bg-amber-400',    buttonColor: 'bg-amber-400 hover:bg-amber-500',    cardBg: 'bg-amber-50',    textAccent: 'text-amber-500' },
+  'coral':    { primaryColor: 'from-rose-400 to-rose-600',       accentColor: 'bg-rose-400',     buttonColor: 'bg-rose-400 hover:bg-rose-500',      cardBg: 'bg-rose-50',     textAccent: 'text-rose-500' },
+  'mint':     { primaryColor: 'from-emerald-400 to-emerald-600', accentColor: 'bg-emerald-400',  buttonColor: 'bg-emerald-400 hover:bg-emerald-500', cardBg: 'bg-emerald-50', textAccent: 'text-emerald-500' },
+  'lavender': { primaryColor: 'from-violet-400 to-violet-600',   accentColor: 'bg-violet-400',   buttonColor: 'bg-violet-400 hover:bg-violet-500',  cardBg: 'bg-violet-50',   textAccent: 'text-violet-500' },
+  'peach':    { primaryColor: 'from-orange-400 to-orange-600',   accentColor: 'bg-orange-400',   buttonColor: 'bg-orange-400 hover:bg-orange-500',  cardBg: 'bg-orange-50',   textAccent: 'text-orange-500' },
+  'slate':    { primaryColor: 'from-slate-700 to-slate-900',     accentColor: 'bg-slate-700',    buttonColor: 'bg-slate-700 hover:bg-slate-800',    cardBg: 'bg-slate-50',    textAccent: 'text-slate-700' },
+  'navy':     { primaryColor: 'from-blue-800 to-blue-950',       accentColor: 'bg-blue-800',     buttonColor: 'bg-blue-800 hover:bg-blue-900',      cardBg: 'bg-blue-50',     textAccent: 'text-blue-800' },
+  'maroon':   { primaryColor: 'from-rose-700 to-rose-900',       accentColor: 'bg-rose-700',     buttonColor: 'bg-rose-700 hover:bg-rose-800',      cardBg: 'bg-rose-50',     textAccent: 'text-rose-700' },
+  'forest':   { primaryColor: 'from-green-700 to-green-900',     accentColor: 'bg-green-700',    buttonColor: 'bg-green-700 hover:bg-green-800',    cardBg: 'bg-green-50',    textAccent: 'text-green-700' },
+  'black':    { primaryColor: 'from-neutral-800 to-neutral-950', accentColor: 'bg-neutral-900',  buttonColor: 'bg-neutral-900 hover:bg-black',      cardBg: 'bg-neutral-100', textAccent: 'text-neutral-900' }
+};
+
 const HERO_POSITIONS = [
   { id: 'center', name: 'Centro', value: 'center center' },
   { id: 'top', name: 'Alto', value: 'center top' },
@@ -85,8 +116,71 @@ const DAYS = [
   { code: 'sun', name: 'Domenica' }
 ];
 
+// Live preview - mini rendition of the public demo (hero + button + accent card)
+function LiveSitePreview({ colorScheme, heroImage, heroPosition, heroOverlay, businessName }) {
+  const style = COLOR_SCHEME_MAP[colorScheme] || COLOR_SCHEME_MAP['blue'];
+  const positionValue = HERO_POSITIONS.find(p => p.id === heroPosition)?.value || 'center center';
+  const overlayBg = heroOverlay === 'gradient'
+    ? 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 40%, transparent 100%)'
+    : heroOverlay === 'light' ? 'rgba(0,0,0,0.35)'
+    : heroOverlay === 'medium' ? 'rgba(0,0,0,0.55)'
+    : heroOverlay === 'dark' ? 'rgba(0,0,0,0.75)'
+    : 'transparent';
+
+  return (
+    <div className="border-2 border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
+      {/* Fake browser bar */}
+      <div className="flex items-center gap-1.5 px-3 py-2 bg-neutral-100 border-b border-neutral-200">
+        <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+        <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
+        <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+        <div className="ml-3 text-[10px] text-neutral-500 truncate">anteprima.sito</div>
+      </div>
+
+      {/* Hero */}
+      <div className="relative h-32 sm:h-36 overflow-hidden">
+        {heroImage ? (
+          <>
+            <img
+              src={heroImage}
+              alt="hero preview"
+              className="w-full h-full object-cover"
+              style={{ objectPosition: positionValue }}
+            />
+            <div className="absolute inset-0" style={{ background: overlayBg }}></div>
+          </>
+        ) : (
+          <div className={`w-full h-full bg-gradient-to-br ${style.primaryColor}`}></div>
+        )}
+        <div className="absolute bottom-2 left-3 right-3 text-white">
+          <p className="text-[11px] opacity-80 leading-none mb-1">{businessName || 'La tua Attività'}</p>
+          <h4 className="text-base font-bold leading-tight drop-shadow">Benvenuto</h4>
+        </div>
+      </div>
+
+      {/* Body - simulated content */}
+      <div className="p-3 space-y-2.5">
+        <div className="flex items-center gap-2">
+          <span className={`inline-block w-2 h-2 rounded-full ${style.accentColor}`}></span>
+          <span className={`text-xs font-semibold ${style.textAccent}`}>I nostri servizi</span>
+        </div>
+
+        <div className={`${style.cardBg} p-2.5 rounded-lg`}>
+          <div className={`w-6 h-6 rounded ${style.accentColor} text-white text-[10px] font-bold flex items-center justify-center mb-1`}>1</div>
+          <div className="h-1.5 w-3/4 bg-neutral-300 rounded mb-1"></div>
+          <div className="h-1.5 w-1/2 bg-neutral-200 rounded"></div>
+        </div>
+
+        <button className={`w-full text-white text-xs font-semibold py-2 rounded-full ${style.buttonColor} transition-colors`}>
+          Prenota Ora
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Style Editor Component
-function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, gallery, onUpdate, onSave, saving }) {
+function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, gallery, businessName, onUpdate, onSave, saving }) {
   const [selectedColor, setSelectedColor] = useState(colorScheme || 'blue');
   const [selectedHero, setSelectedHero] = useState(heroImage || '');
   const [selectedPosition, setSelectedPosition] = useState(heroPosition || 'center');
@@ -140,28 +234,49 @@ function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme,
   return (
     <Card className="p-6">
       <h3 className="text-lg font-semibold mb-6">Stile del Sito</h3>
-      
-      {/* Color Scheme */}
-      <div className="mb-8">
-        <Label className="text-base font-medium mb-3 block">🎨 Colore Principale</Label>
-        <p className="text-sm text-neutral-500 mb-4">Scegli il colore dei pulsanti e degli elementi principali</p>
-        <div className="grid grid-cols-6 sm:grid-cols-9 gap-2">
-          {COLOR_SCHEMES.map((scheme) => (
-            <button
-              key={scheme.id}
-              onClick={() => handleColorChange(scheme.id)}
-              className={`w-9 h-9 rounded-full ${scheme.preview} transition-all hover:scale-110 ${
-                selectedColor === scheme.id ? 'ring-4 ring-offset-2 ring-blue-400 scale-110' : ''
-              }`}
-              title={scheme.name}
-            />
-          ))}
+
+      {/* Live Preview - sticky on desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 mb-8">
+        <div className="space-y-8 min-w-0">
+          {/* Color Scheme */}
+          <div>
+            <Label className="text-base font-medium mb-3 block">🎨 Colore Principale</Label>
+            <p className="text-sm text-neutral-500 mb-4">Scegli il colore dei pulsanti e degli elementi principali</p>
+            <div className="grid grid-cols-6 sm:grid-cols-9 gap-2">
+              {COLOR_SCHEMES.map((scheme) => (
+                <button
+                  key={scheme.id}
+                  data-testid={`color-swatch-${scheme.id}`}
+                  onClick={() => handleColorChange(scheme.id)}
+                  className={`w-9 h-9 rounded-full ${scheme.preview} transition-all hover:scale-110 ${
+                    selectedColor === scheme.id ? 'ring-4 ring-offset-2 ring-blue-400 scale-110' : ''
+                  }`}
+                  title={scheme.name}
+                />
+              ))}
+            </div>
+            <p className="text-sm text-neutral-500 mt-3">
+              Selezionato: <span className="font-medium text-neutral-800">{COLOR_SCHEMES.find(c => c.id === selectedColor)?.name || 'Blu'}</span>
+            </p>
+          </div>
         </div>
-        <p className="text-sm text-neutral-500 mt-3">
-          Selezionato: <span className="font-medium text-neutral-800">{COLOR_SCHEMES.find(c => c.id === selectedColor)?.name || 'Blu'}</span>
-        </p>
+
+        {/* Live Preview Panel */}
+        <div className="lg:sticky lg:top-4 self-start">
+          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">Anteprima Live</p>
+          <LiveSitePreview
+            colorScheme={selectedColor}
+            heroImage={selectedHero}
+            heroPosition={selectedPosition}
+            heroOverlay={selectedOverlay}
+            businessName={businessName}
+          />
+          <p className="text-[11px] text-neutral-500 mt-2 leading-tight">
+            Cambia colore, immagine o oscuramento: l'anteprima si aggiorna in tempo reale.
+          </p>
+        </div>
       </div>
-      
+
       {/* Hero Image Selection */}
       <div className="mb-8">
         <Label className="text-base font-medium mb-3 block">🖼️ Immagine di Copertina</Label>
@@ -515,6 +630,7 @@ export default function SiteEditor() {
             colorScheme={siteData.color_scheme || 'blue'}
             theme={siteData.theme || 'modern'}
             gallery={siteData.gallery || []}
+            businessName={siteData.business_name}
             onUpdate={(data) => {
               setSiteData(prev => ({
                 ...prev,

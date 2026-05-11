@@ -226,10 +226,11 @@ Booking(
 - ✅ Traduzione recensioni via LLM GPT-5.2 nella lingua locale
 - ✅ API Google Places ora richiede contenuti nella lingua del paese
 - ✅ Versione EN mantiene contenuti originali in inglese
-### 2026-02-11: Fix Color Scheme Map + Mobile UI
+### 2026-02-11: Fix Color Scheme Map + Mobile UI + Live Color Preview
 - ✅ Aggiunti tutti i 27 colori vivaci alla mappa `COLOR_SCHEME_MAP` in `DemoPreview.jsx` (sky, cyan, violet, fuchsia, rose, yellow, lime, emerald, gold, coral, mint, lavender, peach, navy, maroon, forest, black + 10 base) per allinearla a `SiteEditor.jsx`. Risolto bug per cui i colori vivaci non si applicavano ai siti demo.
 - ✅ Build verificata: tutte le classi Tailwind (`from-fuchsia-600`, `bg-sky-50`, `from-emerald-400`, `from-blue-950`, ecc.) compilate correttamente nel CSS finale.
 - ✅ Header mobile sticky (Layout.jsx) verificato: barra "Dashboard" rimane visibile durante lo scroll.
+- ✅ **NUOVO: Live Color Preview** dentro `SiteEditor.jsx` Tab "Stile": pannello sticky che mostra in tempo reale una mini-anteprima del sito (hero + bottone + card accent) appena si cambia colore, immagine, posizione od oscuramento. Pensato per rendere più premium l'esperienza di personalizzazione e velocizzare le scelte cliente.
 
 
 
