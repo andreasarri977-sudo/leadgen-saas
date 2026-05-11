@@ -1,6 +1,6 @@
 {
-  "name": "LeadHunter Pro",
-  "short_name": "LeadHunter",
+  "name": "WebFinder Studio",
+  "short_name": "WebFinder",
   "description": "Trova aziende senza sito web e convertile in clienti",
   "start_url": "/",
   "scope": "/",

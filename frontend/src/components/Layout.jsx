@@ -23,9 +23,10 @@ export default function Layout() {
 
   const SidebarContent = ({ onNavigate }) => (
     <>
-      <div className="p-6 border-b border-neutral-800">
-        <h1 className="text-2xl font-bold tracking-tight">LeadHunter Pro</h1>
-        <p className="text-sm text-neutral-400 mt-1">Automatizza il tuo business</p>
+      <div className="p-6 border-b border-neutral-800 flex flex-col items-center">
+        <img src="/logo-webfinder.png" alt="WebFinder Studio" className="w-24 h-24 rounded-full object-cover shadow-lg" />
+        <h1 className="mt-3 text-base font-semibold tracking-wide text-white">WebFinder Studio</h1>
+        <p className="text-xs text-neutral-400 mt-1">Lead generation & siti web</p>
       </div>
       <nav className="p-4 space-y-2">
         {navItems.map((item) => {

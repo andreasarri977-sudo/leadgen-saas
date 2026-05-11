@@ -26,6 +26,46 @@ MONGO_URL = os.environ.get("MONGO_URL") or os.environ.get("URL_MONGO")
 DB_NAME = os.environ.get("DB_NAME", "leadhunter")
 GOOGLE_PLACES_API_KEY = os.environ.get("GOOGLE_PLACES_API_KEY")
 
+def _load_default_logo():
+    """Load the default WebFinder Studio logo as base64 string."""
+    try:
+        # Try multiple paths (local dev + Vercel bundled)
+        here = os.path.dirname(os.path.abspath(__file__))
+        candidates = [
+            os.path.join(here, "assets_logo.b64"),
+            os.path.join(here, "..", "assets_logo.b64"),
+            "/var/task/api/assets_logo.b64",
+            "/var/task/assets_logo.b64"
+        ]
+        for path in candidates:
+            if os.path.exists(path):
+                with open(path) as f:
+                    return f.read().strip()
+    except Exception as e:
+        log(f"Default logo load failed: {e}")
+    return ""
+
+DEFAULT_LOGO_B64 = _load_default_logo()
+
+DEFAULT_INVOICE_PROFILE = {
+    "company_name": "WebFinder Studio",
+    "vat_number": "",
+    "tax_code": "",
+    "address": "",
+    "city": "",
+    "postal_code": "",
+    "country": "Italia",
+    "phone": "",
+    "email": "",
+    "website": "",
+    "iban": "",
+    "logo_base64": DEFAULT_LOGO_B64,
+    "default_price": 800,
+    "default_currency": "EUR",
+    "footer_notes": "Grazie per la fiducia.",
+    "legal_notes": "Preventivo valido 30 giorni dalla data di emissione. Prezzi IVA esclusa salvo regime forfettario."
+}
+
 def get_place_details(place_id, api_key, country='Italia'):
     """Fetch detailed info from Google Places API with language based on country"""
     if not place_id or not api_key:
@@ -296,16 +336,16 @@ class handler(BaseHTTPRequestHandler):
                 profile = db.user_settings.find_one(
                     {"setting_id": "invoice_profile"}, {"_id": 0}
                 )
-                client.close()
                 if not profile:
-                    profile = {
-                        "company_name": "", "vat_number": "", "tax_code": "",
-                        "address": "", "city": "", "postal_code": "", "country": "Italia",
-                        "phone": "", "email": "", "website": "",
-                        "iban": "", "logo_base64": "",
-                        "default_price": 800, "default_currency": "EUR",
-                        "footer_notes": "", "legal_notes": ""
-                    }
+                    # Seed defaults for new installations (WebFinder Studio branding)
+                    profile = dict(DEFAULT_INVOICE_PROFILE)
+                    profile["setting_id"] = "invoice_profile"
+                    try:
+                        db.user_settings.insert_one(dict(profile))
+                    except Exception as _e:
+                        log(f"Seed default profile failed: {_e}")
+                    profile.pop("_id", None)
+                client.close()
                 return self._json_response(200, profile)
             
             # Handle place-details action

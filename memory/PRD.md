@@ -1,4 +1,4 @@
-# LeadHunter Pro - Product Requirements Document
+# WebFinder Studio - Product Requirements Document
 
 ## Problema Originale
 Piattaforma SaaS avanzata in italiano per automatizzare il processo di ricerca di aziende locali senza sito web, generare automaticamente siti web demo professionali e aiutare a trasformare queste aziende in clienti paganti. Target: freelance e agenzie.
@@ -226,9 +226,17 @@ Booking(
 - ✅ Traduzione recensioni via LLM GPT-5.2 nella lingua locale
 - ✅ API Google Places ora richiede contenuti nella lingua del paese
 - ✅ Versione EN mantiene contenuti originali in inglese
-### 2026-02-11: Fix Color Scheme Map + Mobile UI + Live Color Preview + 💰 Preventivo PDF
+### 2026-02-11 (part 2): Branding WebFinder Studio
+- ✅ Logo WebFinder Studio caricato e ottimizzato in `/app/frontend/public/logo-webfinder.png`.
+- ✅ Sidebar app aggiornata con logo circolare + nome "WebFinder Studio" (sostituisce vecchio "LeadHunter Pro").
+- ✅ Favicon, apple-touch-icon, tutti gli icon PWA (16, 32, 72, 96, 128, 144, 152, 167, 180, 192, 384, 512) rigenerati dal nuovo logo.
+- ✅ `manifest.json`, `index.html` title + meta tags aggiornati con "WebFinder Studio".
+- ✅ Logo **preconfigurato come default** nel PDF preventivo: file `api/assets_logo.b64` bundled tramite `vercel.json > includeFiles`. Helper `_load_default_logo()` in `leads.py` + `demos/[id]/index.py` con multi-path lookup.
+- ✅ Seed automatico: al primo GET di `?action=user_settings` la collection `user_settings` viene popolata con profilo default (company_name="WebFinder Studio", logo Webfinder, prezzo 800 EUR, note legali base). L'utente può sovrascrivere tutto dalle Impostazioni.
 - ✅ Aggiunti tutti i 27 colori vivaci alla mappa `COLOR_SCHEME_MAP` in `DemoPreview.jsx` (sky, cyan, violet, fuchsia, rose, yellow, lime, emerald, gold, coral, mint, lavender, peach, navy, maroon, forest, black + 10 base) per allinearla a `SiteEditor.jsx`. Risolto bug per cui i colori vivaci non si applicavano ai siti demo.
 - ✅ Build verificata: tutte le classi Tailwind (`from-fuchsia-600`, `bg-sky-50`, `from-emerald-400`, `from-blue-950`, ecc.) compilate correttamente nel CSS finale.
+
+### 2026-02-11: Fix Color Scheme Map + Mobile UI + Live Color Preview + 💰 Preventivo PDF
 - ✅ Header mobile sticky (Layout.jsx) verificato: barra "Dashboard" rimane visibile durante lo scroll.
 - ✅ **Live Color Preview** dentro `SiteEditor.jsx` Tab "Stile": pannello sticky con mini-anteprima sito real-time (hero + bottone + card accent) + link "↗ Schermo intero" che apre il sito live in nuova scheda.
 - ✅ **NUOVO: Generatore Preventivi PDF + Invio Automatico al Cliente**:

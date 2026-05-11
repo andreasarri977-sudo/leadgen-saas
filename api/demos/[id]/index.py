@@ -18,6 +18,26 @@ except ImportError:
 MONGO_URL = os.environ.get("MONGO_URL") or os.environ.get("URL_MONGO")
 DB_NAME = os.environ.get("DB_NAME", "leadhunter")
 
+def _load_default_logo():
+    """Load the default WebFinder Studio logo as base64 string (for PDF fallback)."""
+    try:
+        here = os.path.dirname(os.path.abspath(__file__))
+        candidates = [
+            os.path.join(here, "..", "..", "assets_logo.b64"),
+            os.path.join(here, "..", "assets_logo.b64"),
+            "/var/task/api/assets_logo.b64",
+            "/var/task/assets_logo.b64"
+        ]
+        for path in candidates:
+            if os.path.exists(path):
+                with open(path) as f:
+                    return f.read().strip()
+    except Exception as e:
+        log(f"Default logo load failed: {e}")
+    return ""
+
+DEFAULT_LOGO_B64 = _load_default_logo()
+
 def _safe(s):
     """Sanitize string for FPDF core fonts (latin-1). Replace unsupported chars."""
     if s is None:
@@ -516,7 +536,7 @@ class handler(BaseHTTPRequestHandler):
                 pdf.add_page()
                 pdf.set_auto_page_break(auto=True, margin=15)
                 
-                logo_b64 = profile.get('logo_base64') or ''
+                logo_b64 = profile.get('logo_base64') or DEFAULT_LOGO_B64
                 if logo_b64:
                     try:
                         import io as _io
@@ -528,7 +548,7 @@ class handler(BaseHTTPRequestHandler):
                 
                 pdf.set_xy(110, 12)
                 pdf.set_font("Helvetica", 'B', 11)
-                pdf.cell(85, 5, _safe(profile.get('company_name', '') or 'La Tua Azienda'), ln=1, align='R')
+                pdf.cell(85, 5, _safe(profile.get('company_name', '') or 'WebFinder Studio'), ln=1, align='R')
                 pdf.set_font("Helvetica", '', 9)
                 for line in [profile.get('address',''),
                              f"{profile.get('postal_code','')} {profile.get('city','')}".strip(),
