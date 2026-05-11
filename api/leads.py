@@ -146,6 +146,30 @@ class handler(BaseHTTPRequestHandler):
             
             log(f"Saving lead: {data.get('name', 'unknown')}")
             
+            # Handle user_settings save action
+            parsed = urlparse(self.path)
+            params = parse_qs(parsed.query)
+            action = params.get("action", [None])[0]
+            
+            if action == "user_settings":
+                client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+                db = client[DB_NAME]
+                # Single profile doc per app (single-user SaaS)
+                allowed = ['company_name', 'vat_number', 'tax_code', 'address', 'city',
+                           'postal_code', 'country', 'phone', 'email', 'website',
+                           'iban', 'logo_base64', 'default_price', 'default_currency',
+                           'footer_notes', 'legal_notes']
+                update_data = {k: data.get(k) for k in allowed if k in data}
+                from datetime import datetime, timezone
+                update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+                db.user_settings.update_one(
+                    {"setting_id": "invoice_profile"},
+                    {"$set": update_data, "$setOnInsert": {"setting_id": "invoice_profile"}},
+                    upsert=True
+                )
+                client.close()
+                return self._json_response(200, {"success": True, "message": "Dati salvati"})
+            
             # Generate lead_id
             import uuid
             from datetime import datetime, timezone
@@ -264,6 +288,25 @@ class handler(BaseHTTPRequestHandler):
             parsed = urlparse(self.path)
             params = parse_qs(parsed.query)
             action = params.get("action", [None])[0]
+            
+            # Handle user_settings GET (invoice profile for quote PDF)
+            if action == "user_settings":
+                client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+                db = client[DB_NAME]
+                profile = db.user_settings.find_one(
+                    {"setting_id": "invoice_profile"}, {"_id": 0}
+                )
+                client.close()
+                if not profile:
+                    profile = {
+                        "company_name": "", "vat_number": "", "tax_code": "",
+                        "address": "", "city": "", "postal_code": "", "country": "Italia",
+                        "phone": "", "email": "", "website": "",
+                        "iban": "", "logo_base64": "",
+                        "default_price": 800, "default_currency": "EUR",
+                        "footer_notes": "", "legal_notes": ""
+                    }
+                return self._json_response(200, profile)
             
             # Handle place-details action
             if action == "details":

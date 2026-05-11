@@ -226,11 +226,20 @@ Booking(
 - ✅ Traduzione recensioni via LLM GPT-5.2 nella lingua locale
 - ✅ API Google Places ora richiede contenuti nella lingua del paese
 - ✅ Versione EN mantiene contenuti originali in inglese
-### 2026-02-11: Fix Color Scheme Map + Mobile UI + Live Color Preview
+### 2026-02-11: Fix Color Scheme Map + Mobile UI + Live Color Preview + 💰 Preventivo PDF
 - ✅ Aggiunti tutti i 27 colori vivaci alla mappa `COLOR_SCHEME_MAP` in `DemoPreview.jsx` (sky, cyan, violet, fuchsia, rose, yellow, lime, emerald, gold, coral, mint, lavender, peach, navy, maroon, forest, black + 10 base) per allinearla a `SiteEditor.jsx`. Risolto bug per cui i colori vivaci non si applicavano ai siti demo.
 - ✅ Build verificata: tutte le classi Tailwind (`from-fuchsia-600`, `bg-sky-50`, `from-emerald-400`, `from-blue-950`, ecc.) compilate correttamente nel CSS finale.
 - ✅ Header mobile sticky (Layout.jsx) verificato: barra "Dashboard" rimane visibile durante lo scroll.
-- ✅ **NUOVO: Live Color Preview** dentro `SiteEditor.jsx` Tab "Stile": pannello sticky che mostra in tempo reale una mini-anteprima del sito (hero + bottone + card accent) appena si cambia colore, immagine, posizione od oscuramento. Pensato per rendere più premium l'esperienza di personalizzazione e velocizzare le scelte cliente.
+- ✅ **Live Color Preview** dentro `SiteEditor.jsx` Tab "Stile": pannello sticky con mini-anteprima sito real-time (hero + bottone + card accent) + link "↗ Schermo intero" che apre il sito live in nuova scheda.
+- ✅ **NUOVO: Generatore Preventivi PDF + Invio Automatico al Cliente**:
+  - Sezione "Dati Preventivi" in `Settings.jsx` (logo, ragione sociale, P.IVA, indirizzo, IBAN, prezzo standard, valuta, note legali) — l'utente compila quando vuole.
+  - Pulsante verde "Preventivo" in header `SiteEditor.jsx` → apre `QuoteModal`.
+  - Modal con: prezzo (default da impostazioni), valuta, note custom, email destinatario (default dal cliente del sito).
+  - 2 azioni: "Solo Scarica PDF" (download locale) oppure "Genera e Invia al cliente" (PDF + email automatica tramite Resend con allegato).
+  - PDF professionale a colori con header con logo, dati intestatario, descrizione servizi, totale, modalità pagamento, note legali.
+  - Persistenza in collection `quotes` su MongoDB per storico.
+  - **Tutto implementato dentro file esistenti** (`leads.py` + `demos/[id]/index.py`) per restare a 12/12 funzioni Vercel.
+- 📦 Aggiunte deps Vercel: `fpdf2==2.7.9`, `resend==2.4.0` in `api/requirements.txt`.
 
 
 

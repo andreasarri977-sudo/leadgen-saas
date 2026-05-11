@@ -5,7 +5,7 @@ import {
   ArrowLeft, Save, RefreshCw, Clock, UtensilsCrossed, FileText, 
   Phone, Images, Search, Loader2, CheckCircle, AlertCircle, ExternalLink,
   Plus, Trash2, GripVertical, X, ImageIcon, Upload, Palette, Star, HelpCircle,
-  Settings, Mail, Users
+  Settings, Mail, Users, FileDown
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -432,6 +432,187 @@ function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme,
   );
 }
 
+// Quote / Preventivo Modal
+function QuoteModal({ open, onClose, demoId, businessName, defaultRecipient }) {
+  const [profile, setProfile] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [price, setPrice] = useState('');
+  const [currency, setCurrency] = useState('EUR');
+  const [notes, setNotes] = useState('');
+  const [recipient, setRecipient] = useState(defaultRecipient || '');
+  const [sendEmail, setSendEmail] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [result, setResult] = useState(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setResult(null);
+    setRecipient(defaultRecipient || '');
+    setLoadingProfile(true);
+    axios.get(`${API}/leads?action=user_settings`)
+      .then((r) => {
+        const p = r.data || {};
+        setProfile(p);
+        setPrice(String(p.default_price ?? 800));
+        setCurrency(p.default_currency || 'EUR');
+      })
+      .catch(() => { setPrice('800'); setCurrency('EUR'); })
+      .finally(() => setLoadingProfile(false));
+  }, [open, defaultRecipient]);
+
+  if (!open) return null;
+
+  const profileMissing = !profile || !profile.company_name || !profile.vat_number;
+
+  const handleGenerate = async (alsoSend) => {
+    setGenerating(true);
+    setResult(null);
+    try {
+      const res = await axios.post(`${API}/demos/${demoId}?action=quote`, {
+        price: parseFloat(price) || 0,
+        currency,
+        notes: notes.trim(),
+        recipient_email: recipient.trim(),
+        send_email: alsoSend
+      });
+      setResult(res.data);
+      // trigger download
+      if (res.data?.pdf_base64) {
+        const link = document.createElement('a');
+        link.href = `data:application/pdf;base64,${res.data.pdf_base64}`;
+        link.download = res.data.filename || `Preventivo_${businessName}.pdf`;
+        link.click();
+      }
+      if (alsoSend) {
+        if (res.data.sent) {
+          toast.success(`Preventivo inviato a ${res.data.recipient}`);
+        } else if (res.data.send_error) {
+          toast.error(`Invio fallito: ${res.data.send_error}`);
+        }
+      } else {
+        toast.success('PDF generato');
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error(e.response?.data?.error || 'Errore generazione preventivo');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" data-testid="quote-modal">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-neutral-200 sticky top-0 bg-white">
+          <div>
+            <h2 className="text-xl font-bold">Genera Preventivo PDF</h2>
+            <p className="text-sm text-neutral-500">Cliente: <span className="font-medium">{businessName}</span></p>
+          </div>
+          <button onClick={onClose} data-testid="close-quote-modal" className="p-2 hover:bg-neutral-100 rounded-full">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {loadingProfile ? (
+            <div className="flex justify-center py-8"><Loader2 className="animate-spin" size={28} /></div>
+          ) : (
+            <>
+              {profileMissing && (
+                <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-3 text-sm text-yellow-800">
+                  <strong>⚠️ Dati incompleti.</strong> Vai in <strong>Impostazioni → Dati Preventivi</strong> per inserire nome, P.IVA, logo e IBAN. Il PDF si genera lo stesso ma sarà privo dei tuoi dati di intestazione.
+                </div>
+              )}
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2">
+                  <Label htmlFor="q-price">Prezzo</Label>
+                  <Input
+                    id="q-price"
+                    data-testid="quote-price"
+                    type="number"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    placeholder="800"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="q-currency">Valuta</Label>
+                  <select
+                    id="q-currency"
+                    data-testid="quote-currency"
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                    className="w-full border-2 border-neutral-200 rounded-md px-3 py-2 bg-white"
+                  >
+                    <option value="EUR">EUR</option>
+                    <option value="USD">USD</option>
+                    <option value="GBP">GBP</option>
+                    <option value="CHF">CHF</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="q-notes">Note personalizzate (opzionali)</Label>
+                <Textarea
+                  id="q-notes"
+                  data-testid="quote-notes"
+                  rows={3}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Es: Sconto -10% se accettato entro 7 giorni. Consegna in 5 giorni lavorativi."
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="q-recipient">Email destinatario</Label>
+                <Input
+                  id="q-recipient"
+                  data-testid="quote-recipient"
+                  type="email"
+                  value={recipient}
+                  onChange={(e) => setRecipient(e.target.value)}
+                  placeholder="cliente@esempio.it"
+                />
+                <p className="text-xs text-neutral-500 mt-1">Verrà usato come destinatario se attivi "Invia anche al cliente".</p>
+              </div>
+
+              {result?.send_error && (
+                <div className="bg-red-50 border border-red-300 rounded-lg p-3 text-sm text-red-700">
+                  <strong>Invio email fallito:</strong> {result.send_error}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="p-5 border-t border-neutral-200 flex flex-col sm:flex-row gap-2 sticky bottom-0 bg-white">
+          <Button
+            variant="outline"
+            onClick={() => handleGenerate(false)}
+            disabled={generating || loadingProfile}
+            data-testid="quote-download-only"
+            className="flex-1"
+          >
+            {generating ? <Loader2 className="mr-2 animate-spin" size={16} /> : <FileDown className="mr-2" size={16} />}
+            Solo Scarica PDF
+          </Button>
+          <Button
+            onClick={() => handleGenerate(true)}
+            disabled={generating || loadingProfile || !recipient.trim()}
+            data-testid="quote-generate-send"
+            className="flex-1 bg-blue-600 hover:bg-blue-700"
+          >
+            {generating ? <Loader2 className="mr-2 animate-spin" size={16} /> : <Mail className="mr-2" size={16} />}
+            Genera e Invia al cliente
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SiteEditor() {
   const { demoId } = useParams();
   const navigate = useNavigate();
@@ -441,6 +622,7 @@ export default function SiteEditor() {
   const [republishing, setRepublishing] = useState(false);
   const [siteData, setSiteData] = useState(null);
   const [hasChanges, setHasChanges] = useState({});
+  const [quoteOpen, setQuoteOpen] = useState(false);
 
   // Load site data
   useEffect(() => {
@@ -556,6 +738,14 @@ export default function SiteEditor() {
         </div>
         
         <div className="flex items-center gap-3">
+          <Button
+            onClick={() => setQuoteOpen(true)}
+            data-testid="open-quote-btn"
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            <FileDown size={16} className="mr-2" />
+            Preventivo
+          </Button>
           {siteData.production_url && (
             <a
               href={siteData.production_url}
@@ -572,6 +762,14 @@ export default function SiteEditor() {
           </Badge>
         </div>
       </div>
+
+      <QuoteModal
+        open={quoteOpen}
+        onClose={() => setQuoteOpen(false)}
+        demoId={demoId}
+        businessName={siteData.business_name}
+        defaultRecipient={siteData.client_settings?.client_email || siteData.contacts?.email || ''}
+      />
 
       {/* Tabs Editor */}
       <Tabs defaultValue="logo" className="w-full">

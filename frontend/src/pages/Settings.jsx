@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Key, Save, Loader2, CheckCircle, Eye, EyeOff } from 'lucide-react';
+import { Key, Save, Loader2, CheckCircle, Eye, EyeOff, FileText, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import API from '@/lib/api';
 
@@ -13,6 +14,15 @@ export default function Settings() {
     google_maps_api_key: '',
     resend_api_key: ''
   });
+  const [invoiceProfile, setInvoiceProfile] = useState({
+    company_name: '', vat_number: '', tax_code: '',
+    address: '', city: '', postal_code: '', country: 'Italia',
+    phone: '', email: '', website: '',
+    iban: '', logo_base64: '',
+    default_price: 800, default_currency: 'EUR',
+    footer_notes: '', legal_notes: ''
+  });
+  const [savingProfile, setSavingProfile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -22,7 +32,44 @@ export default function Settings() {
 
   useEffect(() => {
     loadSettings();
+    loadInvoiceProfile();
   }, []);
+
+  const loadInvoiceProfile = async () => {
+    try {
+      const res = await axios.get(`${API}/leads?action=user_settings`);
+      setInvoiceProfile((prev) => ({ ...prev, ...(res.data || {}) }));
+    } catch (e) {
+      console.warn('Profilo preventivo non disponibile', e);
+    }
+  };
+
+  const saveInvoiceProfile = async () => {
+    setSavingProfile(true);
+    try {
+      await axios.post(`${API}/leads?action=user_settings`, invoiceProfile);
+      toast.success('Dati preventivo salvati');
+    } catch (e) {
+      console.error(e);
+      toast.error('Errore salvataggio dati preventivo');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleLogoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 1024 * 1024) {
+      toast.error('Logo troppo grande (max 1 MB)');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setInvoiceProfile((prev) => ({ ...prev, logo_base64: ev.target.result }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   const loadSettings = async () => {
     try {
@@ -308,6 +355,155 @@ export default function Settings() {
           )}
         </Button>
       </div>
+
+      {/* DATI PREVENTIVI */}
+      <Card className="mt-6 p-6" data-testid="invoice-profile-card">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-3 bg-blue-100 rounded-lg">
+            <FileText size={24} className="text-blue-600" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Dati Preventivi</h2>
+            <p className="text-sm text-neutral-600">Verranno mostrati nei PDF preventivo che invii ai clienti</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Logo */}
+          <div className="md:col-span-2">
+            <Label>Logo (max 1 MB, PNG/JPG)</Label>
+            <div className="mt-1 flex items-center gap-3">
+              {invoiceProfile.logo_base64 ? (
+                <div className="relative w-24 h-24 border-2 border-neutral-200 rounded-lg overflow-hidden bg-neutral-50">
+                  <img
+                    src={invoiceProfile.logo_base64.startsWith('data:') ? invoiceProfile.logo_base64 : `data:image/png;base64,${invoiceProfile.logo_base64}`}
+                    alt="logo"
+                    className="w-full h-full object-contain"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setInvoiceProfile((p) => ({ ...p, logo_base64: '' }))}
+                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"
+                    data-testid="remove-logo-invoice"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ) : (
+                <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg text-sm font-medium" data-testid="upload-logo-invoice">
+                  <Upload size={16} />
+                  Carica logo
+                  <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                </label>
+              )}
+              <p className="text-xs text-neutral-500">Apparirà in alto a sinistra nei PDF preventivo.</p>
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="ip-company">Nome / Ragione sociale</Label>
+            <Input id="ip-company" data-testid="ip-company-name" value={invoiceProfile.company_name}
+              onChange={(e) => setInvoiceProfile({ ...invoiceProfile, company_name: e.target.value })}
+              placeholder="Es: Andrea Sarri Web Studio" />
+          </div>
+          <div>
+            <Label htmlFor="ip-vat">Partita IVA</Label>
+            <Input id="ip-vat" data-testid="ip-vat" value={invoiceProfile.vat_number}
+              onChange={(e) => setInvoiceProfile({ ...invoiceProfile, vat_number: e.target.value })}
+              placeholder="IT12345678901" />
+          </div>
+          <div>
+            <Label htmlFor="ip-tax">Codice Fiscale (opzionale)</Label>
+            <Input id="ip-tax" data-testid="ip-tax" value={invoiceProfile.tax_code}
+              onChange={(e) => setInvoiceProfile({ ...invoiceProfile, tax_code: e.target.value })}
+              placeholder="RSSMRA85M01H501Z" />
+          </div>
+          <div>
+            <Label htmlFor="ip-email">Email</Label>
+            <Input id="ip-email" data-testid="ip-email" type="email" value={invoiceProfile.email}
+              onChange={(e) => setInvoiceProfile({ ...invoiceProfile, email: e.target.value })}
+              placeholder="info@tuostudio.it" />
+          </div>
+          <div>
+            <Label htmlFor="ip-phone">Telefono</Label>
+            <Input id="ip-phone" data-testid="ip-phone" value={invoiceProfile.phone}
+              onChange={(e) => setInvoiceProfile({ ...invoiceProfile, phone: e.target.value })}
+              placeholder="+39 333 1234567" />
+          </div>
+          <div>
+            <Label htmlFor="ip-website">Sito web (opzionale)</Label>
+            <Input id="ip-website" data-testid="ip-website" value={invoiceProfile.website}
+              onChange={(e) => setInvoiceProfile({ ...invoiceProfile, website: e.target.value })}
+              placeholder="https://tuostudio.it" />
+          </div>
+          <div className="md:col-span-2">
+            <Label htmlFor="ip-address">Indirizzo</Label>
+            <Input id="ip-address" data-testid="ip-address" value={invoiceProfile.address}
+              onChange={(e) => setInvoiceProfile({ ...invoiceProfile, address: e.target.value })}
+              placeholder="Via Roma 10" />
+          </div>
+          <div>
+            <Label htmlFor="ip-postal">CAP</Label>
+            <Input id="ip-postal" data-testid="ip-postal" value={invoiceProfile.postal_code}
+              onChange={(e) => setInvoiceProfile({ ...invoiceProfile, postal_code: e.target.value })}
+              placeholder="20100" />
+          </div>
+          <div>
+            <Label htmlFor="ip-city">Città</Label>
+            <Input id="ip-city" data-testid="ip-city" value={invoiceProfile.city}
+              onChange={(e) => setInvoiceProfile({ ...invoiceProfile, city: e.target.value })}
+              placeholder="Milano" />
+          </div>
+          <div className="md:col-span-2">
+            <Label htmlFor="ip-iban">IBAN (per il bonifico)</Label>
+            <Input id="ip-iban" data-testid="ip-iban" value={invoiceProfile.iban}
+              onChange={(e) => setInvoiceProfile({ ...invoiceProfile, iban: e.target.value })}
+              placeholder="IT60 X054 2811 1010 0000 0123 456" />
+          </div>
+          <div>
+            <Label htmlFor="ip-price">Prezzo standard sito</Label>
+            <div className="flex gap-2">
+              <Input id="ip-price" data-testid="ip-price" type="number" value={invoiceProfile.default_price}
+                onChange={(e) => setInvoiceProfile({ ...invoiceProfile, default_price: e.target.value })}
+                placeholder="800" />
+              <select
+                data-testid="ip-currency"
+                value={invoiceProfile.default_currency}
+                onChange={(e) => setInvoiceProfile({ ...invoiceProfile, default_currency: e.target.value })}
+                className="border-2 border-neutral-200 rounded-md px-2 text-sm bg-white"
+              >
+                <option value="EUR">EUR</option>
+                <option value="USD">USD</option>
+                <option value="GBP">GBP</option>
+                <option value="CHF">CHF</option>
+              </select>
+            </div>
+            <p className="text-xs text-neutral-500 mt-1">Modificabile per ogni preventivo.</p>
+          </div>
+          <div className="md:col-span-2">
+            <Label htmlFor="ip-footer">Note in fondo al PDF (es: "Grazie per la fiducia")</Label>
+            <Textarea id="ip-footer" data-testid="ip-footer" rows={2} value={invoiceProfile.footer_notes}
+              onChange={(e) => setInvoiceProfile({ ...invoiceProfile, footer_notes: e.target.value })} />
+          </div>
+          <div className="md:col-span-2">
+            <Label htmlFor="ip-legal">Note legali / privacy (testo piccolo a fondo pagina)</Label>
+            <Textarea id="ip-legal" data-testid="ip-legal" rows={2} value={invoiceProfile.legal_notes}
+              onChange={(e) => setInvoiceProfile({ ...invoiceProfile, legal_notes: e.target.value })}
+              placeholder="Preventivo valido 30 giorni. Pagamenti soggetti a regime forfettario..." />
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <Button
+            data-testid="save-invoice-profile"
+            onClick={saveInvoiceProfile}
+            disabled={savingProfile}
+            className="bg-blue-600 hover:bg-blue-700 px-6"
+          >
+            {savingProfile ? (<><Loader2 className="mr-2 animate-spin" size={16} /> Salvataggio...</>) : (<><Save className="mr-2" size={16} /> Salva Dati Preventivo</>)}
+          </Button>
+        </div>
+      </Card>
 
       <Card className="mt-6 p-6 bg-yellow-50 border-yellow-200" data-testid="security-notice">
         <h3 className="font-bold text-lg mb-2 flex items-center gap-2">

@@ -18,6 +18,24 @@ except ImportError:
 MONGO_URL = os.environ.get("MONGO_URL") or os.environ.get("URL_MONGO")
 DB_NAME = os.environ.get("DB_NAME", "leadhunter")
 
+def _safe(s):
+    """Sanitize string for FPDF core fonts (latin-1). Replace unsupported chars."""
+    if s is None:
+        return ""
+    s = str(s)
+    repl = {
+        '\u2018': "'", '\u2019': "'", '\u201A': "'", '\u201B': "'",
+        '\u201C': '"', '\u201D': '"', '\u201E': '"', '\u201F': '"',
+        '\u2013': '-', '\u2014': '-', '\u2212': '-',
+        '\u2026': '...', '\u00A0': ' ',
+        '\u20AC': 'EUR',
+        '\u2022': '-', '\u25CF': '-', '\u2192': '->', '\u2190': '<-',
+        '\u2705': '[OK]', '\u274C': '[X]', '\u2713': '[OK]', '\u2717': '[X]'
+    }
+    for k, v in repl.items():
+        s = s.replace(k, v)
+    return s.encode('latin-1', 'replace').decode('latin-1')
+
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
@@ -444,6 +462,205 @@ class handler(BaseHTTPRequestHandler):
                 
                 client.close()
                 return self._json_response(200, {"success": True, "message": "Sito aggiornato"})
+            
+            elif action == "quote":
+                # Generate a PDF quote/preventivo for this demo and optionally email it
+                try:
+                    from fpdf import FPDF
+                except ImportError:
+                    client.close()
+                    return self._error(500, "fpdf2 non installato")
+                import base64 as _b64
+                
+                business = demo.get('business_data', {}) or {}
+                client_email_override = (data.get('recipient_email') or '').strip()
+                send_email_flag = bool(data.get('send_email'))
+                price = data.get('price')
+                currency = data.get('currency') or 'EUR'
+                custom_notes = (data.get('notes') or '').strip()
+                features = data.get('features') or []
+                
+                profile = db.user_settings.find_one({"setting_id": "invoice_profile"}, {"_id": 0}) or {}
+                if price is None or price == '':
+                    price = profile.get('default_price', 800)
+                try:
+                    price_num = float(price)
+                except Exception:
+                    price_num = 800.0
+                
+                currency_symbol = {'EUR': 'EUR', 'USD': 'USD', 'GBP': 'GBP', 'CHF': 'CHF'}.get(currency, currency)
+                
+                if not features:
+                    features = [
+                        "Sito web professionale responsive (mobile + desktop)",
+                        "Galleria fotografica + recensioni Google integrate",
+                        "Sistema prenotazioni online con notifica email",
+                        "Pulsanti WhatsApp e chiamata diretta",
+                        "Mappa interattiva e indicazioni stradali",
+                        "Pannello editing autonomo per modifiche future",
+                        "Hosting incluso primo anno + dominio personalizzato",
+                        "Ottimizzazione SEO base per Google",
+                        "Supporto via email per 6 mesi"
+                    ]
+                
+                business_name = demo.get('business_name', business.get('name', 'Cliente'))
+                business_address = business.get('address', '')
+                business_city = business.get('city', '')
+                
+                from datetime import datetime as _dt, timedelta as _td
+                quote_id = "PRV-" + _dt.now().strftime("%Y%m%d-%H%M")
+                today = _dt.now().strftime("%d/%m/%Y")
+                valid_until = (_dt.now() + _td(days=30)).strftime("%d/%m/%Y")
+                
+                pdf = FPDF(format='A4', unit='mm')
+                pdf.add_page()
+                pdf.set_auto_page_break(auto=True, margin=15)
+                
+                logo_b64 = profile.get('logo_base64') or ''
+                if logo_b64:
+                    try:
+                        import io as _io
+                        raw = logo_b64.split(',', 1)[-1]
+                        logo_bytes = _b64.b64decode(raw)
+                        pdf.image(_io.BytesIO(logo_bytes), x=15, y=12, h=20)
+                    except Exception as _e:
+                        log(f"Logo embed failed: {_e}")
+                
+                pdf.set_xy(110, 12)
+                pdf.set_font("Helvetica", 'B', 11)
+                pdf.cell(85, 5, _safe(profile.get('company_name', '') or 'La Tua Azienda'), ln=1, align='R')
+                pdf.set_font("Helvetica", '', 9)
+                for line in [profile.get('address',''),
+                             f"{profile.get('postal_code','')} {profile.get('city','')}".strip(),
+                             f"P.IVA {profile.get('vat_number','')}" if profile.get('vat_number') else '',
+                             profile.get('email',''),
+                             profile.get('phone','')]:
+                    if line and line.strip():
+                        pdf.set_x(110)
+                        pdf.cell(85, 4, _safe(line), ln=1, align='R')
+                
+                pdf.set_y(45)
+                pdf.set_font("Helvetica", 'B', 22)
+                pdf.cell(0, 12, "PREVENTIVO", ln=1)
+                pdf.set_font("Helvetica", '', 10)
+                pdf.cell(0, 5, f"N. {quote_id}    -    Data: {today}    -    Valido fino al: {valid_until}", ln=1)
+                
+                pdf.ln(6)
+                pdf.set_fill_color(245, 247, 250)
+                pdf.set_draw_color(220, 224, 230)
+                pdf.set_font("Helvetica", 'B', 10)
+                pdf.cell(0, 7, "  INTESTATO A", ln=1, fill=True, border=1)
+                pdf.set_font("Helvetica", 'B', 12)
+                pdf.cell(0, 7, "  " + _safe(business_name), ln=1)
+                pdf.set_font("Helvetica", '', 10)
+                if business_address:
+                    pdf.cell(0, 5, "  " + _safe(business_address), ln=1)
+                if business_city:
+                    pdf.cell(0, 5, "  " + _safe(business_city), ln=1)
+                if business.get('phone'):
+                    pdf.cell(0, 5, "  Tel: " + _safe(business.get('phone', '')), ln=1)
+                
+                pdf.ln(6)
+                pdf.set_font("Helvetica", 'B', 11)
+                pdf.cell(0, 6, "Oggetto:", ln=1)
+                pdf.set_font("Helvetica", '', 11)
+                pdf.multi_cell(0, 6, _safe(f"Realizzazione sito web professionale per {business_name}"))
+                
+                pdf.ln(4)
+                pdf.set_fill_color(30, 64, 175)
+                pdf.set_text_color(255, 255, 255)
+                pdf.set_font("Helvetica", 'B', 10)
+                pdf.cell(130, 8, "  DESCRIZIONE", border=0, fill=True)
+                pdf.cell(0, 8, "IMPORTO  ", border=0, fill=True, ln=1, align='R')
+                pdf.set_text_color(0, 0, 0)
+                pdf.set_font("Helvetica", '', 10)
+                for f in features:
+                    pdf.set_fill_color(252, 252, 253)
+                    pdf.cell(130, 7, "  - " + _safe(str(f))[:80], border='B', fill=True)
+                    pdf.cell(0, 7, "incluso  ", border='B', fill=True, ln=1, align='R')
+                
+                pdf.ln(3)
+                pdf.set_fill_color(30, 64, 175)
+                pdf.set_text_color(255, 255, 255)
+                pdf.set_font("Helvetica", 'B', 13)
+                pdf.cell(130, 12, "  TOTALE", border=0, fill=True)
+                total_str = f"{price_num:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+                pdf.cell(0, 12, f"{total_str} {currency_symbol}  ", border=0, fill=True, ln=1, align='R')
+                pdf.set_text_color(0, 0, 0)
+                
+                if custom_notes:
+                    pdf.ln(6)
+                    pdf.set_font("Helvetica", 'B', 11)
+                    pdf.cell(0, 6, "Note:", ln=1)
+                    pdf.set_font("Helvetica", '', 10)
+                    pdf.multi_cell(0, 5, _safe(custom_notes))
+                
+                pdf.ln(8)
+                pdf.set_font("Helvetica", 'B', 10)
+                pdf.cell(0, 6, "Modalita di pagamento:", ln=1)
+                pdf.set_font("Helvetica", '', 9)
+                if profile.get('iban'):
+                    pdf.cell(0, 5, _safe(f"Bonifico bancario - IBAN: {profile.get('iban','')}"), ln=1)
+                pdf.cell(0, 5, "50% all'accettazione, 50% alla consegna del sito.", ln=1)
+                
+                if profile.get('footer_notes'):
+                    pdf.ln(4)
+                    pdf.set_font("Helvetica", 'I', 8)
+                    pdf.multi_cell(0, 4, _safe(profile.get('footer_notes', '')))
+                if profile.get('legal_notes'):
+                    pdf.ln(2)
+                    pdf.set_font("Helvetica", '', 7)
+                    pdf.set_text_color(120, 120, 120)
+                    pdf.multi_cell(0, 3, _safe(profile.get('legal_notes', '')))
+                
+                pdf_bytes = bytes(pdf.output())
+                pdf_b64 = _b64.b64encode(pdf_bytes).decode('utf-8')
+                pdf_filename = f"Preventivo_{business_name.replace(' ', '_')}_{quote_id}.pdf"
+                
+                sent = False
+                send_error = None
+                recipient_final = client_email_override or (demo.get('client_settings', {}) or {}).get('client_email') or business.get('email') or ''
+                if send_email_flag:
+                    if not recipient_final:
+                        send_error = "Email destinatario mancante"
+                    else:
+                        try:
+                            import resend as _resend
+                            resend_key = os.environ.get('RESEND_API_KEY')
+                            if not resend_key:
+                                send_error = "RESEND_API_KEY non configurata"
+                            else:
+                                _resend.api_key = resend_key
+                                sender_name = profile.get('company_name') or 'LeadHunter Pro'
+                                _resend.Emails.send({
+                                    "from": f"{sender_name} <onboarding@resend.dev>",
+                                    "to": [recipient_final],
+                                    "subject": f"Preventivo sito web - {business_name}",
+                                    "html": f"<div style='font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;color:#1a1a1a'><h2 style='color:#1e40af'>Preventivo allegato</h2><p>Ciao,</p><p>in allegato il preventivo dettagliato per la realizzazione del sito web di <strong>{_safe(business_name)}</strong>.</p>{('<p>'+_safe(custom_notes)+'</p>') if custom_notes else ''}<p>Restiamo a disposizione per ogni domanda.</p><p style='margin-top:30px'>Cordiali saluti,<br><strong>{_safe(sender_name)}</strong></p></div>",
+                                    "attachments": [{"filename": pdf_filename, "content": list(pdf_bytes)}]
+                                })
+                                sent = True
+                        except Exception as _err:
+                            send_error = str(_err)
+                            log(f"Resend send failed: {_err}")
+                
+                try:
+                    db.quotes.insert_one({
+                        "quote_id": quote_id, "demo_id": demo_id,
+                        "business_name": business_name, "price": price_num,
+                        "currency": currency, "features": features, "notes": custom_notes,
+                        "sent": sent, "recipient": recipient_final,
+                        "created_at": datetime.now(timezone.utc).isoformat()
+                    })
+                except Exception as _e:
+                    log(f"Quote insert failed: {_e}")
+                
+                client.close()
+                return self._json_response(200, {
+                    "success": True, "quote_id": quote_id, "filename": pdf_filename,
+                    "pdf_base64": pdf_b64, "sent": sent,
+                    "send_error": send_error, "recipient": recipient_final
+                })
             
             else:
                 client.close()
