@@ -150,18 +150,41 @@ const STYLE_VARIANTS = [
   { id: 'professional-slate', primaryColor: 'from-slate-700 to-slate-900', accentColor: 'bg-slate-700', buttonColor: 'bg-slate-700 hover:bg-slate-800', cardBg: 'bg-slate-50', textAccent: 'text-slate-700' }
 ];
 
-// Color scheme map - for user-selected colors
+// Color scheme map - for user-selected colors (27 vivid colors matching SiteEditor)
 const COLOR_SCHEME_MAP = {
-  'blue': { primaryColor: 'from-blue-600 to-blue-800', accentColor: 'bg-blue-600', buttonColor: 'bg-blue-600 hover:bg-blue-700', cardBg: 'bg-blue-50', textAccent: 'text-blue-600' },
-  'purple': { primaryColor: 'from-purple-600 to-purple-800', accentColor: 'bg-purple-600', buttonColor: 'bg-purple-600 hover:bg-purple-700', cardBg: 'bg-purple-50', textAccent: 'text-purple-600' },
-  'green': { primaryColor: 'from-green-600 to-green-800', accentColor: 'bg-green-600', buttonColor: 'bg-green-600 hover:bg-green-700', cardBg: 'bg-green-50', textAccent: 'text-green-600' },
-  'orange': { primaryColor: 'from-orange-600 to-orange-800', accentColor: 'bg-orange-600', buttonColor: 'bg-orange-600 hover:bg-orange-700', cardBg: 'bg-orange-50', textAccent: 'text-orange-600' },
-  'red': { primaryColor: 'from-red-600 to-red-800', accentColor: 'bg-red-600', buttonColor: 'bg-red-600 hover:bg-red-700', cardBg: 'bg-red-50', textAccent: 'text-red-600' },
-  'pink': { primaryColor: 'from-pink-600 to-pink-800', accentColor: 'bg-pink-600', buttonColor: 'bg-pink-600 hover:bg-pink-700', cardBg: 'bg-pink-50', textAccent: 'text-pink-600' },
-  'teal': { primaryColor: 'from-teal-600 to-teal-800', accentColor: 'bg-teal-600', buttonColor: 'bg-teal-600 hover:bg-teal-700', cardBg: 'bg-teal-50', textAccent: 'text-teal-600' },
-  'indigo': { primaryColor: 'from-indigo-600 to-indigo-800', accentColor: 'bg-indigo-600', buttonColor: 'bg-indigo-600 hover:bg-indigo-700', cardBg: 'bg-indigo-50', textAccent: 'text-indigo-600' },
-  'slate': { primaryColor: 'from-slate-700 to-slate-900', accentColor: 'bg-slate-700', buttonColor: 'bg-slate-700 hover:bg-slate-800', cardBg: 'bg-slate-50', textAccent: 'text-slate-700' },
-  'amber': { primaryColor: 'from-amber-600 to-amber-800', accentColor: 'bg-amber-600', buttonColor: 'bg-amber-600 hover:bg-amber-700', cardBg: 'bg-amber-50', textAccent: 'text-amber-600' }
+  // Cool blues
+  'blue':     { primaryColor: 'from-blue-600 to-blue-800',       accentColor: 'bg-blue-600',     buttonColor: 'bg-blue-600 hover:bg-blue-700',       cardBg: 'bg-blue-50',     textAccent: 'text-blue-600' },
+  'sky':      { primaryColor: 'from-sky-500 to-sky-700',         accentColor: 'bg-sky-500',      buttonColor: 'bg-sky-500 hover:bg-sky-600',        cardBg: 'bg-sky-50',      textAccent: 'text-sky-600' },
+  'cyan':     { primaryColor: 'from-cyan-500 to-cyan-700',       accentColor: 'bg-cyan-500',     buttonColor: 'bg-cyan-500 hover:bg-cyan-600',      cardBg: 'bg-cyan-50',     textAccent: 'text-cyan-600' },
+  'indigo':   { primaryColor: 'from-indigo-600 to-indigo-800',   accentColor: 'bg-indigo-600',   buttonColor: 'bg-indigo-600 hover:bg-indigo-700',  cardBg: 'bg-indigo-50',   textAccent: 'text-indigo-600' },
+  // Purple / pink
+  'purple':   { primaryColor: 'from-purple-600 to-purple-800',   accentColor: 'bg-purple-600',   buttonColor: 'bg-purple-600 hover:bg-purple-700',  cardBg: 'bg-purple-50',   textAccent: 'text-purple-600' },
+  'violet':   { primaryColor: 'from-violet-600 to-violet-800',   accentColor: 'bg-violet-600',   buttonColor: 'bg-violet-600 hover:bg-violet-700',  cardBg: 'bg-violet-50',   textAccent: 'text-violet-600' },
+  'fuchsia':  { primaryColor: 'from-fuchsia-600 to-fuchsia-800', accentColor: 'bg-fuchsia-600',  buttonColor: 'bg-fuchsia-600 hover:bg-fuchsia-700', cardBg: 'bg-fuchsia-50', textAccent: 'text-fuchsia-600' },
+  'pink':     { primaryColor: 'from-pink-600 to-pink-800',       accentColor: 'bg-pink-600',     buttonColor: 'bg-pink-600 hover:bg-pink-700',      cardBg: 'bg-pink-50',     textAccent: 'text-pink-600' },
+  'rose':     { primaryColor: 'from-rose-600 to-rose-800',       accentColor: 'bg-rose-600',     buttonColor: 'bg-rose-600 hover:bg-rose-700',      cardBg: 'bg-rose-50',     textAccent: 'text-rose-600' },
+  // Warm
+  'red':      { primaryColor: 'from-red-600 to-red-800',         accentColor: 'bg-red-600',      buttonColor: 'bg-red-600 hover:bg-red-700',        cardBg: 'bg-red-50',      textAccent: 'text-red-600' },
+  'orange':   { primaryColor: 'from-orange-600 to-orange-800',   accentColor: 'bg-orange-600',   buttonColor: 'bg-orange-600 hover:bg-orange-700',  cardBg: 'bg-orange-50',   textAccent: 'text-orange-600' },
+  'amber':    { primaryColor: 'from-amber-600 to-amber-800',     accentColor: 'bg-amber-600',    buttonColor: 'bg-amber-600 hover:bg-amber-700',    cardBg: 'bg-amber-50',    textAccent: 'text-amber-600' },
+  'yellow':   { primaryColor: 'from-yellow-500 to-yellow-700',   accentColor: 'bg-yellow-500',   buttonColor: 'bg-yellow-500 hover:bg-yellow-600',  cardBg: 'bg-yellow-50',   textAccent: 'text-yellow-600' },
+  // Greens
+  'lime':     { primaryColor: 'from-lime-500 to-lime-700',       accentColor: 'bg-lime-500',     buttonColor: 'bg-lime-500 hover:bg-lime-600',      cardBg: 'bg-lime-50',     textAccent: 'text-lime-600' },
+  'green':    { primaryColor: 'from-green-600 to-green-800',     accentColor: 'bg-green-600',    buttonColor: 'bg-green-600 hover:bg-green-700',    cardBg: 'bg-green-50',    textAccent: 'text-green-600' },
+  'emerald':  { primaryColor: 'from-emerald-600 to-emerald-800', accentColor: 'bg-emerald-600',  buttonColor: 'bg-emerald-600 hover:bg-emerald-700', cardBg: 'bg-emerald-50', textAccent: 'text-emerald-600' },
+  'teal':     { primaryColor: 'from-teal-600 to-teal-800',       accentColor: 'bg-teal-600',     buttonColor: 'bg-teal-600 hover:bg-teal-700',      cardBg: 'bg-teal-50',     textAccent: 'text-teal-600' },
+  // Pastels / accents
+  'gold':     { primaryColor: 'from-amber-400 to-amber-600',     accentColor: 'bg-amber-400',    buttonColor: 'bg-amber-400 hover:bg-amber-500',    cardBg: 'bg-amber-50',    textAccent: 'text-amber-500' },
+  'coral':    { primaryColor: 'from-rose-400 to-rose-600',       accentColor: 'bg-rose-400',     buttonColor: 'bg-rose-400 hover:bg-rose-500',      cardBg: 'bg-rose-50',     textAccent: 'text-rose-500' },
+  'mint':     { primaryColor: 'from-emerald-400 to-emerald-600', accentColor: 'bg-emerald-400',  buttonColor: 'bg-emerald-400 hover:bg-emerald-500', cardBg: 'bg-emerald-50', textAccent: 'text-emerald-500' },
+  'lavender': { primaryColor: 'from-violet-400 to-violet-600',   accentColor: 'bg-violet-400',   buttonColor: 'bg-violet-400 hover:bg-violet-500',  cardBg: 'bg-violet-50',   textAccent: 'text-violet-500' },
+  'peach':    { primaryColor: 'from-orange-400 to-orange-600',   accentColor: 'bg-orange-400',   buttonColor: 'bg-orange-400 hover:bg-orange-500',  cardBg: 'bg-orange-50',   textAccent: 'text-orange-500' },
+  // Dark / classy
+  'slate':    { primaryColor: 'from-slate-700 to-slate-900',     accentColor: 'bg-slate-700',    buttonColor: 'bg-slate-700 hover:bg-slate-800',    cardBg: 'bg-slate-50',    textAccent: 'text-slate-700' },
+  'navy':     { primaryColor: 'from-blue-800 to-blue-950',       accentColor: 'bg-blue-800',     buttonColor: 'bg-blue-800 hover:bg-blue-900',      cardBg: 'bg-blue-50',     textAccent: 'text-blue-800' },
+  'maroon':   { primaryColor: 'from-rose-700 to-rose-900',       accentColor: 'bg-rose-700',     buttonColor: 'bg-rose-700 hover:bg-rose-800',      cardBg: 'bg-rose-50',     textAccent: 'text-rose-700' },
+  'forest':   { primaryColor: 'from-green-700 to-green-900',     accentColor: 'bg-green-700',    buttonColor: 'bg-green-700 hover:bg-green-800',    cardBg: 'bg-green-50',    textAccent: 'text-green-700' },
+  'black':    { primaryColor: 'from-neutral-800 to-neutral-950', accentColor: 'bg-neutral-900',  buttonColor: 'bg-neutral-900 hover:bg-black',      cardBg: 'bg-neutral-100', textAccent: 'text-neutral-900' }
 };
 
 const getStyleFromPlaceId = (placeId, colorScheme = null) => {
