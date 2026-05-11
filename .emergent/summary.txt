@@ -1,147 +1,161 @@
 <analysis>**original_problem_statement:**
-L'utente ha richiesto di trasformare la sua applicazione SaaS di lead generation in una piattaforma di produzione completamente stabile e indipendente. Il sistema permette di cercare aziende, arricchire i dati (Place Details API), generare siti demo (con editor), e gestire prenotazioni. Svariati bug, nuove feature e integrazioni (es. notifiche Resend) sono stati richiesti per permettere la vendita dei siti a un prezzo premium (800-1000€).
+L'utente ha richiesto di trasformare la sua applicazione SaaS di lead generation in una piattaforma di produzione stabile per vendere siti demo a prezzo premium (800-1000€). Il sistema deve includere ricerca lead via Google, generazione siti automatizzata (singola, bulk e via AI), gestione contatti tramite pipeline Kanban, tracking delle visite ai demo, e generazione automatica di preventivi PDF brandizzati (WebFinder Studio). È richiesto il pieno controllo dell'editor per mostrare/nascondere singole sezioni (FAQ, recensioni, orari, ecc.). PRODUCT REQUIREMENTS: Piattaforma React + Serverless Python (Vercel) + MongoDB.
 
 **User's preferred language**: italiano (INSTRUCT next agent to respond in Italian)
 
 **what currently exists?**
-Un'app full-stack su Vercel (React + Python Serverless Functions + MongoDB). Include ricerca lead con dettagli completi (foto, recensioni da Google), generatore di siti demo con editor avanzato (logo, stile, testi, FAQ, Perché Sceglierci, impostazioni cliente, orari, galleria, SEO) e un sistema di prenotazioni online con invio email automatiche tramite Resend al titolare. L'app usa 12 Serverless Functions (limite massimo per il piano free Vercel).
+Un'app SaaS full-stack su Vercel (React + Python Serverless + MongoDB). Include ricerca lead Google, dashboard statistiche (con tracking pixel visite), gestione pipeline Kanban, generatore di preventivi PDF, e un editor avanzato per siti demo. L'editor supporta generazione bulk, creazione template, generazione testi tramite AI (Claude), anteprima live, toggle sezioni e branding personalizzato. Il backend utilizza esattamente 12 Serverless Functions (il limite massimo del piano Vercel Free).
 
 **Last working item**:
-- **Last item agent was working**: L'utente ha segnalato tre problemi finali: 1) I colori nell'editor dei siti a volte non si modificano/applicano sui demo. 2) Su mobile c'è una fascia bianca fastidiosa in basso. 3) L'header superiore (Dashboard) scompare allo scroll. L'agente ha modificato  per l'header sticky e il fix della fascia bianca, ma non ha terminato la correzione sui colori (probabilmente manca l'aggiornamento della mappatura dei colori in ).
-- **Status**: IN PROGRESS
-- **Agent Testing Done**: N
-- **Which testing method agent to use?**: manual testing by screenshot tool/curl, followed by user verification via Vercel deployment.
+- **Last item agent was working**: L'agente ha completato la conversione forzata della pagina Leads in una vista puramente Kanban, risolvendo i bug di drag&drop (aggirando i limiti CORS/Vercel passando da PATCH a POST) e aggiungendo la funzionalità di eliminazione lead. Ha inoltre implementato un nuovo tab Impostazioni Sito completo nell'editor per permettere di mostrare/nascondere sezioni specifiche (galleria, recensioni, mappa, orari, servizi) con aggiornamento dinamico in .
+- **Status**: USER VERIFICATION PENDING
+- **Agent Testing Done**: Y
+- **Which testing method agent to use?**: manual testing by curl / python -c e screenshot tool.
 - **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Colori dello stile non si aggiornano sui siti demo (P0)**
-   - Attempted fixes: L'agente ha verificato l'API e  (dove erano stati aggiunti 27 nuovi colori), ma non ha completato l'analisi su .
-   - Next debug checklist: Verificare in . Il dizionario  contiene solo i colori vecchi e non i 27 nuovi colori vivaci aggiunti precedentemente in . Questo fa fallire l'applicazione della classe colore nel demo. Copiare la mappa aggiornata in .
-   - Why fix this issue and what will be achieved with the fix?: Risolve definitivamente il bug e permette ai clienti di vedere i nuovi colori applicati ai siti.
-   - Status: IN PROGRESS
-   - Is recurring issue? N
-   - Should Test frontend/backend/both after fix? frontend
-   - Blocked on other issue: NA
-
-- **Issue 2: Verifica Header sticky e fascia bianca su mobile (P1)**
-   - Attempted fixes: Modificato  per rendere l'header fisso ().
-   - Next debug checklist: Assicurarsi che le modifiche a  risolvano il problema senza coprire i contenuti sottostanti (aggiungere padding se necessario).
-   - Why fix this issue and what will be achieved with the fix?: Migliora notevolmente la UI/UX dell'app principale su mobile.
-   - Status: USER VERIFICATION PENDING
-   - Is recurring issue? N
-   - Should Test frontend/backend/both after fix? frontend
-   - Blocked on other issue: NA
-
-- **Issue 3: Warning di ESLint nel frontend (P2 - Technical Debt)**
-   - Attempted fixes: Nessuno.
-   - Next debug checklist: Analizzare i file JSX con warning  e correggerli, e rimuovere  da vercel.json in futuro.
-   - Why fix this issue and what will be achieved with the fix?: Migliora la manutenibilità del codice.
-   - Status: NOT STARTED
-   - Is recurring issue? Y
-   - Should Test frontend/backend/both after fix? frontend
-   - Blocked on other issue: NA
+Nessun blocco tecnico o issue in progress attuale, si attende il test dell'utente dopo il deploy dell'ultima iterazione (Kanban-only, impostazioni toggle sezioni e fix drag&drop).
 
 **In progress Task List**:
-- Nessuno.
+Nessuno.
 
 **Upcoming and Future Tasks**:
-- P1: Implementare upload diretto immagini per la galleria dei siti (attualmente usa esclusivamente URL).
-- P2: Sistema di verifica automatica DNS (polling) per la corretta connessione dei domini custom dei clienti.
-- P3: Reintrodurre funzionalità AI per l'editing dei testi nei siti demo.
+- P1: Traduzione a runtime del parametro  nei nuovi tab settings.
+- P1: Rigenerazione testi con AI per singole sezioni (Genera/Riscrivi testi per About, Servizi, Why us direttamente dai rispettivi tab dell'editor senza sovrascrivere tutto il sito).
+- P2: Implementazione di cron job per follow-up automatici (Nota: Richiede Vercel Pro, al momento il sistema supporta solo l'invio batch manuale basato sui lead da ricontattare).
+- P3: Verifica DNS automatica per i domini personalizzati.
 
 **Completed work in this session**:
-- **Database**: Sostituita Connection String MongoDB Atlas (cluster ricreato dall'utente).
-- **PWA**: Risolto orientamento iPad forzando PWA a .
-- **Ricerca Lead**: Cliccando su un'azienda in ricerca, si apre un modal avanzato con dati da Google (foto, recensioni, orari in tempo reale).
-- **API Ottimizzate**: Endpoint Vercel fusi per rimanere esattamente entro il limite di 12 ().
-- **Editor Siti Avanzato**: 
-  - Corretto bug salvataggio e rimozione logo.
-  - Aggiunte sezioni Perché Sceglierci e FAQ in 5 lingue.
-  - Aggiunti 27 colori vivaci (da finire implementazione in preview) e controlli di allineamento/overlay per la Hero Image.
-  - Creato Tab Cliente (in prima posizione, evidenziato) per inserire contatti del titolare.
-- **Sistema di Prenotazione**: Aggiornato backend per inviare email automatiche al titolare (tramite integrazione **Resend**) non appena un cliente prenota sul sito demo.
+- Bugfix mappa colori in  per mostrare i 27 nuovi colori (DONE).
+- Componente  iframe aggiunto in  (DONE).
+- Generatore PDF Preventivi con logo WebFinder Studio e logica condizionale (DONE).
+- Watermark Realizzato da WebFinder Studio disattivabile (DONE).
+- Sistema gestione Template (Salva/Applica) (DONE).
+- Generazione Demo Bulk (selezionando template multipli) (DONE).
+- Integrazione Pixel di tracciamento visite ai demo e Dashboard Lead Caldi (DONE).
+- Pipeline Leads Kanban (DONE).
+- Generazione template siti basata su AI Claude tramite proxy Emergent (DONE).
+- Fix routing backend (CORS su PATCH aggirato usando POST per gli aggiornamenti status) (DONE).
+- Refactoring  per usare esclusivamente la Kanban board e aggiunta eliminazione lead (DONE).
+- Nuovo tab Impostazioni Sito in  per togglare la visibilità di singole sezioni del demo (DONE).
 
 **Earlier issues found/mentioned but not fixed**:
-- Nessuno, sono stati tutti presi in carico o completati.
+Nessuno. Tutti i bug segnalati dall'utente (drag&drop kanban rotto, impostazioni sito in errore, generazione batch pagina bianca) sono stati risolti nell'ultima iterazione.
 
 **Known issue recurrence from previous fork**:
-- **Issue recurrence in previous fork**: Problemi di cache nel deployment su Vercel e mancato aggiornamento del codice online.
+- **Issue recurrence in previous fork**: Problemi cronici di caching nel deployment su Vercel e mancate sincronizzazioni GitHub. L'utente a volte visualizza errori di build Vercel tipo HTTP 500 GitHub.
 - **Recurrence count**: Multipli.
-- **Status**: RESOLVED (Il workaround funziona: L'utente *deve* cliccare su Save to GitHub da Emergent, sul branch main facendo Force Push, e Vercel attiva l'auto-deploy corretto).
+- **Status**: RESOLVED (Workaround: istruire sempre l'utente a cliccare Save to GitHub -> spuntare Force Push -> su Vercel fare Redeploy disattivando Use existing Build Cache in caso di disallineamenti).
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- Frontend: React, react-router-dom, TailwindCSS, Shadcn UI
+- Frontend: React, react-router-dom, TailwindCSS, Shadcn UI.
 - Backend: Vercel Serverless Functions (Python 3.12).
 - DB: MongoDB Atlas.
-- Email: Integrazione  per notifiche.
+- AI LLM:  package usato direttamente verso l'URL proxy  passando la Emergent LLM Key, senza usare la libreria  (troppo pesante per il limite dimensioni Serverless di Vercel).
+- PDF Gen: 
 
 **key DB schema**
-- : {place_id, name, category, photos, reviews, opening_hours, google_maps_url, ...}
-- : {demo_id, business_data, content: {why_choose_us, faq, color_scheme, hero_overlay, hero_position...}, client_settings: {client_email, client_whatsapp}, ...}
-- : {booking_id, demo_id, client_name, date, time, status, ...}
+- : {lead_id, place_id, name, status, last_contact_at, ...}
+- : {demo_id, business_data, content, client_settings, site_settings: {show_reviews, show_gallery, ...}, publish_status, ...}
+- : {template_id, name, category, color_scheme, why_choose_us, faq}
 
 **changes in tech stack**
-- Aggiunto supporto nativo a Resend tramite requests HTTP su backend (senza sdk pesanti).
+- Integrazione Emergent LLM fatta tramite standard HTTP  invece della SDK Python per evitare lo sforamento del limite grandezza del pacchetto lambda su Vercel (la libreria portava con sé troppe dipendenze pesanti).
 
 **All files of reference**
-- : Aggiornato con nuovi colori, Tab Cliente, Tab FAQ e Tab Perché Sceglierci.
-- : Contiene logica di resa finale del sito (Da completare mappatura ).
-- : Modificato per correggere fix UI mobile per la dashboard principale.
-- : Logica di validazione slot temporali e invio email tramite Resend ().
-- : Modificato per estrarre dettagli via API Google alla pressione di una riga in tabella.
+- : Endpoint principale per pipeline CRM aggiornato (usa POST ).
+- : Generatore PDF e logic update configurazione e toggle.
+- : Aggiunta logica per gestire  tramite Claude.
+- : Rimosso tabella lista, usa solo componente Kanban.
+- : Enorme refactoring con aggiunta pannelli per Preventivo PDF, AI Template, Live Preview iframe, e tab Settings vari.
+- : Aggiunto script di tracciamento e mapping visibilità per le sezioni tramite .
 
 **Areas that need refactoring**:
--  ha superato abbondantemente le 1100 righe, rendendo la sua manutenzione complessa. Sarebbe ideale estrarre alcune sezioni in componenti separati in futuro.
+-  e  sono colossali (>2000 righe). Hanno bisogno in futuro di essere spezzati in componenti più piccoli (es. un componente separato per ogni Tab).
 
 **key api endpoints**
--  (GET): Estrae tutti i dettagli live di Google Places.
--  (POST): Salva dinamicamente lo state dei tab dell'editor in base alla  passata nel payload.
--  (POST): Inserisce la prenotazione e disattiva lo slot + invio mail.
+-  (POST): Usato per il Kanban drag & drop (sovrascrive Vercel CORS issue sui PATCH).
+-  (POST): Triggera l'agente Claude per creare un template.
+-  (POST): Genera file preventivo FPDF.
 
 **Critical Info for New Agent**
-1. **Deployment Vercel:** Il workflow di Vercel tramite Emergent non avviene con le classiche pull request, ma l'utente **deve** esplicitamente cliccare il pulsante Save to GitHub dentro l'interfaccia UI di Emergent, forzare il push sul branch . Bisogna sempre istruire l'utente a farlo alla fine dei task.
-2. **LIMITE VERCELL FREE (12 funzioni):** Ci sono **ESATTAMENTE 12 funzioni** attive nella root . **NON PUOI CREARE ALCUN NUOVO FILE/CARTELLA ROUTE IN **, altrimenti Vercel rifiuterà il deploy (errore maximum of 12 serverless functions exceeded). Se devi aggiungere nuovi endpoint backend, implementali come query parameter (es: ) all'interno di file esistenti come  o .
-3. **URL Di Test e Deployment:** Su Vercel di default ci sono gli url di preview col nome dello sviluppatore, guidare sempre il cliente ad usare o impostare l'URL principale senza l'username di GitHub.
+1. **LIMITE VERCEL STRICT 12 FUNZIONI:** Ci sono attualmente 12 funzioni (file  root) registrate in . **NON** creare nuovi file/cartelle python nel backend, altrimenti il deploy su Vercel si spacca. Per ogni nuova feature, aggiungi un parametro  nei file esistenti (es.  o ).
+2. **VERCEL E METODI HTTP:** Le richieste  frontend verso Vercel serverless functions in combinazione col  rewrite stanno causando 404 e drop di rete. Per aggiornamenti (come i drag&drop) usa SEMPRE il metodo  accompagnato dal query param .
+3. **Emergent Integrations**: A causa del limite di grandezza dei pacchetti Serverless su Vercel, non installare  o usage: openai [-h] [-v] [-b API_BASE] [-k API_KEY] [-p PROXY [PROXY ...]]
+              [-o ORGANIZATION] [-t {openai,azure}]
+              [--api-version API_VERSION] [--azure-endpoint AZURE_ENDPOINT]
+              [--azure-ad-token AZURE_AD_TOKEN] [-V]
+              {api,tools,migrate,grit} ...
+
+positional arguments:
+  {api,tools,migrate,grit}
+    api                 Direct API calls
+    tools               Client side tools for convenience
+
+options:
+  -h, --help            show this help message and exit
+  -v, --verbose         Set verbosity.
+  -b API_BASE, --api-base API_BASE
+                        What API base url to use.
+  -k API_KEY, --api-key API_KEY
+                        What API key to use.
+  -p PROXY [PROXY ...], --proxy PROXY [PROXY ...]
+                        What proxy to use.
+  -o ORGANIZATION, --organization ORGANIZATION
+                        Which organization to run as (will use your default
+                        organization if not specified)
+  -t {openai,azure}, --api-type {openai,azure}
+                        The backend API to call, must be `openai` or `azure`
+  --api-version API_VERSION
+                        The Azure API version, e.g.
+                        'https://learn.microsoft.com/en-us/azure/ai-
+                        services/openai/reference#rest-api-versioning'
+  --azure-endpoint AZURE_ENDPOINT
+                        The Azure endpoint, e.g.
+                        'https://endpoint.openai.azure.com'
+  --azure-ad-token AZURE_AD_TOKEN
+                        A token from Azure Active Directory,
+                        https://www.microsoft.com/en-
+                        us/security/business/identity-access/microsoft-entra-
+                        id
+  -V, --version         show program's version number and exit sdk via pip. Per chiamare i modelli AI, fai direttamente una POST request al proxy  passando l'Universal Key come Bearer token.
 
 **documents and test reports created in this job**
-Nessuno.
+Nessuno (aggiornato  in memoria).
 
 **Last 10 User Messages and any pending HUMAN messages**
-1. **User**: Ci sta mettendo 5 minuti a fare il redeploy.
-2. **Agent**: Ha confermato che è normale. Consiglia configurazione Resend.
-3. **User**: Ora esce il mio nome e cognome sui link inviati al cliente, perché?
-4. **Agent**: Ha spiegato come prendere il dominio Vercel corretto e non quello di test interno con l'username.
-5. **User**: Devo fare correzioni: nel modifica sito i colori a volte non si applicano, da mobile c'è una fascia bianca sotto e voglio che l'header Dashboard rimanga fermo allo scroll.
-6. **Agent**: Applica modifiche in  e controlla lo  ma non termina correttamente l'aggiunta colori su . (PENDING)
+- **User**: Richiesto fix per generazione batch pagina bianca.
+- **Agent**: Fixato aggiungendo content mapping in .
+- **User**: Richiesto fix AI template (rimuoveva dati esistenti prenotazione).
+- **Agent**: Fixato  per preservare keys preesistenti.
+- **User**: Richiesto rimuovere vista tabella CRM, fixare Kanban slide non funzionante e aggiungere cancellazione lead + tab impostazioni sito configurabile.
+- **Agent**: Refactoring totale CRM -> Kanban Only, passato drag&drop endpoint da PATCH a POST (risolve bug), aggiunto bottone elimina, aggiunto nuovo  in  e testata logica toggle in . (COMPLETATO, IN ATTESA DI TEST UTENTE)
 
 **Project Health Check:**
-- Broken: I 27 nuovi colori vividi in  non sono riflessi nella mappa in , bloccando il loro utilizzo.
-- Mocked: Nessuno.
+- Broken: None apparent.
+- Mocked: Invio email massivo (limitato dal piano free Vercel, da sostituire con cron tasks per invii automatici reali).
 
 **3rd Party Integrations**
-- Vercel Serverless (Deployment)
-- MongoDB Atlas (Database) - User config
-- Google Places API (Search & Details) - User API Key
-- Resend (Email Automation) - User API Key
+- Google Places API (Search) - User API Key
+- MongoDB Atlas (Database) - User Config
+- Resend (Emails) - User API Key
+- Emergent LLM Key (Claude Sonnet AI) - Emergent Universal Key
 
 **Testing status**
 - Testing agent used after significant changes: NO
 - Troubleshoot agent used after agent stuck in loop: NO
 - Test files created: []
-- Known regressions: Colori in DemoPreview.jsx mancanti.
+- Known regressions: Nessuna.
 
 **Credentials to test flow:**
-Tutte le API Keys e le Connection Strings risiedono nell'ambiente Vercel del cliente. In locale testare via porta e .
+Non necessarie. Configurate nel db MongoDB e  locale.
 
 **What agent forgot to execute**
-L'agente precedente ha creato con successo un aggiornamento di ben 27 colori nuovi in , ma si è dimenticato di aggiornare  all'interno del file . Questo comporta che quando un utente salva un nuovo colore (es. 'navy' o 'fuchsia'), il  non sa come interpretarlo e ripristina la visualizzazione di fallback spezzando la UI.
+L'agente ha coperto le modifiche principali ma le stringhe  sui nuovi selettori aggiunti non sono state tradotte dinamicamente a runtime; rimangono per il momento i nomi in italiano nel database/configurazione, questo è inserito nella Upcoming tasks.
 
 **Debugging checklist for current issue**
-    Issue: Colori non si applicano in DemoPreview e Header Navbar UI su mobile
-  
-    Frontend files to check: 
-    -  (Aggiungere la lista completa dei 27 colori dentro  in modo che il preview capisca le classi Tailwind corrispondenti ai nuovi id selezionabili).
-    -  (Verifica visiva/ispezione se le modifiche appena inserite tipo  rendono davvero navigabile il mobile o serve un po' di padding sul main).</analysis>
+Nessun issue corrente - ma in caso di segnalazione drag&drop Kanban ancora rotto da parte dell'utente, assicurarsi che la migrazione a  su  stia effettivamente aggiornando correttamente lo stato in MongoDB.
+- Backend file to check:  (cercare la clausola action == update_lead).</analysis>

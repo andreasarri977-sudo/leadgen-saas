@@ -1066,17 +1066,37 @@ async def generate_demo_site(request: GenerateDemoRequest):
     return demo
 
 @api_router.post("/demo/batch")
-async def generate_batch_demos(request: BatchGenerateRequest, background_tasks: BackgroundTasks):
-    async def process_batch():
-        for lead_id in request.lead_ids:
-            try:
-                await generate_demo_site(GenerateDemoRequest(lead_id=lead_id))
-                await asyncio.sleep(2)
-            except Exception as e:
-                logger.error(f"Errore generazione demo {lead_id}: {str(e)}")
-    
-    background_tasks.add_task(process_batch)
-    return {"message": f"Generazione batch di {len(request.lead_ids)} siti demo avviata", "count": len(request.lead_ids)}
+async def generate_batch_demos(request: BatchGenerateRequest):
+    """Genera demo per più lead in sequenza e ritorna lo stesso shape della funzione Vercel."""
+    results = {"created": [], "skipped": [], "errors": []}
+    for lead_id in request.lead_ids:
+        try:
+            existing = await db.demo_sites.find_one({"lead_id": lead_id}, {"_id": 0, "demo_id": 1})
+            if existing:
+                lead = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0, "name": 1})
+                results["skipped"].append({
+                    "lead_id": lead_id,
+                    "demo_id": existing.get("demo_id"),
+                    "name": (lead or {}).get("name"),
+                    "reason": "Demo già esistente"
+                })
+                continue
+            demo = await generate_demo_site(GenerateDemoRequest(lead_id=lead_id))
+            results["created"].append({
+                "lead_id": lead_id,
+                "demo_id": getattr(demo, "demo_id", None),
+                "name": getattr(demo, "business_name", None)
+            })
+        except HTTPException as he:
+            results["errors"].append({"lead_id": lead_id, "error": str(he.detail)})
+        except Exception as e:
+            logger.error(f"Errore generazione demo {lead_id}: {str(e)}")
+            results["errors"].append({"lead_id": lead_id, "error": str(e)})
+    return {
+        "message": f"Batch completato: {len(results['created'])} demo creati",
+        "count": len(results["created"]),
+        "results": results
+    }
 
 @api_router.get("/demos/{demo_id}")
 async def get_demo_by_id(demo_id: str):

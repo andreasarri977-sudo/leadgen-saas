@@ -128,7 +128,7 @@ sudo supervisorctl status
 ```
 
 ### 6. Accedi all'applicazione
-Apri il browser su: `https://color-preview-fix.preview.emergentagent.com`
+Apri il browser su: `https://preview-demo-engine.preview.emergentagent.com`
 
 ---
 
@@ -273,10 +273,10 @@ yarn test
 ### Test API con cURL
 ```bash
 # Test health check
-curl https://color-preview-fix.preview.emergentagent.com/api/
+curl https://preview-demo-engine.preview.emergentagent.com/api/
 
 # Test statistiche
-curl https://color-preview-fix.preview.emergentagent.com/api/stats/dashboard
+curl https://preview-demo-engine.preview.emergentagent.com/api/stats/dashboard
 ```
 
 ---

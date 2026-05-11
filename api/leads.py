@@ -274,6 +274,43 @@ class handler(BaseHTTPRequestHandler):
                 client.close()
                 return self._json_response(200, {"success": True})
 
+            if action == "update_lead":
+                # POST-based update (works around Vercel routing issues with PATCH /api/leads/{id})
+                lead_id = data.get('lead_id')
+                if not lead_id:
+                    return self._error(400, "lead_id richiesto")
+                allowed = ['status', 'name', 'phone', 'email', 'notes', 'last_contact_at',
+                           'booking_mode', 'external_booking_url', 'site_language', 'category', 'city']
+                update_data = {k: data.get(k) for k in allowed if k in data}
+                if not update_data:
+                    return self._error(400, "Nessun campo aggiornabile")
+                from datetime import datetime, timezone
+                update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+                client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+                db = client[DB_NAME]
+                result = db.leads.update_one({"lead_id": lead_id}, {"$set": update_data})
+                client.close()
+                if result.matched_count == 0:
+                    return self._error(404, "Lead non trovato")
+                return self._json_response(200, {"success": True, "updated": list(update_data.keys())})
+
+            if action == "delete_lead":
+                lead_id = data.get('lead_id')
+                if not lead_id:
+                    return self._error(400, "lead_id richiesto")
+                client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+                db = client[DB_NAME]
+                db.leads.delete_one({"lead_id": lead_id})
+                demo = db.demo_sites.find_one({"lead_id": lead_id})
+                if demo:
+                    demo_id_d = demo.get("demo_id")
+                    db.demo_sites.delete_one({"lead_id": lead_id})
+                    db.bookings.delete_many({"demo_id": demo_id_d})
+                    db.demo_views.delete_many({"demo_id": demo_id_d})
+                    db.quotes.delete_many({"demo_id": demo_id_d})
+                client.close()
+                return self._json_response(200, {"success": True, "deleted_lead": lead_id})
+
             if action == "send_followups":
                 # Send batch follow-up: returns the message + WhatsApp links so user can fire from device.
                 # We don't actually send via Resend here unless emails are provided.

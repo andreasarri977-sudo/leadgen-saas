@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { Filter, Download, RefreshCw, Loader2, Star, CheckCircle, Circle, X, Zap, FileText, LayoutGrid, List as ListIcon, GripVertical } from 'lucide-react';
+import { Filter, Download, RefreshCw, Loader2, Star, CheckCircle, Circle, X, Zap, FileText, LayoutGrid, List as ListIcon, GripVertical, Trash2, CheckSquare, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -31,7 +31,7 @@ const KANBAN_COLUMNS = [
   { id: 'client', label: '💰 Cliente', color: 'border-green-300 bg-green-50', aliases: ['client', 'cliente'] }
 ];
 
-function KanbanBoard({ leads, onMove, onView, draggingLead, setDraggingLead, updatingLead, selectedLeads = [], onToggleSelect }) {
+function KanbanBoard({ leads, onMove, onView, onDelete, draggingLead, setDraggingLead, updatingLead, selectedLeads = [], onToggleSelect, onToggleSelectColumn }) {
   const grouped = KANBAN_COLUMNS.reduce((acc, c) => { acc[c.id] = []; return acc; }, {});
   leads.forEach((l) => {
     const s = l.status;
@@ -41,7 +41,10 @@ function KanbanBoard({ leads, onMove, onView, draggingLead, setDraggingLead, upd
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 p-3 bg-neutral-50 min-h-[500px]" data-testid="kanban-board">
-      {KANBAN_COLUMNS.map((col) => (
+      {KANBAN_COLUMNS.map((col) => {
+        const colLeadIds = grouped[col.id].map((l) => l.lead_id);
+        const allSelected = colLeadIds.length > 0 && colLeadIds.every((id) => selectedLeads.includes(id));
+        return (
         <div
           key={col.id}
           data-testid={`kanban-col-${col.id}`}
@@ -56,7 +59,19 @@ function KanbanBoard({ leads, onMove, onView, draggingLead, setDraggingLead, upd
           }}
         >
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-sm">{col.label}</h3>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onToggleSelectColumn?.(colLeadIds, !allSelected)}
+                disabled={colLeadIds.length === 0}
+                data-testid={`kanban-col-select-${col.id}`}
+                title={allSelected ? 'Deseleziona tutti' : 'Seleziona tutti'}
+                className="p-1 rounded hover:bg-white/70 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                {allSelected ? <CheckSquare size={14} className="text-blue-600" /> : <Square size={14} className="text-neutral-400" />}
+              </button>
+              <h3 className="font-bold text-sm">{col.label}</h3>
+            </div>
             <span className="text-xs bg-white px-2 py-0.5 rounded-full font-semibold">{grouped[col.id].length}</span>
           </div>
           <div className="space-y-2 min-h-[300px]">
@@ -69,7 +84,7 @@ function KanbanBoard({ leads, onMove, onView, draggingLead, setDraggingLead, upd
                   onDragStart={() => setDraggingLead(l)}
                   onDragEnd={() => setDraggingLead(null)}
                   data-testid={`kanban-card-${l.lead_id}`}
-                  className={`bg-white border ${isSelected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-neutral-200'} rounded-lg p-3 hover:shadow-md transition-shadow ${draggingLead?.lead_id === l.lead_id ? 'opacity-50' : ''} ${updatingLead === l.lead_id ? 'opacity-60' : ''}`}
+                  className={`bg-white border ${isSelected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-neutral-200'} rounded-lg p-3 hover:shadow-md transition-shadow group ${draggingLead?.lead_id === l.lead_id ? 'opacity-50' : ''} ${updatingLead === l.lead_id ? 'opacity-60' : ''}`}
                 >
                   <div className="flex items-start gap-2">
                     <input
@@ -77,7 +92,7 @@ function KanbanBoard({ leads, onMove, onView, draggingLead, setDraggingLead, upd
                       checked={isSelected}
                       onChange={(e) => { e.stopPropagation(); onToggleSelect(l.lead_id); }}
                       onClick={(e) => e.stopPropagation()}
-                      className="mt-1 shrink-0"
+                      className="mt-1 shrink-0 w-4 h-4 accent-blue-600 cursor-pointer"
                       data-testid={`kanban-checkbox-${l.lead_id}`}
                     />
                     <GripVertical size={14} className="text-neutral-300 shrink-0 mt-1 cursor-grab" />
@@ -92,6 +107,14 @@ function KanbanBoard({ leads, onMove, onView, draggingLead, setDraggingLead, upd
                         </p>
                       )}
                     </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDelete?.(l.lead_id, l.name); }}
+                      data-testid={`kanban-delete-${l.lead_id}`}
+                      title="Elimina lead"
+                      className="opacity-0 group-hover:opacity-100 hover:!opacity-100 text-red-400 hover:text-red-600 hover:bg-red-50 rounded p-1 transition-opacity shrink-0"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 </div>
               );
@@ -101,7 +124,8 @@ function KanbanBoard({ leads, onMove, onView, draggingLead, setDraggingLead, upd
             )}
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -117,7 +141,7 @@ export default function LeadsList() {
   const [updatingLead, setUpdatingLead] = useState(null);
   const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [templates, setTemplates] = useState([]);
-  const [selectedTemplate, setSelectedTemplate] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState('__none__');
   const [batchResult, setBatchResult] = useState(null);
   const [draggingLead, setDraggingLead] = useState(null);
 
@@ -126,11 +150,24 @@ export default function LeadsList() {
     const prevLeads = leads;
     setLeads((arr) => arr.map((l) => l.lead_id === leadId ? { ...l, status: newStatus } : l));
     try {
-      await axios.patch(`${API}/leads/${leadId}`, { status: newStatus });
+      await axios.post(`${API}/leads?action=update_lead`, { lead_id: leadId, status: newStatus });
       toast.success('Stato aggiornato');
     } catch {
       toast.error('Errore aggiornamento');
       setLeads(prevLeads);
+    } finally { setUpdatingLead(null); }
+  };
+
+  const handleDeleteLead = async (leadId, name) => {
+    if (!window.confirm(`Eliminare definitivamente "${name}"?\n\nVerranno cancellati anche: demo, prenotazioni, statistiche e preventivi associati.`)) return;
+    setUpdatingLead(leadId);
+    try {
+      await axios.post(`${API}/leads?action=delete_lead`, { lead_id: leadId });
+      setLeads((arr) => arr.filter((l) => l.lead_id !== leadId));
+      setSelectedLeads((s) => s.filter((id) => id !== leadId));
+      toast.success('Lead eliminato');
+    } catch {
+      toast.error('Errore eliminazione');
     } finally { setUpdatingLead(null); }
   };
 
@@ -189,17 +226,50 @@ export default function LeadsList() {
     setBatchResult(null);
     try {
       const payload = { lead_ids: selectedLeads };
-      if (selectedTemplate) payload.template_id = selectedTemplate;
-      const res = await axios.post(`${API}/demo/batch`, payload);
-      setBatchResult(res.data?.results || null);
-      const created = res.data?.results?.created?.length || 0;
-      const skipped = res.data?.results?.skipped?.length || 0;
-      toast.success(`${created} demo creati, ${skipped} già esistenti`);
+      if (selectedTemplate && selectedTemplate !== '__none__') payload.template_id = selectedTemplate;
+
+      // Try primary endpoint, fallback to legacy one
+      let res;
+      try {
+        res = await axios.post(`${API}/demos?action=batch_generate`, payload);
+      } catch (errPrimary) {
+        const status = errPrimary?.response?.status;
+        if (status === 400 || status === 404 || status === 405) {
+          res = await axios.post(`${API}/demo/batch`, payload);
+        } else {
+          throw errPrimary;
+        }
+      }
+
+      // Backend (FastAPI legacy) returns only {message, count} without `results` — synthesize a placeholder
+      const results = res.data?.results || {
+        created: Array.from({ length: res.data?.count || 0 }, (_, i) => ({
+          lead_id: selectedLeads[i],
+          demo_id: '',
+          name: `Lead ${i + 1}`
+        })),
+        skipped: [],
+        errors: []
+      };
+      setBatchResult(results);
+      const created = results.created?.length || 0;
+      const skipped = results.skipped?.length || 0;
+      const errs = results.errors?.length || 0;
+      if (created > 0) {
+        toast.success(`${created} demo creati${skipped ? `, ${skipped} già esistenti` : ''}`);
+      } else if (skipped > 0) {
+        toast.info(`Tutti ${skipped} lead hanno già un demo`);
+      } else if (errs > 0) {
+        toast.error(`${errs} errori durante la generazione`);
+      } else {
+        toast.info('Generazione avviata');
+      }
       setSelectedLeads([]);
       setTimeout(() => loadLeads(), 1500);
     } catch (error) {
       console.error('Errore batch:', error);
-      toast.error('Errore generazione batch');
+      const msg = error?.response?.data?.error || error?.response?.data?.detail || error?.message || 'Errore sconosciuto';
+      toast.error(`Errore generazione batch: ${msg}`);
     } finally {
       setBatchLoading(false);
     }
@@ -217,7 +287,7 @@ export default function LeadsList() {
     setUpdatingLead(lead.lead_id);
     
     try {
-      await axios.patch(`${API}/leads/${lead.lead_id}`, { status: newStatus });
+      await axios.post(`${API}/leads?action=update_lead`, { lead_id: lead.lead_id, status: newStatus });
       
       // Update local state
       setLeads(prev => prev.map(l => 
@@ -283,23 +353,46 @@ export default function LeadsList() {
       </div>
 
       <Card className="p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <div className="flex items-center gap-2">
             <Filter size={20} />
             <Label>Filtra per stato:</Label>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger data-testid="filter-status-select" className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti</SelectItem>
+                <SelectItem value="new">Nuovo Lead</SelectItem>
+                <SelectItem value="demo_created">Demo Creata</SelectItem>
+                <SelectItem value="contacted">Contattato</SelectItem>
+                <SelectItem value="client">Cliente Acquisito</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger data-testid="filter-status-select" className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tutti</SelectItem>
-              <SelectItem value="new">Nuovo Lead</SelectItem>
-              <SelectItem value="demo_created">Demo Creata</SelectItem>
-              <SelectItem value="contacted">Contattato</SelectItem>
-              <SelectItem value="client">Cliente Acquisito</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-neutral-600" data-testid="selection-count">
+              <span className="font-semibold text-blue-700">{selectedLeads.length}</span> / {leads.length} selezionati
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSelectedLeads(leads.map((l) => l.lead_id))}
+              disabled={leads.length === 0 || selectedLeads.length === leads.length}
+              data-testid="select-all-leads-btn"
+            >
+              <CheckSquare size={14} className="mr-1" /> Seleziona tutti
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSelectedLeads([])}
+              disabled={selectedLeads.length === 0}
+              data-testid="deselect-all-leads-btn"
+            >
+              <Square size={14} className="mr-1" /> Deseleziona
+            </Button>
+          </div>
         </div>
 
         <div className="border rounded-lg overflow-hidden">
@@ -307,11 +400,20 @@ export default function LeadsList() {
             leads={leads}
             onMove={moveLeadToColumn}
             onView={(id) => navigate(`/leads/${id}`)}
+            onDelete={handleDeleteLead}
             draggingLead={draggingLead}
             setDraggingLead={setDraggingLead}
             updatingLead={updatingLead}
             selectedLeads={selectedLeads}
             onToggleSelect={(id) => setSelectedLeads((s) => s.includes(id) ? s.filter((x) => x !== id) : [...s, id])}
+            onToggleSelectColumn={(ids, select) => setSelectedLeads((s) => {
+              if (select) {
+                const merged = new Set([...s, ...ids]);
+                return Array.from(merged);
+              }
+              const idSet = new Set(ids);
+              return s.filter((x) => !idSet.has(x));
+            })}
           />
         </div>
       </Card>
@@ -343,7 +445,7 @@ export default function LeadsList() {
                         <SelectValue placeholder="Nessun template (uso default)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Nessun template (uso default)</SelectItem>
+                        <SelectItem value="__none__">Nessun template (uso default)</SelectItem>
                         {templates.map((t) => (
                           <SelectItem key={t.template_id} value={t.template_id}>
                             {t.name} {t.category ? `· ${t.category}` : ''}
@@ -363,7 +465,7 @@ export default function LeadsList() {
                     <ul className="text-xs space-y-0.5">
                       <li>• Verranno creati {selectedLeads.length} siti demo in parallelo</li>
                       <li>• I lead con un demo già esistente verranno saltati</li>
-                      <li>• {selectedTemplate ? 'Il template sarà applicato a ciascun demo' : 'Verrà usato lo stile default (blu, contenuti generici)'}</li>
+                      <li>• {selectedTemplate && selectedTemplate !== '__none__' ? 'Il template sarà applicato a ciascun demo' : 'Verrà usato lo stile default (blu, contenuti generici)'}</li>
                       <li>• Ciascun demo sarà disponibile su /demo/{'{id}'} per il preview</li>
                     </ul>
                   </div>

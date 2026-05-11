@@ -1,5 +1,15 @@
 # WebFinder Studio - Product Requirements Document
 
+## CHANGELOG
+- **11/05/2026** - Fix generazione batch demo:
+  - Risolto crash modal "Generazione Bulk Demo" causato da `<SelectItem value="">` non supportato da Radix UI (sentinel `__none__`).
+  - Aggiunti pulsanti **Seleziona tutti / Deseleziona** in testa alla board + select-all per colonna Kanban.
+  - Checkbox di selezione lead più visibili (size + accent blue) e counter "X / Y selezionati".
+  - Frontend ora prova prima `/api/demos?action=batch_generate` poi fallback a `/api/demo/batch` (resilienza).
+  - Backend FastAPI locale ora ritorna lo stesso shape `{message, count, results:{created/skipped/errors}}` della funzione Vercel.
+  - Verificato end-to-end: creazione di più demo in batch confermata (DB ha gli ID nuovi).
+
+
 ## Problema Originale
 Piattaforma SaaS avanzata in italiano per automatizzare il processo di ricerca di aziende locali senza sito web, generare automaticamente siti web demo professionali e aiutare a trasformare queste aziende in clienti paganti. Target: freelance e agenzie.
 
