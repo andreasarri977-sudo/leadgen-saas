@@ -108,15 +108,25 @@ class handler(BaseHTTPRequestHandler):
     def _template_ai_generate(self, data):
         """Generate a template via Emergent LLM proxy (Claude Sonnet) using a lightweight HTTPS call."""
         import requests as _r
-        category = (data.get('category') or 'attività locale').strip()[:60]
+        category = (data.get('category') or 'attività locale').strip()[:80]
         style = (data.get('style') or 'moderno e professionale').strip()[:60]
+        business_name = (data.get('business_name') or '').strip()[:80]
+        city = (data.get('city') or '').strip()[:60]
         save = bool(data.get('save', True))
         api_key = os.environ.get('EMERGENT_LLM_KEY')
         if not api_key:
             return self._error(500, "EMERGENT_LLM_KEY mancante negli env Vercel")
         
+        context_lines = [f"Categoria: {category}", f"Stile richiesto: {style}"]
+        if business_name:
+            context_lines.append(f"Nome attività: {business_name}")
+        if city:
+            context_lines.append(f"Città: {city}")
+        context_block = "\n".join(context_lines)
+        
         prompt = (
-            f"Devi generare un template di sito web in italiano per: '{category}', stile '{style}'.\n"
+            "Devi generare contenuti per un sito web in italiano. Dati dell'attività:\n"
+            f"{context_block}\n\n"
             "Rispondi SOLO con JSON valido, niente altro, senza markdown, senza ``` né testo extra.\n"
             "Schema esatto da rispettare:\n"
             "{\n"
@@ -124,21 +134,21 @@ class handler(BaseHTTPRequestHandler):
             '  "hero_position": "center",\n'
             '  "hero_overlay": "medium",\n'
             '  "theme": "modern",\n'
-            '  "tagline": "max 8 parole, accattivante",\n'
-            '  "homepage_subtitle": "1 frase di max 18 parole",\n'
-            '  "about_text": "2-3 frasi che descrivono la categoria, senza nomi specifici",\n'
+            '  "tagline": "max 8 parole, accattivante, usa il nome attività se fornito",\n'
+            '  "homepage_subtitle": "1 frase di max 18 parole, contestualizzata alla città/categoria",\n'
+            '  "about_text": "2-3 frasi che descrivono l\'attività, usando nome e città se forniti",\n'
             '  "services_intro": "1 frase introduttiva ai servizi",\n'
             '  "cta_text": "max 5 parole, invito all azione",\n'
             '  "why_choose_us": [\n'
-            '    {"icon":"⭐","title":"max 4 parole","description":"max 15 parole"}\n'
-            '    (4 elementi totali, icone emoji diverse e adatte)\n'
+            '    {"icon":"⭐","title":"max 4 parole","description":"max 15 parole, specifica per la categoria"}\n'
+            '    (4 elementi totali, icone emoji diverse e adatte alla categoria)\n'
             "  ],\n"
             '  "faq": [\n'
             '    {"question":"domanda completa", "answer":"risposta di 1-2 frasi"}\n'
-            '    (5 elementi totali, FAQ tipiche per la categoria)\n'
+            '    (5 elementi totali, FAQ tipiche e specifiche per questa categoria)\n'
             "  ]\n"
             "}\n"
-            f"Adatta colore e contenuti alla categoria '{category}' (es: pizzeria → red/orange + FAQ su prenotazioni/asporto; dentista → blue/teal + FAQ su appuntamenti/dolore; parrucchiere → fuchsia/rose + FAQ su prezzi/tagli)."
+            "Adatta colore e tono alla categoria (es: pizzeria → red/orange caldo; dentista → blue/teal pulito; parrucchiere → fuchsia/rose elegante; barbiere → slate/black classico; palestra → orange/lime energico)."
         )
         
         try:
@@ -175,7 +185,15 @@ class handler(BaseHTTPRequestHandler):
         
         # Filter to allowed fields only
         tpl_data = {k: parsed[k] for k in TEMPLATE_FIELDS if k in parsed}
-        name = f"AI · {category.title()} ({style.title()})"
+        
+        # Build a descriptive name
+        name_parts = ['AI']
+        if business_name:
+            name_parts.append(business_name)
+        elif category:
+            name_parts.append(category.title())
+        name_parts.append(f"({style.title()})")
+        name = ' · '.join(name_parts)
         
         if save:
             try:
@@ -184,7 +202,7 @@ class handler(BaseHTTPRequestHandler):
                 template = {
                     "template_id": str(uuid.uuid4())[:8],
                     "name": name,
-                    "description": f"Generato da AI per {category}",
+                    "description": f"Generato da AI per {business_name or category}",
                     "category": category,
                     "data": tpl_data,
                     "created_at": datetime.now(timezone.utc).isoformat(),
@@ -192,7 +210,7 @@ class handler(BaseHTTPRequestHandler):
                 }
                 db.templates.insert_one(dict(template))
                 client.close()
-                return self._json(201, {"success": True, "template": template})
+                return self._json(201, {"success": True, "template": template, "preview": tpl_data})
             except Exception as e:
                 return self._error(500, f"Errore salvataggio: {e}")
         return self._json(200, {"success": True, "preview": tpl_data, "name": name})

@@ -540,6 +540,28 @@ class handler(BaseHTTPRequestHandler):
                 client.close()
                 return self._json_response(200, {"ok": True})
             
+            elif action == "template_apply_inline":
+                # Apply provided template data (e.g. just-generated AI) directly to this demo
+                tdata = data.get('data') or {}
+                if not tdata:
+                    client.close()
+                    return self._error(400, "data richiesto")
+                content_updates = {}
+                allowed = {'color_scheme', 'hero_position', 'hero_overlay', 'theme',
+                           'tagline', 'homepage_subtitle', 'about_text', 'services_intro',
+                           'cta_text', 'why_choose_us', 'faq'}
+                for k, v in tdata.items():
+                    if v is None or k not in allowed:
+                        continue
+                    content_updates[f"content.{k}"] = v
+                content_updates['updated_at'] = datetime.now(timezone.utc).isoformat()
+                db.demo_sites.update_one({"demo_id": demo_id}, {"$set": content_updates})
+                client.close()
+                return self._json_response(200, {
+                    "success": True,
+                    "applied": list(tdata.keys())
+                })
+            
             elif action == "template_apply":
                 # Apply a saved template to this demo's content
                 template_id = data.get('template_id')

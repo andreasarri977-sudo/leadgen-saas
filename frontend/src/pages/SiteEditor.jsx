@@ -676,6 +676,15 @@ function TemplateModal({ open, onClose, demoId, currentContent, onApplied }) {
   const [aiStyle, setAiStyle] = useState('moderno e professionale');
   const [aiGenerating, setAiGenerating] = useState(false);
 
+  // When opening AI tab, prefill from current site's business data
+  useEffect(() => {
+    if (view === 'ai' && currentContent && !aiCategory) {
+      const bd = currentContent.business_data || {};
+      const auto = bd.category || currentContent.category || '';
+      if (auto) setAiCategory(auto);
+    }
+  }, [view, currentContent, aiCategory]);
+
   useEffect(() => {
     if (open) refresh();
   }, [open]);
@@ -737,19 +746,39 @@ function TemplateModal({ open, onClose, demoId, currentContent, onApplied }) {
     } catch { toast.error('Errore eliminazione'); }
   };
 
-  const aiGenerateTemplate = async () => {
-    if (!aiCategory.trim()) { toast.error('Inserisci una categoria'); return; }
+  const aiGenerateTemplate = async (applyDirectly = false) => {
+    const bd = currentContent?.business_data || {};
+    const cat = (bd.category || aiCategory || '').trim();
+    const bname = bd.name || currentContent?.business_name || '';
+    const city = bd.city || '';
+    if (!cat && !bname) {
+      toast.error('Manca categoria o nome attività');
+      return;
+    }
     setAiGenerating(true);
     try {
-      const r = await axios.post(`${API}/demos?action=template_ai_generate`, {
-        category: aiCategory.trim(),
+      const payload = {
+        business_name: bname,
+        city,
+        category: cat,
         style: aiStyle.trim() || 'moderno',
-        save: true
-      });
-      toast.success(`Template AI "${r.data.template?.name || 'nuovo'}" creato!`);
-      setAiCategory('');
-      setView('list');
-      refresh();
+        save: !applyDirectly
+      };
+      const r = await axios.post(`${API}/demos?action=template_ai_generate`, payload);
+
+      if (applyDirectly && r.data?.preview) {
+        // Apply the AI-generated content directly to this demo
+        await axios.post(`${API}/demos/${demoId}?action=template_apply_inline`, {
+          data: r.data.preview
+        });
+        toast.success('Contenuti AI applicati al sito!');
+        onApplied?.();
+        onClose();
+      } else {
+        toast.success(`Template AI "${r.data.template?.name || 'nuovo'}" creato!`);
+        setView('list');
+        refresh();
+      }
     } catch (e) {
       const msg = e.response?.data?.error || 'Errore generazione AI';
       toast.error(msg);
@@ -778,36 +807,67 @@ function TemplateModal({ open, onClose, demoId, currentContent, onApplied }) {
           {view === 'ai' ? (
             <div className="space-y-4">
               <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-lg p-4">
-                <p className="text-sm font-semibold text-purple-900 mb-1">✨ Generazione AI</p>
+                <p className="text-sm font-semibold text-purple-900 mb-1">✨ AI per questa attività</p>
                 <p className="text-xs text-purple-700">
-                  Claude Sonnet creerà per te un template completo: colore + tagline + sezione "Perché Sceglierci" (4 motivi con emoji) + 5 FAQ tipiche + testi about/CTA. Tutto in italiano e adatto alla categoria che indichi.
+                  Claude Sonnet 4.5 leggerà i dati dell'azienda corrente e creerà contenuti su misura: tagline, sezione "Perché Sceglierci" (4 motivi), 5 FAQ specifiche, testi about/CTA, colore consigliato. Tutto in italiano e contestualizzato.
                 </p>
               </div>
-              <div>
-                <Label htmlFor="ai-cat">Categoria attività *</Label>
-                <Input id="ai-cat" data-testid="ai-category" value={aiCategory} onChange={(e) => setAiCategory(e.target.value)}
-                  placeholder='Es: "pizzeria", "parrucchiere donna", "dentista pediatrico", "barbiere vintage"' />
-                <p className="text-xs text-neutral-500 mt-1">Più sei specifico, più il template sarà su misura.</p>
+
+              <div className="border-2 border-neutral-200 rounded-lg p-3 bg-neutral-50">
+                <p className="text-xs text-neutral-500 uppercase tracking-wide font-semibold mb-1">Per l'attività:</p>
+                <p className="font-bold text-base" data-testid="ai-target-name">
+                  {currentContent?.business_data?.name || currentContent?.business_name || '—'}
+                </p>
+                <p className="text-sm text-neutral-600">
+                  {currentContent?.business_data?.category || 'Categoria non specificata'}
+                  {currentContent?.business_data?.city && ` · ${currentContent.business_data.city}`}
+                </p>
               </div>
+
               <div>
                 <Label htmlFor="ai-style">Stile desiderato</Label>
-                <Input id="ai-style" data-testid="ai-style" value={aiStyle} onChange={(e) => setAiStyle(e.target.value)}
-                  placeholder="moderno, premium, vintage, minimal, lusso, giovanile..." />
+                <select
+                  id="ai-style"
+                  data-testid="ai-style"
+                  value={aiStyle}
+                  onChange={(e) => setAiStyle(e.target.value)}
+                  className="w-full mt-1 border-2 border-neutral-200 rounded-md px-3 py-2 bg-white text-sm"
+                >
+                  <option value="moderno e professionale">Moderno e professionale</option>
+                  <option value="premium e lusso">Premium e lusso</option>
+                  <option value="minimal e pulito">Minimal e pulito</option>
+                  <option value="giovanile e colorato">Giovanile e colorato</option>
+                  <option value="elegante e raffinato">Elegante e raffinato</option>
+                  <option value="vintage e tradizionale">Vintage e tradizionale</option>
+                  <option value="energetico e sportivo">Energetico e sportivo</option>
+                </select>
               </div>
-              <Button
-                onClick={aiGenerateTemplate}
-                disabled={aiGenerating || !aiCategory.trim()}
-                data-testid="ai-generate-btn"
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
-              >
-                {aiGenerating ? (
-                  <><Loader2 className="mr-2 animate-spin" size={16} /> Sto generando con AI (~10 sec)...</>
-                ) : (
-                  <>✨ Genera Template con AI</>
-                )}
-              </Button>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button
+                  onClick={() => aiGenerateTemplate(true)}
+                  disabled={aiGenerating}
+                  data-testid="ai-apply-direct-btn"
+                  className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                >
+                  {aiGenerating ? (
+                    <><Loader2 className="mr-2 animate-spin" size={16} /> Sto generando...</>
+                  ) : (
+                    <>✨ Applica subito a questo sito</>
+                  )}
+                </Button>
+                <Button
+                  onClick={() => aiGenerateTemplate(false)}
+                  disabled={aiGenerating}
+                  variant="outline"
+                  data-testid="ai-save-template-btn"
+                  className="flex-1"
+                >
+                  Salva solo come template
+                </Button>
+              </div>
               <p className="text-[11px] text-neutral-500 text-center">
-                Costo per generazione: pochi centesimi sul tuo Universal Key Emergent.
+                Costo ~pochi centesimi sul Universal Key Emergent · ~10 sec di attesa
               </p>
             </div>
           ) : view === 'save' ? (

@@ -227,6 +227,12 @@ Booking(
 - ✅ API Google Places ora richiede contenuti nella lingua del paese
 - ✅ Versione EN mantiene contenuti originali in inglese
 
+### 2026-02-11 (part 6): Fix Batch + AI per-Business
+- 🐛 **Fix critico Batch Generation**: il generatore batch creava demo con campi minimi (`about` invece di `about_text`, `services=[]` vuoto, no FAQ, no why_choose_us) → pagina bianca quando si apriva il demo. Riscritto `/api/demo/batch/index.py` per usare la stessa logica ricca di `/api/demo/generate` (services map per categoria, booking_mode auto, FAQ + why_choose_us di default), con override opzionale via template.
+- ✨ **AI Template contestualizzato all'attività**: tab "Genera con AI" nel modal Template adesso usa automaticamente `business_name`, `category`, `city` del sito corrente (no più input manuale). 2 azioni: "Applica subito a questo sito" (genera + applica al volo) o "Salva come template" (riutilizzabile). Style ora dropdown con 7 preset.
+- ✨ Endpoint `?action=template_apply_inline` su `demos/[id]/index.py` per applicare contenuti AI generati al volo (senza prima salvare come template).
+
+
 ### 2026-02-11 (part 5): ✨ Template Generati da AI (Claude Sonnet 4.5)
 - ✅ Aggiunta integrazione `emergentintegrations` su Vercel (`api/requirements.txt` con `--extra-index-url`).
 - ✅ Nuovo endpoint `?action=template_ai_generate` in `demos.py`: prende categoria + stile → Claude Sonnet 4.5 → JSON template strutturato (color_scheme, hero settings, tagline, why_choose_us 4 items, FAQ 5 items, testi) → salvato in collection `templates` con flag `ai_generated=true`.
