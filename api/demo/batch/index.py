@@ -38,13 +38,22 @@ class handler(BaseHTTPRequestHandler):
             data = json.loads(body) if body else {}
             
             lead_ids = data.get('lead_ids', [])
+            template_id = data.get('template_id')
             if not lead_ids:
                 return self._error(400, "lead_ids richiesto (array)")
             
-            log(f"Batch generating demos for {len(lead_ids)} leads")
+            log(f"Batch generating demos for {len(lead_ids)} leads, template={template_id}")
             
             client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
             db = client[DB_NAME]
+            
+            # Load template if specified
+            template_data = None
+            if template_id:
+                tpl = db.templates.find_one({"template_id": template_id}, {"_id": 0})
+                if tpl:
+                    template_data = tpl.get('data') or {}
+                    log(f"Template '{tpl.get('name')}' loaded with {len(template_data)} fields")
             
             results = {
                 "created": [],
@@ -96,6 +105,12 @@ class handler(BaseHTTPRequestHandler):
                         "theme": "modern",
                         "color_scheme": "blue"
                     }
+                    
+                    # Apply template fields if provided
+                    if template_data:
+                        for k, v in template_data.items():
+                            if v is not None:
+                                content[k] = v
                     
                     demo = {
                         "demo_id": demo_id,

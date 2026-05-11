@@ -226,6 +226,13 @@ Booking(
 - ✅ Traduzione recensioni via LLM GPT-5.2 nella lingua locale
 - ✅ API Google Places ora richiede contenuti nella lingua del paese
 - ✅ Versione EN mantiene contenuti originali in inglese
+
+### 2026-02-11 (part 3): Watermark + Template + Bulk Generation Pro
+- ✅ **Watermark "Realizzato da WebFinder Studio"** nel footer dei siti demo (`DemoPreview.jsx`), con toggle on/off dal Tab "Stile" del SiteEditor (`content.hide_watermark`). Backend aggiornato (`demos/[id]/index.py`) per persistere il flag.
+- ✅ **Sistema Template**: collection `templates` MongoDB. CRUD completo in `demos.py` (`?action=templates`, `?action=template_save`, `?action=template_delete`). Apply in `demos/[id]/index.py` (`?action=template_apply`). Modal "Template" nel SiteEditor (pulsante viola) per salvare lo stato attuale come preset (colore + hero + perché sceglierci + FAQ + testi) e applicare un template a un sito esistente in 1 click.
+- ✅ **Bulk Generation Pro**: la già esistente selezione multipla in `LeadsList.jsx` ora apre un **modal completo** che permette di scegliere un **template** da applicare a tutti i demo generati contemporaneamente. Riepilogo finale con conteggio Creati/Saltati/Errori e link diretto ai demo creati. Backend `/api/demo/batch` esteso per accettare `template_id`.
+- ✅ Tutto entro le 12/12 funzioni Vercel.
+
 ### 2026-02-11 (part 2): Branding WebFinder Studio
 - ✅ Logo WebFinder Studio caricato e ottimizzato in `/app/frontend/public/logo-webfinder.png`.
 - ✅ Sidebar app aggiornata con logo circolare + nome "WebFinder Studio" (sostituisce vecchio "LeadHunter Pro").
