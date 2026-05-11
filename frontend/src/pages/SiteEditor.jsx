@@ -671,7 +671,10 @@ function TemplateModal({ open, onClose, demoId, currentContent, onApplied }) {
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
-  const [view, setView] = useState('list'); // 'list' or 'save'
+  const [view, setView] = useState('list'); // 'list' | 'save' | 'ai'
+  const [aiCategory, setAiCategory] = useState('');
+  const [aiStyle, setAiStyle] = useState('moderno e professionale');
+  const [aiGenerating, setAiGenerating] = useState(false);
 
   useEffect(() => {
     if (open) refresh();
@@ -734,6 +737,25 @@ function TemplateModal({ open, onClose, demoId, currentContent, onApplied }) {
     } catch { toast.error('Errore eliminazione'); }
   };
 
+  const aiGenerateTemplate = async () => {
+    if (!aiCategory.trim()) { toast.error('Inserisci una categoria'); return; }
+    setAiGenerating(true);
+    try {
+      const r = await axios.post(`${API}/demos?action=template_ai_generate`, {
+        category: aiCategory.trim(),
+        style: aiStyle.trim() || 'moderno',
+        save: true
+      });
+      toast.success(`Template AI "${r.data.template?.name || 'nuovo'}" creato!`);
+      setAiCategory('');
+      setView('list');
+      refresh();
+    } catch (e) {
+      const msg = e.response?.data?.error || 'Errore generazione AI';
+      toast.error(msg);
+    } finally { setAiGenerating(false); }
+  };
+
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" data-testid="template-modal">
@@ -746,13 +768,49 @@ function TemplateModal({ open, onClose, demoId, currentContent, onApplied }) {
           <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full"><X size={20} /></button>
         </div>
 
-        <div className="p-2 flex gap-2 border-b border-neutral-100">
-          <Button variant={view === 'list' ? 'default' : 'ghost'} size="sm" onClick={() => setView('list')} data-testid="tpl-tab-list">📚 I miei template</Button>
-          <Button variant={view === 'save' ? 'default' : 'ghost'} size="sm" onClick={() => setView('save')} data-testid="tpl-tab-save">💾 Salva questo sito come template</Button>
+        <div className="p-2 flex gap-2 border-b border-neutral-100 overflow-x-auto">
+          <Button variant={view === 'list' ? 'default' : 'ghost'} size="sm" onClick={() => setView('list')} data-testid="tpl-tab-list" className="shrink-0">📚 I miei template</Button>
+          <Button variant={view === 'save' ? 'default' : 'ghost'} size="sm" onClick={() => setView('save')} data-testid="tpl-tab-save" className="shrink-0">💾 Salva questo sito</Button>
+          <Button variant={view === 'ai' ? 'default' : 'ghost'} size="sm" onClick={() => setView('ai')} data-testid="tpl-tab-ai" className="shrink-0">✨ Genera con AI</Button>
         </div>
 
         <div className="p-5">
-          {view === 'save' ? (
+          {view === 'ai' ? (
+            <div className="space-y-4">
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-lg p-4">
+                <p className="text-sm font-semibold text-purple-900 mb-1">✨ Generazione AI</p>
+                <p className="text-xs text-purple-700">
+                  Claude Sonnet creerà per te un template completo: colore + tagline + sezione "Perché Sceglierci" (4 motivi con emoji) + 5 FAQ tipiche + testi about/CTA. Tutto in italiano e adatto alla categoria che indichi.
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="ai-cat">Categoria attività *</Label>
+                <Input id="ai-cat" data-testid="ai-category" value={aiCategory} onChange={(e) => setAiCategory(e.target.value)}
+                  placeholder='Es: "pizzeria", "parrucchiere donna", "dentista pediatrico", "barbiere vintage"' />
+                <p className="text-xs text-neutral-500 mt-1">Più sei specifico, più il template sarà su misura.</p>
+              </div>
+              <div>
+                <Label htmlFor="ai-style">Stile desiderato</Label>
+                <Input id="ai-style" data-testid="ai-style" value={aiStyle} onChange={(e) => setAiStyle(e.target.value)}
+                  placeholder="moderno, premium, vintage, minimal, lusso, giovanile..." />
+              </div>
+              <Button
+                onClick={aiGenerateTemplate}
+                disabled={aiGenerating || !aiCategory.trim()}
+                data-testid="ai-generate-btn"
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+              >
+                {aiGenerating ? (
+                  <><Loader2 className="mr-2 animate-spin" size={16} /> Sto generando con AI (~10 sec)...</>
+                ) : (
+                  <>✨ Genera Template con AI</>
+                )}
+              </Button>
+              <p className="text-[11px] text-neutral-500 text-center">
+                Costo per generazione: pochi centesimi sul tuo Universal Key Emergent.
+              </p>
+            </div>
+          ) : view === 'save' ? (
             <div className="space-y-4">
               <div>
                 <Label htmlFor="tpl-name">Nome template *</Label>
@@ -786,7 +844,10 @@ function TemplateModal({ open, onClose, demoId, currentContent, onApplied }) {
                   {templates.map((t) => (
                     <div key={t.template_id} className="flex items-center justify-between p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50" data-testid={`tpl-row-${t.template_id}`}>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold truncate">{t.name}</p>
+                        <p className="font-semibold truncate flex items-center gap-1.5">
+                          {t.ai_generated && <span className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded font-bold">AI</span>}
+                          {t.name}
+                        </p>
                         <p className="text-xs text-neutral-500 truncate">
                           {t.category && <span className="mr-2 px-1.5 py-0.5 bg-neutral-100 rounded">{t.category}</span>}
                           Colore: <span className="font-medium">{t.data?.color_scheme || '—'}</span>

@@ -227,6 +227,14 @@ Booking(
 - ✅ API Google Places ora richiede contenuti nella lingua del paese
 - ✅ Versione EN mantiene contenuti originali in inglese
 
+### 2026-02-11 (part 5): ✨ Template Generati da AI (Claude Sonnet 4.5)
+- ✅ Aggiunta integrazione `emergentintegrations` su Vercel (`api/requirements.txt` con `--extra-index-url`).
+- ✅ Nuovo endpoint `?action=template_ai_generate` in `demos.py`: prende categoria + stile → Claude Sonnet 4.5 → JSON template strutturato (color_scheme, hero settings, tagline, why_choose_us 4 items, FAQ 5 items, testi) → salvato in collection `templates` con flag `ai_generated=true`.
+- ✅ Frontend: 3° tab "✨ Genera con AI" nel TemplateModal con form (categoria specifica + stile descrittivo) e CTA gradient viola/rosa. Badge **AI** nel listino template per distinguere quelli generati.
+- ✅ Universal Key Emergent (`EMERGENT_LLM_KEY`) richiesta nelle env Vercel; costo ~pochi centesimi/generazione.
+- ✅ Build pulita, 12/12 funzioni Vercel.
+
+
 ### 2026-02-11 (part 4): Pixel Tracking + Kanban + Follow-up + Gallery Upload + Mobile Toggle
 - ✅ **Pixel di tracciamento**: nuovo endpoint `?action=track` su `demos/[id]/index.py` con collection `demo_views`. Click delegation in `DemoPreview.jsx` cattura view + click WhatsApp/phone/maps in fire-and-forget (session ID per dedupe). Endpoint `?action=stats` per visualizzare statistiche.
 - ✅ **Hot Leads widget** in Dashboard: nuovo `?action=hot_leads` in `leads.py` che aggrega le views per lead e calcola uno score (1 view = 1pt, sessione = 3pt, click = 5pt). Top 20 visibili con emoji 🔥 sopra 15 punti.
