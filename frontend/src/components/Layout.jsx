@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
+import axios from 'axios';
 import { LayoutDashboard, Search, Users, Globe, Mail, Settings as SettingsIcon, Menu, Crown, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import API from '@/lib/api';
 
 const navItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/search', icon: Search, label: 'Cerca Aziende' },
   { path: '/leads', icon: Users, label: 'Lead' },
   { path: '/demos', icon: Globe, label: 'Siti Demo' },
-  { path: '/clients', icon: Crown, label: 'Clienti' },
+  { path: '/clients', icon: Crown, label: 'Clienti', badge: 'renewals' },
   { path: '/email', icon: Mail, label: 'Email' },
   { path: '/settings', icon: SettingsIcon, label: 'Impostazioni API' }
 ];
@@ -16,6 +18,21 @@ const navItems = [
 export default function Layout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [renewalsCount, setRenewalsCount] = useState(0);
+
+  // Polling leggero ogni 60s del numero di scadenze imminenti
+  useEffect(() => {
+    let cancelled = false;
+    const fetchRenewals = async () => {
+      try {
+        const res = await axios.get(`${API}/leads?action=upcoming_renewals&days=30`);
+        if (!cancelled) setRenewalsCount(res.data?.count || 0);
+      } catch { /* silent */ }
+    };
+    fetchRenewals();
+    const id = setInterval(fetchRenewals, 60000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
 
   // Get current page title
   const currentPage = navItems.find(item => item.path === location.pathname);
@@ -43,7 +60,16 @@ export default function Layout() {
                 }`}
               >
                 <Icon size={20} />
-                <span className="font-medium">{item.label}</span>
+                <span className="font-medium flex-1">{item.label}</span>
+                {item.badge === 'renewals' && renewalsCount > 0 && (
+                  <span
+                    className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-white text-[11px] font-bold animate-pulse"
+                    data-testid="sidebar-renewals-badge"
+                    title={`${renewalsCount} scadenze nei prossimi 30 giorni`}
+                  >
+                    {renewalsCount}
+                  </span>
+                )}
               </div>
             </Link>
           );

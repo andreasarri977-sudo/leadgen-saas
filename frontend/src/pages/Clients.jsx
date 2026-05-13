@@ -4,7 +4,7 @@ import axios from 'axios';
 import {
   Crown, RefreshCw, Loader2, ExternalLink, FileText, Mail, MessageCircle,
   CheckCircle2, Circle, Search, ChevronLeft, Save, Globe, Trash2, BadgeEuro,
-  Sparkles, Copy, X
+  Sparkles, Copy, X, Calendar, Bell, AlertTriangle
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,10 +47,61 @@ const EMPTY_COSTS = {
   notes: '',
   paid: false,
   payment_date: '',
-  tax_mode: 'without_vat', // 'with_vat' | 'without_vat'
+  domain_renewal_date: '',
+  hosting_renewal_date: '',
+  tax_mode: 'without_vat',
   client_vat: '',
   client_fiscal_code: '',
 };
+
+// Costruisce voci preventivo in base alle sezioni effettivamente attive nel sito demo
+function buildDynamicFeatures(demo) {
+  if (!demo) return DEFAULT_QUOTE_FEATURES;
+  const business = demo.business_data || {};
+  const content = demo.content || {};
+  const features = [
+    'Sito web professionale responsive (mobile, tablet, desktop)',
+    'Design moderno personalizzato con i colori del brand',
+    'Hosting incluso primo anno (server europei ad alte performance)',
+    'Dominio personalizzato incluso primo anno (es. nomeattivita.it)',
+    'Certificato SSL HTTPS automatico e sempre attivo',
+  ];
+  if ((business.photos || []).length > 0 && content.show_gallery !== false) {
+    features.push('Galleria fotografica ottimizzata per il web');
+  }
+  if ((business.reviews || []).length > 0 && content.show_reviews !== false) {
+    features.push('Sezione recensioni Google sincronizzate automaticamente');
+  }
+  if ((content.menu_items || content.services || []).length > 0 && content.show_services !== false) {
+    features.push('Sezione servizi / menu prodotti completa');
+  }
+  if (business.hours_text && content.show_hours !== false) {
+    features.push('Orari di apertura sempre aggiornati e ben visibili');
+  }
+  if (content.show_map !== false) {
+    features.push('Mappa interattiva con indicazioni stradali Google Maps');
+  }
+  const hasBooking = (business.booking_mode && business.booking_mode !== 'none') || business.external_booking_url;
+  if (hasBooking) {
+    features.push('Sistema prenotazioni online con notifica email automatica');
+  }
+  features.push('Pulsanti diretti WhatsApp + chiamata telefonica');
+  features.push('Sezione contatti completa (form, telefono, email, social)');
+  features.push('Integrazione social Instagram & Facebook');
+  if ((content.faq || []).length > 0 && content.show_faq !== false) {
+    features.push('Sezione FAQ con domande frequenti');
+  }
+  const translations = business.translations || [];
+  if (translations.length > 0) {
+    features.push(`Sito multilingua (${translations.length + 1} lingue: italiano + ${translations.slice(0, 3).join(', ')})`);
+  }
+  features.push('Ottimizzazione SEO base per Google (titolo, meta, sitemap)');
+  features.push('Velocità di caricamento ottimizzata (Core Web Vitals)');
+  features.push('Tracking visite e statistiche di accesso incluse');
+  features.push('Supporto tecnico via email per 6 mesi');
+  features.push('Possibilità di modifiche minori incluse nel primo mese');
+  return features;
+}
 
 const CURRENCY_SYMBOL = { EUR: '€', USD: '$', GBP: '£', CHF: 'CHF' };
 
@@ -126,13 +177,16 @@ export default function Clients() {
   const [emailRecipient, setEmailRecipient] = useState('');
   const [quoteFeatures, setQuoteFeatures] = useState(DEFAULT_QUOTE_FEATURES.join('\n'));
   const [featuresOpen, setFeaturesOpen] = useState(false);
+  const [renewals, setRenewals] = useState([]);
+  const [reminderSending, setReminderSending] = useState(null);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [leadsRes, demosRes] = await Promise.all([
+      const [leadsRes, demosRes, renewalsRes] = await Promise.all([
         axios.get(`${API}/leads?status=client`),
         axios.get(`${API}/demos`),
+        axios.get(`${API}/leads?action=upcoming_renewals&days=30`).catch(() => ({ data: { renewals: [] } })),
       ]);
       const list = (leadsRes.data || []).filter((l) =>
         ['client', 'cliente', 'cliente_acquisito'].includes(l.status)
@@ -143,6 +197,7 @@ export default function Clients() {
         if (d.lead_id) map[d.lead_id] = d;
       });
       setDemos(map);
+      setRenewals(renewalsRes.data?.renewals || []);
     } catch (error) {
       console.error('Errore caricamento clienti:', error);
       toast.error('Errore caricamento clienti');
@@ -176,10 +231,15 @@ export default function Clients() {
         notes: c.notes ?? '',
         paid: !!c.paid,
         payment_date: c.payment_date ?? '',
+        domain_renewal_date: c.domain_renewal_date ?? '',
+        hosting_renewal_date: c.hosting_renewal_date ?? '',
         tax_mode: c.tax_mode || 'without_vat',
         client_vat: c.client_vat ?? '',
         client_fiscal_code: c.client_fiscal_code ?? '',
       });
+      // Voci preventivo dinamiche basate sulle sezioni effettivamente attive del demo
+      const demo = demos[current.lead_id];
+      setQuoteFeatures(buildDynamicFeatures(demo).join('\n'));
       setEmailRecipient(current.email || '');
       setWhatsappMessage('');
       setWhatsappVariant(null);
@@ -371,6 +431,37 @@ export default function Clients() {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  const handleSendRenewalReminder = (renewal) => {
+    setReminderSending(renewal.lead_id + renewal.type);
+    const days = renewal.days_to;
+    const when = days < 0
+      ? `era prevista il ${renewal.renewal_date} (scaduta da ${Math.abs(days)} giorni)`
+      : days === 0
+      ? `è OGGI`
+      : `tra ${days} giorni (il ${renewal.renewal_date})`;
+    const amount = renewal.amount ? `€ ${Number(renewal.amount).toFixed(2)}` : '';
+    const msg =
+      `Buongiorno! 👋\n\n` +
+      `Ti scrivo per ricordarti che la scadenza del rinnovo ${renewal.type.toLowerCase()} ${when}.\n` +
+      (amount ? `Importo previsto: ${amount}\n\n` : '\n') +
+      `Per non interrompere il servizio, ti chiedo di confermare il rinnovo rispondendo a questo messaggio. Procedo io con tutto.\n\n` +
+      `Grazie e buona giornata,\nAndrea — WebFinder Studio`;
+
+    const phone = (renewal.phone || '').replace(/[^\d+]/g, '').replace(/^\+/, '');
+    if (phone) {
+      const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+      toast.success('WhatsApp aperto con il promemoria');
+    } else if (renewal.email) {
+      const url = `mailto:${renewal.email}?subject=${encodeURIComponent(`Rinnovo ${renewal.type} in scadenza`)}&body=${encodeURIComponent(msg)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+      toast.success('Email aperta con il promemoria');
+    } else {
+      toast.error('Manca telefono/email per inviare il promemoria');
+    }
+    setTimeout(() => setReminderSending(null), 1000);
+  };
+
   const handleRemoveClient = async () => {
     if (!selected) return;
     if (!window.confirm(`Rimuovere "${selected.name}" dai clienti acquisiti?\nVerrà riportato in "Contattato".`)) return;
@@ -413,6 +504,80 @@ export default function Clients() {
         <StatBox label="Incassato" value={formatCurrency(paidRevenue)} icon={CheckCircle2} color="bg-blue-600" />
         <StatBox label="Da incassare" value={formatCurrency(pendingRevenue)} icon={Circle} color="bg-amber-500" />
       </div>
+
+      {/* Scadenze imminenti */}
+      {renewals.length > 0 && (
+        <Card className="p-4 border-2 border-amber-300 bg-amber-50/50" data-testid="renewals-widget">
+          <div className="flex items-start justify-between mb-3 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-amber-500 rounded-lg">
+                <Bell size={18} className="text-white" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg">Scadenze imminenti</h3>
+                <p className="text-xs text-neutral-600">
+                  {renewals.length} rinnov{renewals.length === 1 ? 'o' : 'i'} nei prossimi 30 giorni
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-2 max-h-72 overflow-y-auto">
+            {renewals.map((r) => {
+              const isOverdue = r.days_to < 0;
+              const isUrgent = r.days_to >= 0 && r.days_to <= 7;
+              const badgeClasses = isOverdue
+                ? 'bg-red-500 text-white'
+                : isUrgent
+                ? 'bg-amber-500 text-white'
+                : 'bg-neutral-200 text-neutral-700';
+              const label = isOverdue
+                ? `SCADUTO da ${Math.abs(r.days_to)}g`
+                : r.days_to === 0
+                ? 'OGGI'
+                : `tra ${r.days_to}g`;
+              return (
+                <div
+                  key={r.lead_id + r.type + r.renewal_date}
+                  className="flex items-center gap-3 p-3 bg-white border border-neutral-200 rounded-lg hover:shadow-sm transition-shadow"
+                  data-testid={`renewal-${r.lead_id}-${r.type}`}
+                >
+                  <span className={`px-2 py-0.5 text-[10px] font-bold rounded shrink-0 ${badgeClasses}`}>
+                    {label}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">{r.name}</p>
+                    <p className="text-xs text-neutral-500">
+                      Rinnovo {r.type.toLowerCase()} · {r.renewal_date} {r.amount > 0 && `· ${formatCurrency(r.amount, r.currency)}`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => { handleSelect(r.lead_id); }}
+                      className="h-7 text-xs"
+                      data-testid={`open-client-${r.lead_id}`}
+                    >
+                      Apri
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => handleSendRenewalReminder(r)}
+                      disabled={reminderSending === r.lead_id + r.type}
+                      className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white"
+                      data-testid={`reminder-${r.lead_id}-${r.type}`}
+                    >
+                      <MessageCircle size={12} className="mr-1" /> Promemoria
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {clients.length === 0 ? (
         <Card className="p-12 text-center">
@@ -592,15 +757,44 @@ export default function Clients() {
                   </div>
 
                   {costs.paid && (
-                    <div className="mt-3 max-w-xs">
-                      <Label className="text-xs text-neutral-600">Data pagamento</Label>
-                      <Input
-                        type="date"
-                        value={costs.payment_date || ''}
-                        onChange={(e) => setCosts({ ...costs, payment_date: e.target.value })}
-                        data-testid="payment-date"
-                      />
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div>
+                        <Label className="text-xs text-neutral-600">Data pagamento</Label>
+                        <Input
+                          type="date"
+                          value={costs.payment_date || ''}
+                          onChange={(e) => setCosts({ ...costs, payment_date: e.target.value })}
+                          data-testid="payment-date"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-neutral-600 flex items-center gap-1">
+                          <Calendar size={12} /> Scadenza dominio
+                        </Label>
+                        <Input
+                          type="date"
+                          value={costs.domain_renewal_date || ''}
+                          onChange={(e) => setCosts({ ...costs, domain_renewal_date: e.target.value })}
+                          data-testid="domain-renewal-date"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-neutral-600 flex items-center gap-1">
+                          <Calendar size={12} /> Scadenza hosting
+                        </Label>
+                        <Input
+                          type="date"
+                          value={costs.hosting_renewal_date || ''}
+                          onChange={(e) => setCosts({ ...costs, hosting_renewal_date: e.target.value })}
+                          data-testid="hosting-renewal-date"
+                        />
+                      </div>
                     </div>
+                  )}
+                  {costs.paid && !costs.domain_renewal_date && !costs.hosting_renewal_date && costs.payment_date && (
+                    <p className="mt-2 text-[11px] text-blue-600 flex items-center gap-1">
+                      <Bell size={11} /> Lascia le scadenze vuote: verranno impostate automaticamente a {costs.payment_date} +1 anno al salvataggio.
+                    </p>
                   )}
 
                   <div className="mt-4">

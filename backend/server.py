@@ -781,8 +781,43 @@ async def search_companies(request: SearchRequest):
             "type": type(e).__name__
         })
 
-@api_router.get("/leads", response_model=List[Lead])
-async def get_leads(status: Optional[str] = None):
+@api_router.get("/leads", response_model=None)
+async def get_leads(status: Optional[str] = None, action: Optional[str] = None, days: int = 30):
+    # Action dispatch: ?action=upcoming_renewals (parity con Vercel)
+    if action == "upcoming_renewals":
+        from datetime import timedelta
+        today = datetime.now(timezone.utc).date()
+        cursor = db.leads.find(
+            {"status": {"$in": ["client", "cliente_acquisito"]}},
+            {"_id": 0}
+        )
+        renewals = []
+        async for lead in cursor:
+            cc = lead.get('client_costs') or {}
+            for field, label in [('domain_renewal_date', 'Dominio'), ('hosting_renewal_date', 'Hosting')]:
+                d = cc.get(field)
+                if not d:
+                    continue
+                try:
+                    dt = datetime.fromisoformat(d).date() if 'T' in d else datetime.strptime(d, '%Y-%m-%d').date()
+                except Exception:
+                    continue
+                days_to = (dt - today).days
+                if days_to <= days:
+                    renewals.append({
+                        "lead_id": lead.get('lead_id'),
+                        "name": lead.get('name'),
+                        "type": label,
+                        "renewal_date": d,
+                        "days_to": days_to,
+                        "amount": cc.get('domain_price' if field == 'domain_renewal_date' else 'hosting_price', 0),
+                        "currency": cc.get('currency', 'EUR'),
+                        "phone": lead.get('phone'),
+                        "email": lead.get('email'),
+                    })
+        renewals.sort(key=lambda x: x['days_to'])
+        return {"renewals": renewals, "count": len(renewals), "days_window": days}
+
     query = {} if not status else {"status": status}
     leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     
@@ -855,6 +890,24 @@ async def leads_action(request: Request):
             except Exception:
                 return 0.0
 
+        from datetime import timedelta
+
+        payment_date = (body.get('payment_date') or '').strip()[:20]
+        domain_renewal = (body.get('domain_renewal_date') or '').strip()[:20]
+        hosting_renewal = (body.get('hosting_renewal_date') or '').strip()[:20]
+        paid_flag = bool(body.get('paid'))
+
+        if paid_flag and payment_date:
+            try:
+                pd = datetime.strptime(payment_date[:10], '%Y-%m-%d').date()
+                renewal_default = (pd + timedelta(days=365)).strftime('%Y-%m-%d')
+                if not domain_renewal:
+                    domain_renewal = renewal_default
+                if not hosting_renewal:
+                    hosting_renewal = renewal_default
+            except Exception:
+                pass
+
         costs = {
             "site_price": _num(body.get('site_price')),
             "domain_price": _num(body.get('domain_price')),
@@ -863,8 +916,10 @@ async def leads_action(request: Request):
             "extra_label": (body.get('extra_label') or '').strip()[:80],
             "currency": (body.get('currency') or 'EUR').upper()[:6],
             "notes": (body.get('notes') or '').strip()[:500],
-            "paid": bool(body.get('paid')),
-            "payment_date": (body.get('payment_date') or '').strip()[:20],
+            "paid": paid_flag,
+            "payment_date": payment_date,
+            "domain_renewal_date": domain_renewal,
+            "hosting_renewal_date": hosting_renewal,
             "tax_mode": (body.get('tax_mode') or 'without_vat').strip().lower(),
             "client_vat": (body.get('client_vat') or '').strip()[:30],
             "client_fiscal_code": (body.get('client_fiscal_code') or '').strip()[:30],
@@ -883,6 +938,43 @@ async def leads_action(request: Request):
         return {"success": True, "costs": costs}
 
     raise HTTPException(status_code=400, detail=f"Azione non riconosciuta: {action}")
+
+
+@api_router.get("/leads/upcoming_renewals")
+async def leads_upcoming_renewals(days: int = 30):
+    """Restituisce i clienti acquisiti con scadenze (dominio/hosting) nei prossimi N giorni."""
+    from datetime import timedelta
+    today = datetime.now(timezone.utc).date()
+    cursor = db.leads.find(
+        {"status": {"$in": ["client", "cliente_acquisito"]}},
+        {"_id": 0}
+    )
+    renewals = []
+    async for lead in cursor:
+        cc = lead.get('client_costs') or {}
+        for field, label in [('domain_renewal_date', 'Dominio'), ('hosting_renewal_date', 'Hosting')]:
+            d = cc.get(field)
+            if not d:
+                continue
+            try:
+                dt = datetime.fromisoformat(d).date() if 'T' in d else datetime.strptime(d, '%Y-%m-%d').date()
+            except Exception:
+                continue
+            days_to = (dt - today).days
+            if days_to <= days:
+                renewals.append({
+                    "lead_id": lead.get('lead_id'),
+                    "name": lead.get('name'),
+                    "type": label,
+                    "renewal_date": d,
+                    "days_to": days_to,
+                    "amount": cc.get('domain_price' if field == 'domain_renewal_date' else 'hosting_price', 0),
+                    "currency": cc.get('currency', 'EUR'),
+                    "phone": lead.get('phone'),
+                    "email": lead.get('email'),
+                })
+    renewals.sort(key=lambda x: x['days_to'])
+    return {"renewals": renewals, "count": len(renewals), "days_window": days}
 
 class LeadStatusUpdate(BaseModel):
     status: str

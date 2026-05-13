@@ -294,6 +294,10 @@ class handler(BaseHTTPRequestHandler):
                     return self._error(404, "Lead non trovato")
                 return self._json_response(200, {"success": True, "updated": list(update_data.keys())})
 
+            if action == "upcoming_renewals":
+                # Deprecato in POST - usa GET ?action=upcoming_renewals
+                return self._error(405, "Use GET method for upcoming_renewals")
+
             if action == "delete_lead":
                 lead_id = data.get('lead_id')
                 if not lead_id:
@@ -316,13 +320,30 @@ class handler(BaseHTTPRequestHandler):
                 lead_id = data.get('lead_id')
                 if not lead_id:
                     return self._error(400, "lead_id richiesto")
-                from datetime import datetime, timezone
+                from datetime import datetime, timezone, timedelta
 
                 def _num(v):
                     try:
                         return float(v) if v not in (None, '', False) else 0.0
                     except Exception:
                         return 0.0
+
+                payment_date = (data.get('payment_date') or '').strip()[:20]
+                domain_renewal = (data.get('domain_renewal_date') or '').strip()[:20]
+                hosting_renewal = (data.get('hosting_renewal_date') or '').strip()[:20]
+                paid_flag = bool(data.get('paid'))
+
+                # Auto-calcolo: se cliente pagato + data pagamento + scadenze vuote → default +1 anno
+                if paid_flag and payment_date:
+                    try:
+                        pd = datetime.strptime(payment_date[:10], '%Y-%m-%d').date()
+                        renewal_default = (pd + timedelta(days=365)).strftime('%Y-%m-%d')
+                        if not domain_renewal:
+                            domain_renewal = renewal_default
+                        if not hosting_renewal:
+                            hosting_renewal = renewal_default
+                    except Exception:
+                        pass
 
                 costs = {
                     "site_price": _num(data.get('site_price')),
@@ -332,8 +353,10 @@ class handler(BaseHTTPRequestHandler):
                     "extra_label": (data.get('extra_label') or '').strip()[:80],
                     "currency": (data.get('currency') or 'EUR').upper()[:6],
                     "notes": (data.get('notes') or '').strip()[:500],
-                    "paid": bool(data.get('paid')),
-                    "payment_date": (data.get('payment_date') or '').strip()[:20],
+                    "paid": paid_flag,
+                    "payment_date": payment_date,
+                    "domain_renewal_date": domain_renewal,
+                    "hosting_renewal_date": hosting_renewal,
                     "tax_mode": (data.get('tax_mode') or 'without_vat').strip().lower(),
                     "client_vat": (data.get('client_vat') or '').strip()[:30],
                     "client_fiscal_code": (data.get('client_fiscal_code') or '').strip()[:30],
@@ -562,6 +585,47 @@ class handler(BaseHTTPRequestHandler):
             action = params.get("action", [None])[0]
             
             # Handle hot leads (with tracking score) action
+            if action == "upcoming_renewals":
+                from datetime import datetime as _dt, timedelta as _td
+                try:
+                    days = int(params.get('days', ['30'])[0])
+                except (ValueError, TypeError):
+                    days = 30
+                today = _dt.now().date()
+                client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+                db = client[DB_NAME]
+                cursor = db.leads.find(
+                    {"status": {"$in": ["client", "cliente_acquisito"]}},
+                    {"_id": 0}
+                )
+                renewals = []
+                for lead in cursor:
+                    cc = lead.get('client_costs') or {}
+                    for field, label in [('domain_renewal_date', 'Dominio'), ('hosting_renewal_date', 'Hosting')]:
+                        d = cc.get(field)
+                        if not d:
+                            continue
+                        try:
+                            dt = _dt.fromisoformat(d).date() if 'T' in d else _dt.strptime(d, '%Y-%m-%d').date()
+                        except Exception:
+                            continue
+                        days_to = (dt - today).days
+                        if days_to <= days:
+                            renewals.append({
+                                "lead_id": lead.get('lead_id'),
+                                "name": lead.get('name'),
+                                "type": label,
+                                "renewal_date": d,
+                                "days_to": days_to,
+                                "amount": cc.get('domain_price' if field == 'domain_renewal_date' else 'hosting_price', 0),
+                                "currency": cc.get('currency', 'EUR'),
+                                "phone": lead.get('phone'),
+                                "email": lead.get('email'),
+                            })
+                client.close()
+                renewals.sort(key=lambda x: x['days_to'])
+                return self._json_response(200, {"renewals": renewals, "count": len(renewals), "days_window": days})
+
             if action == "hot_leads":
                 client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
                 db = client[DB_NAME]

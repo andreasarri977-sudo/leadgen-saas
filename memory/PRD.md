@@ -1,6 +1,15 @@
 # WebFinder Studio - Product Requirements Document
 
 ## CHANGELOG
+- **13/05/2026 (notte+1)** - Calendario scadenze & voci dinamiche:
+  - 📅 **Date scadenza dominio + hosting** per ogni cliente (campi data nel form Cliente).
+  - 🤖 **Auto-calcolo**: se segni un cliente "Pagato" con data pagamento e lasci le scadenze vuote, il sistema imposta automaticamente entrambe a `payment_date + 365 giorni`.
+  - 🔔 **Widget "Scadenze imminenti"** in cima alla pagina Clienti: lista rinnovi nei prossimi 30 giorni con badge "tra Xg" / "OGGI" / "SCADUTO da Xg" e colore giallo/rosso.
+  - 🛎️ **Badge animato sulla sidebar** alla voce "Clienti" con numero scadenze + polling ogni 60s per aggiornarsi.
+  - 📨 **Pulsante "Promemoria"** per ogni rinnovo: apre WhatsApp (se telefono) o email (se manca telefono) con messaggio precompilato che cita data scadenza, tipo rinnovo e importo. Una settimana prima della scadenza il cliente riceve il messaggio con 1 click.
+  - 📋 **Voci preventivo dinamiche**: ora si adattano automaticamente alle sezioni effettivamente attive nel sito del cliente. Se disattivi "Mappa" nell'editor → la voce "Mappa interattiva" sparisce dal preventivo. Stessa cosa per galleria, recensioni, FAQ, multilingua, prenotazioni online.
+  - 🔌 **API**: nuovo `GET /api/leads?action=upcoming_renewals&days=30` (Vercel + FastAPI). Backend persistente: `client_costs.domain_renewal_date` + `client_costs.hosting_renewal_date`.
+
 - **13/05/2026 (notte)** - Preventivi pro:
   - ✅ **3 tipologie di preventivo** (oltre alle 2 di prima):
     1. **Regime forfettario** (default, P.IVA forfettaria) → Totale unico + nota art. 1 commi 54-89 L. 190/2014
