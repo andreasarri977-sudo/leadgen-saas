@@ -16,6 +16,27 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import API from '@/lib/api';
 
+// Default features sempre incluse nel preventivo (lista standard professionale)
+const DEFAULT_QUOTE_FEATURES = [
+  'Sito web professionale responsive (mobile, tablet, desktop)',
+  'Design moderno personalizzato con i colori del brand',
+  'Hosting incluso primo anno (server europei ad alte performance)',
+  'Dominio personalizzato incluso primo anno (es. nomeattivita.it)',
+  'Certificato SSL HTTPS automatico e sempre attivo',
+  'Galleria fotografica ottimizzata per il web',
+  'Sezione recensioni Google sincronizzate automaticamente',
+  'Orari di apertura sempre aggiornati e ben visibili',
+  'Mappa interattiva con indicazioni stradali Google Maps',
+  'Pulsanti diretti WhatsApp + chiamata telefonica',
+  'Sezione contatti completa (form, telefono, email, social)',
+  'Integrazione social Instagram & Facebook',
+  'Ottimizzazione SEO base per Google (titolo, meta, sitemap)',
+  'Velocità di caricamento ottimizzata (Core Web Vitals)',
+  'Tracking visite e statistiche di accesso incluse',
+  'Supporto tecnico via email per 6 mesi',
+  'Possibilità di modifiche minori incluse nel primo mese',
+];
+
 const EMPTY_COSTS = {
   site_price: '',
   domain_price: '',
@@ -103,6 +124,8 @@ export default function Clients() {
   const [whatsappVariant, setWhatsappVariant] = useState(null);
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailRecipient, setEmailRecipient] = useState('');
+  const [quoteFeatures, setQuoteFeatures] = useState(DEFAULT_QUOTE_FEATURES.join('\n'));
+  const [featuresOpen, setFeaturesOpen] = useState(false);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -214,16 +237,17 @@ export default function Clients() {
   };
 
   const _buildQuotePayload = () => {
-    const items = [];
-    if (Number(costs.site_price) > 0) items.push({ label: 'Sito web professionale', price: Number(costs.site_price) });
-    if (Number(costs.domain_price) > 0) items.push({ label: 'Dominio personalizzato (annuale)', price: Number(costs.domain_price) });
-    if (Number(costs.hosting_price) > 0) items.push({ label: 'Hosting annuale', price: Number(costs.hosting_price) });
-    if (Number(costs.extra_price) > 0 && costs.extra_label) items.push({ label: costs.extra_label, price: Number(costs.extra_price) });
+    // Features = lista voci dal textarea (una per riga) + voci con prezzo dai costi
+    const baseFeatures = quoteFeatures
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+
     return {
       price: totalAmount > 0 ? totalAmount : undefined,
       currency: costs.currency,
       notes: costs.notes,
-      features: items.length > 0 ? items.map((i) => `${i.label} - ${formatCurrency(i.price, costs.currency)}`) : undefined,
+      features: baseFeatures.length > 0 ? baseFeatures : undefined,
       tax_mode: costs.tax_mode,
       client_vat: costs.client_vat || undefined,
       client_fiscal_code: costs.client_fiscal_code || undefined,
@@ -615,7 +639,7 @@ export default function Clients() {
                     <Label className="text-xs font-semibold text-blue-900 uppercase tracking-wide mb-2 block">
                       Tipologia preventivo
                     </Label>
-                    <div className="grid grid-cols-2 gap-2" data-testid="tax-mode-selector">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" data-testid="tax-mode-selector">
                       <button
                         type="button"
                         onClick={() => setCosts({ ...costs, tax_mode: 'without_vat' })}
@@ -628,9 +652,25 @@ export default function Clients() {
                       >
                         <p className="font-semibold text-sm flex items-center gap-2">
                           {costs.tax_mode === 'without_vat' && <CheckCircle2 size={14} className="text-blue-600" />}
-                          Senza Partita IVA
+                          Regime forfettario
                         </p>
-                        <p className="text-[11px] text-neutral-500 mt-0.5">Privato / regime forfettario · No IVA</p>
+                        <p className="text-[11px] text-neutral-500 mt-0.5">Hai P.IVA forfettaria · No IVA</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCosts({ ...costs, tax_mode: 'occasional_no_vat' })}
+                        data-testid="tax-mode-occasional"
+                        className={`p-3 rounded-md border-2 text-left transition-all ${
+                          costs.tax_mode === 'occasional_no_vat'
+                            ? 'border-blue-600 bg-white shadow-sm'
+                            : 'border-neutral-200 bg-white/50 hover:bg-white'
+                        }`}
+                      >
+                        <p className="font-semibold text-sm flex items-center gap-2">
+                          {costs.tax_mode === 'occasional_no_vat' && <CheckCircle2 size={14} className="text-blue-600" />}
+                          Prestazione occasionale
+                        </p>
+                        <p className="text-[11px] text-neutral-500 mt-0.5">Non hai P.IVA · art. 67 TUIR</p>
                       </button>
                       <button
                         type="button"
@@ -646,7 +686,7 @@ export default function Clients() {
                           {costs.tax_mode === 'with_vat' && <CheckCircle2 size={14} className="text-blue-600" />}
                           Con Partita IVA
                         </p>
-                        <p className="text-[11px] text-neutral-500 mt-0.5">Azienda · IVA 22% inclusa nel totale</p>
+                        <p className="text-[11px] text-neutral-500 mt-0.5">Hai P.IVA ordinaria · IVA 22%</p>
                       </button>
                     </div>
 
@@ -681,9 +721,63 @@ export default function Clients() {
                           <>
                             Imponibile: <strong>{formatCurrency(totalAmount, costs.currency)}</strong> · IVA 22%: <strong>{formatCurrency(totalAmount * 0.22, costs.currency)}</strong> · Totale: <strong className="text-blue-700">{formatCurrency(totalAmount * 1.22, costs.currency)}</strong>
                           </>
+                        ) : costs.tax_mode === 'occasional_no_vat' ? (
+                          totalAmount > 77.47 ? (
+                            <>
+                              Compenso lordo: <strong>{formatCurrency(totalAmount, costs.currency)}</strong> · Ritenuta 20%: <strong>−{formatCurrency(totalAmount * 0.2, costs.currency)}</strong> · Netto al committente: <strong className="text-blue-700">{formatCurrency(totalAmount * 0.8, costs.currency)}</strong>
+                            </>
+                          ) : (
+                            <>Compenso: <strong className="text-blue-700">{formatCurrency(totalAmount, costs.currency)}</strong> · Sotto soglia ritenuta d'acconto (€ 77,47) · Prestazione occasionale art. 67 TUIR</>
+                          )
                         ) : (
                           <>Totale a cliente: <strong className="text-blue-700">{formatCurrency(totalAmount, costs.currency)}</strong> (operazione non soggetta a IVA - regime forfettario)</>
                         )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Editor voci preventivo */}
+                  <div className="mb-4 p-3 bg-neutral-50 border border-neutral-200 rounded-lg">
+                    <button
+                      type="button"
+                      onClick={() => setFeaturesOpen((v) => !v)}
+                      className="w-full flex items-center justify-between text-left"
+                      data-testid="toggle-features-editor"
+                    >
+                      <div>
+                        <Label className="text-xs font-semibold text-neutral-700 uppercase tracking-wide cursor-pointer">
+                          Voci incluse nel preventivo
+                        </Label>
+                        <p className="text-[11px] text-neutral-500">
+                          {quoteFeatures.split('\n').filter((l) => l.trim()).length} voci · {featuresOpen ? 'clicca per chiudere' : 'clicca per modificare'}
+                        </p>
+                      </div>
+                      <span className="text-neutral-500 text-lg">{featuresOpen ? '−' : '+'}</span>
+                    </button>
+                    {featuresOpen && (
+                      <div className="mt-3 space-y-2" data-testid="features-editor">
+                        <Textarea
+                          rows={12}
+                          value={quoteFeatures}
+                          onChange={(e) => setQuoteFeatures(e.target.value)}
+                          placeholder="Una voce per riga..."
+                          className="font-mono text-xs"
+                          data-testid="features-textarea"
+                        />
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <p className="text-[11px] text-neutral-500">
+                            ℹ️ Una voce per riga · Verranno tutte stampate come "incluso" nel PDF
+                          </p>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setQuoteFeatures(DEFAULT_QUOTE_FEATURES.join('\n'))}
+                            data-testid="reset-features-btn"
+                          >
+                            Ripristina default
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </div>

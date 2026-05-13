@@ -870,7 +870,7 @@ async def leads_action(request: Request):
             "client_fiscal_code": (body.get('client_fiscal_code') or '').strip()[:30],
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
-        if costs["tax_mode"] not in ('with_vat', 'without_vat'):
+        if costs["tax_mode"] not in ('with_vat', 'without_vat', 'occasional_no_vat'):
             costs["tax_mode"] = 'without_vat'
         costs["total"] = round(
             costs["site_price"] + costs["domain_price"] + costs["hosting_price"] + costs["extra_price"], 2

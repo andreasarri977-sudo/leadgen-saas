@@ -683,14 +683,18 @@ class handler(BaseHTTPRequestHandler):
                 currency = data.get('currency') or 'EUR'
                 custom_notes = (data.get('notes') or '').strip()
                 features = data.get('features') or []
-                # Modalita IVA: "with_vat" (con P.IVA, IVA 22%) oppure "without_vat" (forfettario / privato, no IVA)
+                # Modalita IVA: "with_vat" (con P.IVA, IVA 22%), "without_vat" (forfettario), "occasional_no_vat" (prestazione occasionale ex art. 67 TUIR)
                 tax_mode = (data.get('tax_mode') or 'without_vat').strip().lower()
-                if tax_mode not in ('with_vat', 'without_vat'):
+                if tax_mode not in ('with_vat', 'without_vat', 'occasional_no_vat'):
                     tax_mode = 'without_vat'
                 try:
                     vat_rate = float(data.get('vat_rate', 22.0))
                 except Exception:
                     vat_rate = 22.0
+                try:
+                    withholding_rate = float(data.get('withholding_rate', 20.0))  # ritenuta d'acconto 20% standard
+                except Exception:
+                    withholding_rate = 20.0
                 
                 profile = db.user_settings.find_one({"setting_id": "invoice_profile"}, {"_id": 0}) or {}
                 if price is None or price == '':
@@ -703,19 +707,49 @@ class handler(BaseHTTPRequestHandler):
                 currency_symbol = {'EUR': 'EUR', 'USD': 'USD', 'GBP': 'GBP', 'CHF': 'CHF'}.get(currency, currency)
                 
                 if not features:
+                    content = demo.get('content', {}) or {}
                     has_booking = business.get('booking_mode', 'none') != 'none' or bool(business.get('external_booking_url'))
+                    has_gallery = content.get('show_gallery', True) and (business.get('photos') or [])
+                    has_reviews = content.get('show_reviews', True) and (business.get('reviews') or [])
+                    has_menu = bool(content.get('menu_items') or content.get('services'))
+                    has_map = content.get('show_map', True)
+                    has_hours = content.get('show_hours', True) and business.get('hours_text')
+                    has_faq = content.get('show_faq', True) and (content.get('faq') or [])
+                    # Lingue secondarie
+                    translations = business.get('translations') or []
+
                     features = [
-                        "Sito web professionale responsive (mobile + desktop)",
-                        "Galleria fotografica + recensioni Google integrate",
+                        "Sito web professionale responsive (mobile, tablet, desktop)",
+                        "Design moderno personalizzato con i colori del brand",
+                        "Hosting incluso primo anno (server europei ad alte performance)",
+                        "Dominio personalizzato incluso primo anno (es. nomeattivita.it)",
+                        "Certificato SSL HTTPS automatico e sempre attivo",
                     ]
+                    if has_gallery:
+                        features.append("Galleria fotografica ottimizzata per il web")
+                    if has_reviews:
+                        features.append("Sezione recensioni Google sincronizzate automaticamente")
+                    if has_menu:
+                        features.append("Sezione servizi / menu prodotti completa")
+                    if has_hours:
+                        features.append("Orari di apertura sempre aggiornati e ben visibili")
+                    if has_map:
+                        features.append("Mappa interattiva con indicazioni stradali Google Maps")
                     if has_booking:
-                        features.append("Sistema prenotazioni online con notifica email")
+                        features.append("Sistema prenotazioni online con notifica email automatica")
+                    features.append("Pulsanti diretti WhatsApp + chiamata telefonica")
+                    features.append("Sezione contatti completa (form, telefono, email, social)")
+                    features.append("Integrazione social Instagram & Facebook")
+                    if has_faq:
+                        features.append("Sezione FAQ con domande frequenti")
+                    if translations:
+                        features.append(f"Sito multilingua ({len(translations)+1} lingue: italiano + {', '.join(translations[:3])})")
                     features += [
-                        "Pulsanti WhatsApp e chiamata diretta",
-                        "Mappa interattiva e indicazioni stradali",
-                        "Hosting incluso primo anno + dominio personalizzato",
-                        "Ottimizzazione SEO base per Google",
-                        "Supporto via email per 6 mesi"
+                        "Ottimizzazione SEO base per Google (titolo, meta, sitemap)",
+                        "Velocita di caricamento ottimizzata (Core Web Vitals)",
+                        "Tracking visite e statistiche di accesso incluse",
+                        "Supporto tecnico via email per 6 mesi",
+                        "Possibilita di modifiche minori incluse nel primo mese",
                     ]
                 
                 business_name = demo.get('business_name', business.get('name', 'Cliente'))
@@ -761,7 +795,12 @@ class handler(BaseHTTPRequestHandler):
                 pdf.cell(0, 5, f"N. {quote_id}    -    Data: {today}    -    Valido fino al: {valid_until}", ln=1)
                 pdf.set_font("Helvetica", 'I', 8)
                 pdf.set_text_color(120, 120, 120)
-                pdf.cell(0, 4, "Tipologia: " + ("Cliente con Partita IVA (IVA inclusa)" if tax_mode == 'with_vat' else "Cliente senza Partita IVA / privato"), ln=1)
+                _label_by_mode = {
+                    'with_vat': "Cliente con Partita IVA (IVA inclusa)",
+                    'without_vat': "Cliente / freelance senza IVA (regime forfettario)",
+                    'occasional_no_vat': "Prestazione occasionale (no Partita IVA)",
+                }
+                pdf.cell(0, 4, "Tipologia: " + _label_by_mode.get(tax_mode, _label_by_mode['without_vat']), ln=1)
                 pdf.set_text_color(0, 0, 0)
                 
                 pdf.ln(6)
@@ -831,8 +870,38 @@ class handler(BaseHTTPRequestHandler):
                     pdf.cell(130, 12, "  TOTALE (IVA inclusa)", border=0, fill=True)
                     pdf.cell(0, 12, f"{_money(grand_total)} {currency_symbol}  ", border=0, fill=True, ln=1, align='R')
                     pdf.set_text_color(0, 0, 0)
+                elif tax_mode == 'occasional_no_vat':
+                    # Prestazione occasionale: ritenuta d'acconto 20% se compenso > 77,47 EUR
+                    gross = price_num
+                    apply_withholding = gross > 77.47
+                    withholding = round(gross * (withholding_rate / 100.0), 2) if apply_withholding else 0.0
+                    net = round(gross - withholding, 2)
+
+                    pdf.set_fill_color(245, 247, 250)
+                    pdf.set_text_color(40, 40, 40)
+                    pdf.set_font("Helvetica", '', 10)
+                    pdf.cell(130, 7, "  Compenso lordo", border='B', fill=True)
+                    pdf.cell(0, 7, f"{_money(gross)} {currency_symbol}  ", border='B', fill=True, ln=1, align='R')
+                    if apply_withholding:
+                        pdf.cell(130, 7, f"  Ritenuta d'acconto {withholding_rate:.0f}% (a carico del committente)", border='B', fill=True)
+                        pdf.cell(0, 7, f"-{_money(withholding)} {currency_symbol}  ", border='B', fill=True, ln=1, align='R')
+
+                    pdf.set_fill_color(30, 64, 175)
+                    pdf.set_text_color(255, 255, 255)
+                    pdf.set_font("Helvetica", 'B', 13)
+                    label_total = "  NETTO A PAGARE" if apply_withholding else "  TOTALE COMPENSO"
+                    pdf.cell(130, 12, label_total, border=0, fill=True)
+                    pdf.cell(0, 12, f"{_money(net)} {currency_symbol}  ", border=0, fill=True, ln=1, align='R')
+                    pdf.set_text_color(0, 0, 0)
+                    pdf.set_font("Helvetica", 'I', 9)
+                    pdf.set_text_color(100, 100, 100)
+                    if apply_withholding:
+                        pdf.multi_cell(0, 5, "Compenso per prestazione occasionale ex art. 67, c.1 lett. l) del TUIR. Operazione fuori campo IVA ex art. 5 DPR 633/72. Il committente, se sostituto d'imposta, applichera la ritenuta d'acconto del 20% ex art. 25 DPR 600/73.")
+                    else:
+                        pdf.multi_cell(0, 5, "Compenso per prestazione occasionale ex art. 67, c.1 lett. l) del TUIR. Operazione fuori campo IVA ex art. 5 DPR 633/72. Importo inferiore alla soglia di applicazione della ritenuta d'acconto (€ 77,47).")
+                    pdf.set_text_color(0, 0, 0)
                 else:
-                    # Senza P.IVA: solo totale (operazione non soggetta a IVA)
+                    # Senza P.IVA / forfettario: solo totale (operazione non soggetta a IVA)
                     pdf.set_fill_color(30, 64, 175)
                     pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Helvetica", 'B', 13)
@@ -863,7 +932,8 @@ class handler(BaseHTTPRequestHandler):
                     pdf.ln(4)
                     pdf.set_font("Helvetica", 'I', 8)
                     pdf.multi_cell(0, 4, _safe(profile.get('footer_notes', '')))
-                if profile.get('legal_notes') and tax_mode != 'with_vat':
+                if profile.get('legal_notes') and tax_mode == 'without_vat':
+                    # Mostro le note legali del profilo solo se forfettario (regime forfettario default)
                     pdf.ln(2)
                     pdf.set_font("Helvetica", '', 7)
                     pdf.set_text_color(120, 120, 120)

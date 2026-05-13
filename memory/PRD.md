@@ -1,6 +1,16 @@
 # WebFinder Studio - Product Requirements Document
 
 ## CHANGELOG
+- **13/05/2026 (notte)** - Preventivi pro:
+  - ✅ **3 tipologie di preventivo** (oltre alle 2 di prima):
+    1. **Regime forfettario** (default, P.IVA forfettaria) → Totale unico + nota art. 1 commi 54-89 L. 190/2014
+    2. **Prestazione occasionale** (NO P.IVA del fornitore) → calcolo ritenuta d'acconto 20% se compenso > €77,47, dicitura art. 67 TUIR + art. 5 DPR 633/72, distinzione lordo/ritenuta/netto al committente
+    3. **Con P.IVA ordinaria** (azienda con IVA) → Imponibile + IVA 22% + Totale
+  - 📋 **17 voci default professionali pre-compilate** nel preventivo (Sito responsive, hosting, dominio, SSL, gallery, recensioni Google sync, orari, mappa interattiva, WhatsApp/call, contatti, social Instagram/Facebook, SEO base, Core Web Vitals, tracking visite, supporto 6 mesi, modifiche minori primo mese).
+  - ✏️ **Editor inline "Voci incluse"**: textarea espandibile con "Una voce per riga", pulsante "Ripristina default", 1 voce per riga → stampata come "incluso" nel PDF.
+  - 🧮 **Preview live del calcolo** sopra al PDF (es. "Compenso lordo: € 875 · Ritenuta 20%: −€ 175 · Netto: € 700") aggiornato in tempo reale al cambio tipologia.
+  - 💾 Backend Vercel + FastAPI persistono `tax_mode`, `client_vat`, `client_fiscal_code` in `client_costs`.
+
 - **13/05/2026 (sera)** - Quick wins su pipeline lead e preventivi:
   - 🔍 **Barra di ricerca** nella pagina Lead: filtra in real-time per nome, città, categoria, telefono o email.
   - 👑 **Pulsante "Sì, è cliente!"** su ogni card Kanban (eccetto colonna "Cliente"): 1 click → status diventa `client`, toast con shortcut "Apri" che porta al dettaglio cliente.
