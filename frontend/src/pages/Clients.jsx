@@ -113,14 +113,19 @@ function formatCurrency(value, currency = 'EUR') {
 
 function StatBox({ label, value, icon: Icon, color = 'bg-emerald-600' }) {
   return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between">
-        <div className={`p-2.5 rounded-lg ${color}`}>
-          <Icon size={20} className="text-white" />
+    <Card className="p-3 sm:p-4">
+      <div className="flex items-center gap-2 sm:items-start sm:gap-0 sm:justify-between">
+        <div className={`p-2 sm:p-2.5 rounded-lg ${color}`}>
+          <Icon size={16} className="text-white sm:hidden" />
+          <Icon size={20} className="text-white hidden sm:block" />
+        </div>
+        <div className="sm:hidden flex-1 min-w-0">
+          <p className="text-[10px] text-neutral-500 font-medium uppercase tracking-wide truncate">{label}</p>
+          <p className="text-base font-bold tracking-tight truncate">{value}</p>
         </div>
       </div>
-      <p className="text-xs text-neutral-500 mt-3 font-medium uppercase tracking-wide">{label}</p>
-      <p className="text-2xl font-bold mt-0.5 tracking-tight">{value}</p>
+      <p className="hidden sm:block text-xs text-neutral-500 mt-3 font-medium uppercase tracking-wide">{label}</p>
+      <p className="hidden sm:block text-2xl font-bold mt-0.5 tracking-tight">{value}</p>
     </Card>
   );
 }
@@ -488,18 +493,19 @@ export default function Clients() {
     <div data-testid="clients-page" className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-5xl font-bold tracking-tight flex items-center gap-3">
-            <Crown size={42} className="text-amber-500" /> Clienti
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight flex items-center gap-2 sm:gap-3">
+            <Crown size={28} className="text-amber-500 sm:hidden" />
+            <Crown size={42} className="text-amber-500 hidden sm:block" /> Clienti
           </h1>
-          <p className="text-neutral-600 mt-2 text-lg">{clients.length} clienti acquisiti</p>
+          <p className="text-neutral-600 mt-1 sm:mt-2 text-sm sm:text-lg">{clients.length} clienti acquisiti</p>
         </div>
-        <Button onClick={loadAll} variant="outline" data-testid="refresh-clients-btn">
+        <Button onClick={loadAll} variant="outline" size="sm" data-testid="refresh-clients-btn">
           <RefreshCw size={16} />
         </Button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 sm:grid-cols-3 gap-2 sm:gap-4">
         <StatBox label="Fatturato totale" value={formatCurrency(totalRevenue)} icon={BadgeEuro} color="bg-emerald-600" />
         <StatBox label="Incassato" value={formatCurrency(paidRevenue)} icon={CheckCircle2} color="bg-blue-600" />
         <StatBox label="Da incassare" value={formatCurrency(pendingRevenue)} icon={Circle} color="bg-amber-500" />
@@ -538,16 +544,16 @@ export default function Clients() {
               return (
                 <div
                   key={r.lead_id + r.type + r.renewal_date}
-                  className="flex items-center gap-3 p-3 bg-white border border-neutral-200 rounded-lg hover:shadow-sm transition-shadow"
+                  className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-white border border-neutral-200 rounded-lg hover:shadow-sm transition-shadow"
                   data-testid={`renewal-${r.lead_id}-${r.type}`}
                 >
-                  <span className={`px-2 py-0.5 text-[10px] font-bold rounded shrink-0 ${badgeClasses}`}>
+                  <span className={`px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold rounded shrink-0 whitespace-nowrap ${badgeClasses}`}>
                     {label}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">{r.name}</p>
-                    <p className="text-xs text-neutral-500">
-                      Rinnovo {r.type.toLowerCase()} · {r.renewal_date} {r.amount > 0 && `· ${formatCurrency(r.amount, r.currency)}`}
+                    <p className="font-semibold text-xs sm:text-sm truncate">{r.name}</p>
+                    <p className="text-[10px] sm:text-xs text-neutral-500 truncate">
+                      {r.type.toLowerCase()} · {r.renewal_date}{r.amount > 0 && ` · ${formatCurrency(r.amount, r.currency)}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
@@ -556,7 +562,7 @@ export default function Clients() {
                       size="sm"
                       variant="outline"
                       onClick={() => { handleSelect(r.lead_id); }}
-                      className="h-7 text-xs"
+                      className="h-7 px-2 text-[11px] hidden sm:inline-flex"
                       data-testid={`open-client-${r.lead_id}`}
                     >
                       Apri
@@ -566,10 +572,10 @@ export default function Clients() {
                       size="sm"
                       onClick={() => handleSendRenewalReminder(r)}
                       disabled={reminderSending === r.lead_id + r.type}
-                      className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white"
+                      className="h-7 px-2 text-[11px] bg-amber-500 hover:bg-amber-600 text-white"
                       data-testid={`reminder-${r.lead_id}-${r.type}`}
                     >
-                      <MessageCircle size={12} className="mr-1" /> Promemoria
+                      <MessageCircle size={12} className="sm:mr-1" /> <span className="hidden sm:inline">Promemoria</span>
                     </Button>
                   </div>
                 </div>

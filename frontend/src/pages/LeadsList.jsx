@@ -32,7 +32,7 @@ const KANBAN_COLUMNS = [
   { id: 'client', label: '💰 Cliente', color: 'border-green-300 bg-green-50', aliases: ['client', 'cliente'] }
 ];
 
-function KanbanBoard({ leads, onMove, onView, onDelete, onMarkClient, draggingLead, setDraggingLead, updatingLead, selectedLeads = [], onToggleSelect, onToggleSelectColumn }) {
+function KanbanBoard({ leads, onMove, onView, onDelete, onMarkClient, draggingLead, setDraggingLead, updatingLead, selectedLeads = [], onToggleSelect, onToggleSelectColumn, mobileColumn, onMobileColumnChange }) {
   const grouped = KANBAN_COLUMNS.reduce((acc, c) => { acc[c.id] = []; return acc; }, {});
   leads.forEach((l) => {
     const s = l.status;
@@ -41,15 +41,37 @@ function KanbanBoard({ leads, onMove, onView, onDelete, onMarkClient, draggingLe
   });
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 p-3 bg-neutral-50 min-h-[500px]" data-testid="kanban-board">
-      {KANBAN_COLUMNS.map((col) => {
+    <>
+      {/* Mobile column switcher (visibile solo su mobile) */}
+      <div className="md:hidden flex overflow-x-auto gap-1.5 px-3 pt-3 pb-1 bg-neutral-50 border-b border-neutral-200" data-testid="mobile-column-switcher">
+        {KANBAN_COLUMNS.map((col) => {
+          const active = col.id === mobileColumn;
+          return (
+            <button
+              key={col.id}
+              type="button"
+              onClick={() => onMobileColumnChange?.(col.id)}
+              data-testid={`mobile-col-tab-${col.id}`}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                active ? 'bg-blue-600 text-white' : 'bg-white border border-neutral-300 text-neutral-700'
+              }`}
+            >
+              {col.label.replace(/[📞✅👑📋🆕]/g, '').trim()} <span className="opacity-70">({grouped[col.id].length})</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 p-3 bg-neutral-50 min-h-[500px]" data-testid="kanban-board">
+        {KANBAN_COLUMNS.map((col) => {
         const colLeadIds = grouped[col.id].map((l) => l.lead_id);
         const allSelected = colLeadIds.length > 0 && colLeadIds.every((id) => selectedLeads.includes(id));
+        const hiddenOnMobile = mobileColumn && mobileColumn !== col.id;
         return (
         <div
           key={col.id}
           data-testid={`kanban-col-${col.id}`}
-          className={`border-2 ${col.color} rounded-lg p-3`}
+          className={`border-2 ${col.color} rounded-lg p-3 ${hiddenOnMobile ? 'hidden md:block' : ''}`}
           onDragOver={(e) => e.preventDefault()}
           onDrop={() => {
             const currentCol = KANBAN_COLUMNS.find((c) => c.aliases.includes(draggingLead?.status));
@@ -138,7 +160,8 @@ function KanbanBoard({ leads, onMove, onView, onDelete, onMarkClient, draggingLe
         </div>
         );
       })}
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -157,6 +180,7 @@ export default function LeadsList() {
   const [batchResult, setBatchResult] = useState(null);
   const [draggingLead, setDraggingLead] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [mobileColumn, setMobileColumn] = useState('new');
 
   const handleMarkClient = async (lead) => {
     setUpdatingLead(lead.lead_id);
@@ -364,7 +388,7 @@ export default function LeadsList() {
     <div data-testid="leads-list-page">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-5xl font-bold tracking-tight">{pageTitle}</h1>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">{pageTitle}</h1>
           <p className="text-neutral-600 mt-2 text-lg">{pageSubtitle}</p>
         </div>
         <div className="flex gap-2">
@@ -475,6 +499,8 @@ export default function LeadsList() {
             setDraggingLead={setDraggingLead}
             updatingLead={updatingLead}
             selectedLeads={selectedLeads}
+            mobileColumn={mobileColumn}
+            onMobileColumnChange={setMobileColumn}
             onToggleSelect={(id) => setSelectedLeads((s) => s.includes(id) ? s.filter((x) => x !== id) : [...s, id])}
             onToggleSelectColumn={(ids, select) => setSelectedLeads((s) => {
               if (select) {

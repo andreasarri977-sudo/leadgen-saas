@@ -1,6 +1,12 @@
 # WebFinder Studio - Product Requirements Document
 
 ## CHANGELOG
+- **13/05/2026 (notte+2)** - Mobile UX migliorato:
+  - 📱 **Titoli responsive**: `text-3xl sm:text-4xl lg:text-5xl` invece di `text-5xl` fisso (Dashboard, Lead, Clienti).
+  - 📱 **Stats compatte su mobile**: layout orizzontale 3 colonne con icona piccola affianco al valore, font ridotti, padding più stretto.
+  - 📱 **Switcher Kanban mobile**: barra orizzontale di pillole "Nuovo (125)" / "Demo Creata (30)" / ecc. visibile solo su mobile. Cliccando una pillola si vede SOLO quella colonna, niente più scroll infinito di 4 colonne stacked.
+  - 📱 **Widget scadenze mobile-first**: badge più stretti, testo `text-xs sm:text-sm`, padding ridotto, bottone "Apri" nascosto su mobile (basta tap sul cliente), bottone WhatsApp icon-only su mobile.
+  - 📱 **Indicatore versione** in fondo sidebar aggiornato a `2026.05.14-mobile-ux` per identificare il deploy nuovo.
 - **13/05/2026 (notte+1)** - Calendario scadenze & voci dinamiche:
   - 📅 **Date scadenza dominio + hosting** per ogni cliente (campi data nel form Cliente).
   - 🤖 **Auto-calcolo**: se segni un cliente "Pagato" con data pagamento e lasci le scadenze vuote, il sistema imposta automaticamente entrambe a `payment_date + 365 giorni`.

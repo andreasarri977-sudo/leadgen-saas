@@ -239,7 +239,7 @@ export default function Dashboard() {
       <div data-testid="dashboard-error">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-5xl font-bold tracking-tight">Dashboard</h1>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">Dashboard</h1>
             <p className="text-neutral-600 mt-2 text-lg">Panoramica delle tue attività di lead generation</p>
           </div>
           <BackendStatus status={backendStatus} lastCheck={lastHealthCheck} onRetry={handleRetry} />
@@ -296,7 +296,7 @@ export default function Dashboard() {
       <div data-testid="dashboard-loading">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-5xl font-bold tracking-tight">Dashboard</h1>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">Dashboard</h1>
             <p className="text-neutral-600 mt-2 text-lg">Panoramica delle tue attività di lead generation</p>
           </div>
           <BackendStatus status={backendStatus} lastCheck={lastHealthCheck} onRetry={handleRetry} />

@@ -86,7 +86,7 @@ export default function Layout() {
       <div className="mt-auto p-4 border-t border-neutral-800 text-[10px] text-neutral-500" data-testid="sidebar-version">
         <p className="font-mono">
           {buildVersion ? (
-            buildVersion.includes('2026.05.14') || buildVersion.includes('clients-renewals') ? (
+            buildVersion.includes('2026.05.14') || buildVersion.includes('mobile-ux') || buildVersion.includes('clients-renewals') ? (
               <span className="text-emerald-400">● v{buildVersion}</span>
             ) : (
               <span className="text-amber-400">● v{buildVersion} (build vecchio?)</span>
