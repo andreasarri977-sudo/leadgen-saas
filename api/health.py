@@ -34,7 +34,9 @@ class handler(BaseHTTPRequestHandler):
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "python": sys.version.split()[0],
             "modules": modules,
-            "mongo_configured": bool(mongo_url)
+            "mongo_configured": bool(mongo_url),
+            "build_version": BUILD_VERSION,
+            "build_features": BUILD_FEATURES
         }).encode())
     
     def do_OPTIONS(self):

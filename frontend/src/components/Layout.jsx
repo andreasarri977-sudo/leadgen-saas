@@ -19,6 +19,7 @@ export default function Layout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [renewalsCount, setRenewalsCount] = useState(0);
+  const [buildVersion, setBuildVersion] = useState(null);
 
   // Polling leggero ogni 60s del numero di scadenze imminenti
   useEffect(() => {
@@ -29,7 +30,14 @@ export default function Layout() {
         if (!cancelled) setRenewalsCount(res.data?.count || 0);
       } catch { /* silent */ }
     };
+    const fetchVersion = async () => {
+      try {
+        const res = await axios.get(`${API}/health`);
+        if (!cancelled) setBuildVersion(res.data?.build_version || res.data?.version || null);
+      } catch { /* silent */ }
+    };
     fetchRenewals();
+    fetchVersion();
     const id = setInterval(fetchRenewals, 60000);
     return () => { cancelled = true; clearInterval(id); };
   }, []);
@@ -75,6 +83,19 @@ export default function Layout() {
           );
         })}
       </nav>
+      <div className="mt-auto p-4 border-t border-neutral-800 text-[10px] text-neutral-500" data-testid="sidebar-version">
+        <p className="font-mono">
+          {buildVersion ? (
+            buildVersion.includes('2026.05.14') || buildVersion.includes('clients-renewals') ? (
+              <span className="text-emerald-400">● v{buildVersion}</span>
+            ) : (
+              <span className="text-amber-400">● v{buildVersion} (build vecchio?)</span>
+            )
+          ) : (
+            <span className="text-neutral-600">verifico versione...</span>
+          )}
+        </p>
+      </div>
     </>
   );
 

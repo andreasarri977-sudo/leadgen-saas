@@ -532,7 +532,18 @@ async def health_check():
         "status": "ok",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "db": db_status,
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "build_version": "2026.05.14-clients-renewals",
+        "build_features": [
+            "clients-page",
+            "section-order-editor",
+            "search-leads",
+            "mark-client-button",
+            "quote-3-tax-modes",
+            "quote-default-features",
+            "quote-dynamic-features",
+            "renewals-calendar",
+        ]
     }
 
 @api_router.post("/search/companies")
