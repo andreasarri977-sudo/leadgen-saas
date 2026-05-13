@@ -5,6 +5,19 @@ import os
 import sys
 from datetime import datetime, timezone
 
+# Version markers - aggiornati a ogni nuova feature
+BUILD_VERSION = "2026.05.14-clients-renewals"
+BUILD_FEATURES = [
+    "clients-page",
+    "section-order-editor",
+    "search-leads",
+    "mark-client-button",
+    "quote-3-tax-modes",
+    "quote-default-features",
+    "quote-dynamic-features",
+    "renewals-calendar",
+]
+
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         # Check modules
