@@ -334,8 +334,13 @@ class handler(BaseHTTPRequestHandler):
                     "notes": (data.get('notes') or '').strip()[:500],
                     "paid": bool(data.get('paid')),
                     "payment_date": (data.get('payment_date') or '').strip()[:20],
+                    "tax_mode": (data.get('tax_mode') or 'without_vat').strip().lower(),
+                    "client_vat": (data.get('client_vat') or '').strip()[:30],
+                    "client_fiscal_code": (data.get('client_fiscal_code') or '').strip()[:30],
                     "updated_at": datetime.now(timezone.utc).isoformat(),
                 }
+                if costs["tax_mode"] not in ('with_vat', 'without_vat'):
+                    costs["tax_mode"] = 'without_vat'
                 costs["total"] = round(
                     costs["site_price"] + costs["domain_price"] + costs["hosting_price"] + costs["extra_price"], 2
                 )

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { Filter, Download, RefreshCw, Loader2, Star, CheckCircle, Circle, X, Zap, FileText, LayoutGrid, List as ListIcon, GripVertical, Trash2, CheckSquare, Square } from 'lucide-react';
+import { Filter, Download, RefreshCw, Loader2, Star, CheckCircle, Circle, X, Zap, FileText, LayoutGrid, List as ListIcon, GripVertical, Trash2, CheckSquare, Square, Crown, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import API from '@/lib/api';
@@ -31,7 +32,7 @@ const KANBAN_COLUMNS = [
   { id: 'client', label: '💰 Cliente', color: 'border-green-300 bg-green-50', aliases: ['client', 'cliente'] }
 ];
 
-function KanbanBoard({ leads, onMove, onView, onDelete, draggingLead, setDraggingLead, updatingLead, selectedLeads = [], onToggleSelect, onToggleSelectColumn }) {
+function KanbanBoard({ leads, onMove, onView, onDelete, onMarkClient, draggingLead, setDraggingLead, updatingLead, selectedLeads = [], onToggleSelect, onToggleSelectColumn }) {
   const grouped = KANBAN_COLUMNS.reduce((acc, c) => { acc[c.id] = []; return acc; }, {});
   leads.forEach((l) => {
     const s = l.status;
@@ -116,6 +117,17 @@ function KanbanBoard({ leads, onMove, onView, onDelete, draggingLead, setDraggin
                       <Trash2 size={13} />
                     </button>
                   </div>
+                  {col.id !== 'client' && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onMarkClient?.(l); }}
+                      data-testid={`kanban-mark-client-${l.lead_id}`}
+                      title="Segna come cliente acquisito"
+                      className="mt-2 w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 hover:bg-amber-500 hover:text-white border border-amber-200 hover:border-amber-500 transition-colors"
+                    >
+                      <Crown size={12} />
+                      Sì, è cliente!
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -144,6 +156,20 @@ export default function LeadsList() {
   const [selectedTemplate, setSelectedTemplate] = useState('__none__');
   const [batchResult, setBatchResult] = useState(null);
   const [draggingLead, setDraggingLead] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleMarkClient = async (lead) => {
+    setUpdatingLead(lead.lead_id);
+    try {
+      await axios.post(`${API}/leads?action=update_lead`, { lead_id: lead.lead_id, status: 'client' });
+      setLeads((arr) => arr.map((l) => l.lead_id === lead.lead_id ? { ...l, status: 'client' } : l));
+      toast.success(`${lead.name} segnato come cliente! 🎉`, {
+        action: { label: 'Apri', onClick: () => navigate(`/clients/${lead.lead_id}`) }
+      });
+    } catch {
+      toast.error('Errore aggiornamento');
+    } finally { setUpdatingLead(null); }
+  };
 
   const moveLeadToColumn = async (leadId, newStatus) => {
     setUpdatingLead(leadId);
@@ -321,6 +347,19 @@ export default function LeadsList() {
     ? `${leads.length} clienti che hanno pagato`
     : `${leads.length} lead totali`;
 
+  const visibleLeads = (() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return leads;
+    return leads.filter((l) =>
+      (l.name || '').toLowerCase().includes(q) ||
+      (l.city || '').toLowerCase().includes(q) ||
+      (l.category || '').toLowerCase().includes(q) ||
+      (l.address || '').toLowerCase().includes(q) ||
+      (l.phone || '').toLowerCase().includes(q) ||
+      (l.email || '').toLowerCase().includes(q)
+    );
+  })();
+
   return (
     <div data-testid="leads-list-page">
       <div className="flex items-center justify-between mb-8">
@@ -353,16 +392,36 @@ export default function LeadsList() {
       </div>
 
       <Card className="p-6">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-          <div className="flex items-center gap-2">
-            <Filter size={20} />
-            <Label>Filtra per stato:</Label>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+          <div className="relative flex-1 max-w-md">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cerca per nome, città, categoria, telefono..."
+              className="pl-9 pr-9"
+              data-testid="lead-search-input"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-neutral-100 rounded"
+                data-testid="lead-search-clear"
+                title="Pulisci ricerca"
+              >
+                <X size={14} className="text-neutral-500" />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Filter size={16} className="text-neutral-500" />
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger data-testid="filter-status-select" className="w-48">
+              <SelectTrigger data-testid="filter-status-select" className="w-44">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tutti</SelectItem>
+                <SelectItem value="all">Tutti gli stati</SelectItem>
                 <SelectItem value="new">Nuovo Lead</SelectItem>
                 <SelectItem value="demo_created">Demo Creata</SelectItem>
                 <SelectItem value="contacted">Contattato</SelectItem>
@@ -370,15 +429,25 @@ export default function LeadsList() {
               </SelectContent>
             </Select>
           </div>
+        </div>
+
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <p className="text-sm text-neutral-600">
+            {searchQuery ? (
+              <>Mostrati <span className="font-semibold text-blue-700">{visibleLeads.length}</span> di {leads.length} lead</>
+            ) : (
+              <>{leads.length} lead nella pipeline</>
+            )}
+          </p>
           <div className="flex items-center gap-2">
             <span className="text-sm text-neutral-600" data-testid="selection-count">
-              <span className="font-semibold text-blue-700">{selectedLeads.length}</span> / {leads.length} selezionati
+              <span className="font-semibold text-blue-700">{selectedLeads.length}</span> selezionati
             </span>
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setSelectedLeads(leads.map((l) => l.lead_id))}
-              disabled={leads.length === 0 || selectedLeads.length === leads.length}
+              onClick={() => setSelectedLeads(visibleLeads.map((l) => l.lead_id))}
+              disabled={visibleLeads.length === 0 || selectedLeads.length === visibleLeads.length}
               data-testid="select-all-leads-btn"
             >
               <CheckSquare size={14} className="mr-1" /> Seleziona tutti
@@ -397,10 +466,11 @@ export default function LeadsList() {
 
         <div className="border rounded-lg overflow-hidden">
           <KanbanBoard
-            leads={leads}
+            leads={visibleLeads}
             onMove={moveLeadToColumn}
             onView={(id) => navigate(`/leads/${id}`)}
             onDelete={handleDeleteLead}
+            onMarkClient={handleMarkClient}
             draggingLead={draggingLead}
             setDraggingLead={setDraggingLead}
             updatingLead={updatingLead}

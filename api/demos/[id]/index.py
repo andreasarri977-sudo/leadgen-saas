@@ -683,6 +683,14 @@ class handler(BaseHTTPRequestHandler):
                 currency = data.get('currency') or 'EUR'
                 custom_notes = (data.get('notes') or '').strip()
                 features = data.get('features') or []
+                # Modalita IVA: "with_vat" (con P.IVA, IVA 22%) oppure "without_vat" (forfettario / privato, no IVA)
+                tax_mode = (data.get('tax_mode') or 'without_vat').strip().lower()
+                if tax_mode not in ('with_vat', 'without_vat'):
+                    tax_mode = 'without_vat'
+                try:
+                    vat_rate = float(data.get('vat_rate', 22.0))
+                except Exception:
+                    vat_rate = 22.0
                 
                 profile = db.user_settings.find_one({"setting_id": "invoice_profile"}, {"_id": 0}) or {}
                 if price is None or price == '':
@@ -751,6 +759,10 @@ class handler(BaseHTTPRequestHandler):
                 pdf.cell(0, 12, "PREVENTIVO", ln=1)
                 pdf.set_font("Helvetica", '', 10)
                 pdf.cell(0, 5, f"N. {quote_id}    -    Data: {today}    -    Valido fino al: {valid_until}", ln=1)
+                pdf.set_font("Helvetica", 'I', 8)
+                pdf.set_text_color(120, 120, 120)
+                pdf.cell(0, 4, "Tipologia: " + ("Cliente con Partita IVA (IVA inclusa)" if tax_mode == 'with_vat' else "Cliente senza Partita IVA / privato"), ln=1)
+                pdf.set_text_color(0, 0, 0)
                 
                 pdf.ln(6)
                 pdf.set_fill_color(245, 247, 250)
@@ -766,6 +778,14 @@ class handler(BaseHTTPRequestHandler):
                     pdf.cell(0, 5, "  " + _safe(business_city), ln=1)
                 if business.get('phone'):
                     pdf.cell(0, 5, "  Tel: " + _safe(business.get('phone', '')), ln=1)
+                # Se cliente con P.IVA, mostro P.IVA e CF cliente se forniti
+                client_vat = (data.get('client_vat') or '').strip()
+                client_cf = (data.get('client_fiscal_code') or '').strip()
+                if tax_mode == 'with_vat':
+                    if client_vat:
+                        pdf.cell(0, 5, "  P. IVA: " + _safe(client_vat), ln=1)
+                    if client_cf:
+                        pdf.cell(0, 5, "  Codice Fiscale: " + _safe(client_cf), ln=1)
                 
                 pdf.ln(6)
                 pdf.set_font("Helvetica", 'B', 11)
@@ -787,13 +807,42 @@ class handler(BaseHTTPRequestHandler):
                     pdf.cell(0, 7, "incluso  ", border='B', fill=True, ln=1, align='R')
                 
                 pdf.ln(3)
-                pdf.set_fill_color(30, 64, 175)
-                pdf.set_text_color(255, 255, 255)
-                pdf.set_font("Helvetica", 'B', 13)
-                pdf.cell(130, 12, "  TOTALE", border=0, fill=True)
-                total_str = f"{price_num:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-                pdf.cell(0, 12, f"{total_str} {currency_symbol}  ", border=0, fill=True, ln=1, align='R')
-                pdf.set_text_color(0, 0, 0)
+                # === Totali (con o senza IVA) ===
+                def _money(val):
+                    return f"{val:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+
+                if tax_mode == 'with_vat':
+                    # Mostro subtotale + IVA + totale
+                    subtotal = price_num
+                    vat_amount = round(subtotal * (vat_rate / 100.0), 2)
+                    grand_total = round(subtotal + vat_amount, 2)
+
+                    pdf.set_fill_color(245, 247, 250)
+                    pdf.set_text_color(40, 40, 40)
+                    pdf.set_font("Helvetica", '', 10)
+                    pdf.cell(130, 7, "  Imponibile", border='B', fill=True)
+                    pdf.cell(0, 7, f"{_money(subtotal)} {currency_symbol}  ", border='B', fill=True, ln=1, align='R')
+                    pdf.cell(130, 7, f"  IVA {vat_rate:.0f}%", border='B', fill=True)
+                    pdf.cell(0, 7, f"{_money(vat_amount)} {currency_symbol}  ", border='B', fill=True, ln=1, align='R')
+
+                    pdf.set_fill_color(30, 64, 175)
+                    pdf.set_text_color(255, 255, 255)
+                    pdf.set_font("Helvetica", 'B', 13)
+                    pdf.cell(130, 12, "  TOTALE (IVA inclusa)", border=0, fill=True)
+                    pdf.cell(0, 12, f"{_money(grand_total)} {currency_symbol}  ", border=0, fill=True, ln=1, align='R')
+                    pdf.set_text_color(0, 0, 0)
+                else:
+                    # Senza P.IVA: solo totale (operazione non soggetta a IVA)
+                    pdf.set_fill_color(30, 64, 175)
+                    pdf.set_text_color(255, 255, 255)
+                    pdf.set_font("Helvetica", 'B', 13)
+                    pdf.cell(130, 12, "  TOTALE", border=0, fill=True)
+                    pdf.cell(0, 12, f"{_money(price_num)} {currency_symbol}  ", border=0, fill=True, ln=1, align='R')
+                    pdf.set_text_color(0, 0, 0)
+                    pdf.set_font("Helvetica", 'I', 9)
+                    pdf.set_text_color(100, 100, 100)
+                    pdf.cell(0, 5, "Operazione non soggetta a IVA ai sensi dell'art. 1 commi 54-89 L. 190/2014 (regime forfettario).", ln=1)
+                    pdf.set_text_color(0, 0, 0)
                 
                 if custom_notes:
                     pdf.ln(6)
@@ -814,7 +863,7 @@ class handler(BaseHTTPRequestHandler):
                     pdf.ln(4)
                     pdf.set_font("Helvetica", 'I', 8)
                     pdf.multi_cell(0, 4, _safe(profile.get('footer_notes', '')))
-                if profile.get('legal_notes'):
+                if profile.get('legal_notes') and tax_mode != 'with_vat':
                     pdf.ln(2)
                     pdf.set_font("Helvetica", '', 7)
                     pdf.set_text_color(120, 120, 120)

@@ -26,6 +26,9 @@ const EMPTY_COSTS = {
   notes: '',
   paid: false,
   payment_date: '',
+  tax_mode: 'without_vat', // 'with_vat' | 'without_vat'
+  client_vat: '',
+  client_fiscal_code: '',
 };
 
 const CURRENCY_SYMBOL = { EUR: '€', USD: '$', GBP: '£', CHF: 'CHF' };
@@ -150,6 +153,9 @@ export default function Clients() {
         notes: c.notes ?? '',
         paid: !!c.paid,
         payment_date: c.payment_date ?? '',
+        tax_mode: c.tax_mode || 'without_vat',
+        client_vat: c.client_vat ?? '',
+        client_fiscal_code: c.client_fiscal_code ?? '',
       });
       setEmailRecipient(current.email || '');
       setWhatsappMessage('');
@@ -218,6 +224,9 @@ export default function Clients() {
       currency: costs.currency,
       notes: costs.notes,
       features: items.length > 0 ? items.map((i) => `${i.label} - ${formatCurrency(i.price, costs.currency)}`) : undefined,
+      tax_mode: costs.tax_mode,
+      client_vat: costs.client_vat || undefined,
+      client_fiscal_code: costs.client_fiscal_code || undefined,
     };
   };
 
@@ -600,6 +609,84 @@ export default function Clients() {
                   <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
                     <Sparkles size={20} className="text-blue-600" /> Invia preventivo & comunicazioni
                   </h3>
+
+                  {/* Selettore tipologia preventivo */}
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <Label className="text-xs font-semibold text-blue-900 uppercase tracking-wide mb-2 block">
+                      Tipologia preventivo
+                    </Label>
+                    <div className="grid grid-cols-2 gap-2" data-testid="tax-mode-selector">
+                      <button
+                        type="button"
+                        onClick={() => setCosts({ ...costs, tax_mode: 'without_vat' })}
+                        data-testid="tax-mode-without"
+                        className={`p-3 rounded-md border-2 text-left transition-all ${
+                          costs.tax_mode === 'without_vat'
+                            ? 'border-blue-600 bg-white shadow-sm'
+                            : 'border-neutral-200 bg-white/50 hover:bg-white'
+                        }`}
+                      >
+                        <p className="font-semibold text-sm flex items-center gap-2">
+                          {costs.tax_mode === 'without_vat' && <CheckCircle2 size={14} className="text-blue-600" />}
+                          Senza Partita IVA
+                        </p>
+                        <p className="text-[11px] text-neutral-500 mt-0.5">Privato / regime forfettario · No IVA</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCosts({ ...costs, tax_mode: 'with_vat' })}
+                        data-testid="tax-mode-with"
+                        className={`p-3 rounded-md border-2 text-left transition-all ${
+                          costs.tax_mode === 'with_vat'
+                            ? 'border-blue-600 bg-white shadow-sm'
+                            : 'border-neutral-200 bg-white/50 hover:bg-white'
+                        }`}
+                      >
+                        <p className="font-semibold text-sm flex items-center gap-2">
+                          {costs.tax_mode === 'with_vat' && <CheckCircle2 size={14} className="text-blue-600" />}
+                          Con Partita IVA
+                        </p>
+                        <p className="text-[11px] text-neutral-500 mt-0.5">Azienda · IVA 22% inclusa nel totale</p>
+                      </button>
+                    </div>
+
+                    {costs.tax_mode === 'with_vat' && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3" data-testid="vat-fields">
+                        <div>
+                          <Label className="text-[11px] text-neutral-600">P.IVA cliente (opzionale)</Label>
+                          <Input
+                            type="text"
+                            value={costs.client_vat}
+                            onChange={(e) => setCosts({ ...costs, client_vat: e.target.value })}
+                            placeholder="IT01234567890"
+                            data-testid="client-vat-input"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-neutral-600">Codice Fiscale (opzionale)</Label>
+                          <Input
+                            type="text"
+                            value={costs.client_fiscal_code}
+                            onChange={(e) => setCosts({ ...costs, client_fiscal_code: e.target.value })}
+                            placeholder="RSSMRA80A01H501Z"
+                            data-testid="client-cf-input"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {totalAmount > 0 && (
+                      <div className="mt-3 text-xs text-neutral-700 bg-white/70 rounded px-3 py-2">
+                        {costs.tax_mode === 'with_vat' ? (
+                          <>
+                            Imponibile: <strong>{formatCurrency(totalAmount, costs.currency)}</strong> · IVA 22%: <strong>{formatCurrency(totalAmount * 0.22, costs.currency)}</strong> · Totale: <strong className="text-blue-700">{formatCurrency(totalAmount * 1.22, costs.currency)}</strong>
+                          </>
+                        ) : (
+                          <>Totale a cliente: <strong className="text-blue-700">{formatCurrency(totalAmount, costs.currency)}</strong> (operazione non soggetta a IVA - regime forfettario)</>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                     <Button

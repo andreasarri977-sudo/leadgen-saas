@@ -1,6 +1,14 @@
 # WebFinder Studio - Product Requirements Document
 
 ## CHANGELOG
+- **13/05/2026 (sera)** - Quick wins su pipeline lead e preventivi:
+  - 🔍 **Barra di ricerca** nella pagina Lead: filtra in real-time per nome, città, categoria, telefono o email.
+  - 👑 **Pulsante "Sì, è cliente!"** su ogni card Kanban (eccetto colonna "Cliente"): 1 click → status diventa `client`, toast con shortcut "Apri" che porta al dettaglio cliente.
+  - 📄 **Due tipologie di preventivo PDF** selezionabili nella pagina Clienti:
+    - **Senza P.IVA** (default, regime forfettario): solo Totale + dicitura legale "Operazione non soggetta a IVA ai sensi dell'art. 1 commi 54-89 L. 190/2014".
+    - **Con P.IVA**: breakdown Imponibile + IVA 22% + Totale (IVA inclusa). Campi opzionali P.IVA/Codice Fiscale cliente vengono stampati in intestazione.
+    - Switcher visuale con preview live del totale, persistito in `client_costs.tax_mode`.
+
 - **13/05/2026** - FASE 1 + FASE 2 completate:
 
   **FASE 1 — Pagina "Clienti" dedicata** (sostituisce "Prenotazioni" in sidebar):
