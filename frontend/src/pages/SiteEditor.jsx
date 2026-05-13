@@ -219,6 +219,139 @@ const LANGUAGE_OPTIONS = [
   { code: 'ru', label: 'Русский', flag: '🇷🇺' }
 ];
 
+const SECTION_LIBRARY = [
+  { id: 'about', icon: '📝', label: 'Chi siamo', desc: 'Descrizione attività' },
+  { id: 'services', icon: '🛠️', label: 'Servizi / Menu', desc: 'Lista servizi o menu' },
+  { id: 'whyus', icon: '⭐', label: 'Perché sceglierci', desc: 'Punti di forza' },
+  { id: 'gallery', icon: '🖼️', label: 'Galleria foto', desc: 'Foto del locale' },
+  { id: 'reviews', icon: '💬', label: 'Recensioni Google', desc: 'Recensioni clienti' },
+  { id: 'hours', icon: '🕐', label: 'Orari', desc: 'Orari di apertura' },
+  { id: 'booking', icon: '📅', label: 'Prenotazioni', desc: 'Form prenotazione' },
+  { id: 'faq', icon: '❓', label: 'FAQ', desc: 'Domande frequenti' },
+  { id: 'location', icon: '📍', label: 'Mappa', desc: 'Posizione Google Maps' },
+  { id: 'contact', icon: '✉️', label: 'Contatti', desc: 'Telefono, email, WhatsApp' },
+  { id: 'social', icon: '📱', label: 'Social', desc: 'Instagram, Facebook, TikTok' },
+];
+
+const DEFAULT_ORDER_IDS = SECTION_LIBRARY.map((s) => s.id);
+
+function SectionOrderEditor({ sectionOrder, onSave, saving }) {
+  const initial = Array.isArray(sectionOrder) && sectionOrder.length > 0
+    ? [...sectionOrder.filter((id) => DEFAULT_ORDER_IDS.includes(id)), ...DEFAULT_ORDER_IDS.filter((id) => !sectionOrder.includes(id))]
+    : DEFAULT_ORDER_IDS;
+  const [order, setOrder] = useState(initial);
+  const [dragIndex, setDragIndex] = useState(null);
+  const [dirty, setDirty] = useState(false);
+
+  const move = (from, to) => {
+    if (from === to || from < 0 || to < 0 || from >= order.length || to >= order.length) return;
+    const next = [...order];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    setOrder(next);
+    setDirty(true);
+  };
+
+  const moveUp = (idx) => move(idx, idx - 1);
+  const moveDown = (idx) => move(idx, idx + 1);
+  const reset = () => { setOrder(DEFAULT_ORDER_IDS); setDirty(true); };
+
+  const handleSave = () => {
+    onSave({ section_order: order });
+    setDirty(false);
+  };
+
+  return (
+    <Card className="p-6">
+      <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
+        <div>
+          <h3 className="text-lg font-semibold flex items-center gap-2">🧱 Layout delle sezioni</h3>
+          <p className="text-sm text-neutral-500 mt-1">
+            Trascina o usa le frecce per riordinare le sezioni del sito.
+            La prima è in alto, l'ultima in basso. <br className="hidden sm:block" />
+            <span className="text-xs">Solo le sezioni visibili (controllate dal tab "Impostazioni") verranno mostrate.</span>
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={reset} data-testid="reset-section-order">
+            Ripristina default
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving || !dirty}
+            className="bg-blue-600 hover:bg-blue-700"
+            data-testid="save-section-order"
+          >
+            {saving ? <Loader2 className="animate-spin mr-2" size={16} /> : <Save className="mr-2" size={16} />}
+            Salva ordine
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-2" data-testid="section-order-list">
+        {order.map((id, idx) => {
+          const section = SECTION_LIBRARY.find((s) => s.id === id);
+          if (!section) return null;
+          return (
+            <div
+              key={id}
+              draggable
+              onDragStart={() => setDragIndex(idx)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => { if (dragIndex !== null) move(dragIndex, idx); setDragIndex(null); }}
+              onDragEnd={() => setDragIndex(null)}
+              data-testid={`section-row-${id}`}
+              className={`flex items-center gap-3 p-3 bg-white border-2 rounded-lg transition-all cursor-grab active:cursor-grabbing ${
+                dragIndex === idx ? 'border-blue-400 opacity-50' : 'border-neutral-200 hover:border-blue-300 hover:shadow-sm'
+              }`}
+            >
+              <GripVertical size={18} className="text-neutral-400 shrink-0" />
+              <div className="text-2xl shrink-0">{section.icon}</div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm">{section.label}</p>
+                <p className="text-xs text-neutral-500 truncate">{section.desc}</p>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-neutral-400 w-6 text-center font-mono">#{idx + 1}</span>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7"
+                  onClick={() => moveUp(idx)}
+                  disabled={idx === 0}
+                  data-testid={`section-up-${id}`}
+                  title="Sposta su"
+                >
+                  ▲
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7"
+                  onClick={() => moveDown(idx)}
+                  disabled={idx === order.length - 1}
+                  data-testid={`section-down-${id}`}
+                  title="Sposta giù"
+                >
+                  ▼
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {dirty && (
+        <p className="mt-4 text-xs text-amber-600 flex items-center gap-1">
+          <AlertCircle size={12} /> Modifiche non salvate
+        </p>
+      )}
+    </Card>
+  );
+}
+
 function SiteSettingsEditor({ siteLanguage, translations, bookingMode, externalBookingUrl, showReviews, showGallery, showWhyus, showFaq, showHours, showMap, showServices, onUpdate, onSave, saving }) {
   const [primaryLang, setPrimaryLang] = useState(siteLanguage || 'it');
   const [trList, setTrList] = useState(translations || []);
@@ -1338,6 +1471,10 @@ export default function SiteEditor() {
             <Search size={14} />
             <span className="hidden sm:inline">SEO</span>
           </TabsTrigger>
+          <TabsTrigger value="layout" data-testid="tab-layout" className="flex items-center gap-1 text-xs sm:text-sm bg-purple-100 text-purple-700 data-[state=active]:bg-purple-600 data-[state=active]:text-white border border-purple-300 font-semibold">
+            <GripVertical size={14} />
+            <span className="hidden sm:inline">Layout</span>
+          </TabsTrigger>
           <TabsTrigger value="settings" data-testid="tab-settings" className="flex items-center gap-1 text-xs sm:text-sm bg-blue-100 text-blue-700 data-[state=active]:bg-blue-600 data-[state=active]:text-white border border-blue-300 font-semibold">
             <Settings size={14} />
             <span className="hidden sm:inline">Impostazioni</span>
@@ -1502,6 +1639,14 @@ export default function SiteEditor() {
             onUpdate={(d) => updateSection('site_settings', d)}
             onSave={(d) => saveSection('site_settings', d)}
             saving={saving.site_settings}
+          />
+        </TabsContent>
+
+        <TabsContent value="layout">
+          <SectionOrderEditor
+            sectionOrder={siteData.section_order}
+            onSave={(d) => saveSection('layout', d)}
+            saving={saving.layout}
           />
         </TabsContent>
       </Tabs>

@@ -1,0 +1,679 @@
+import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import axios from 'axios';
+import {
+  Crown, RefreshCw, Loader2, ExternalLink, FileText, Mail, MessageCircle,
+  CheckCircle2, Circle, Search, ChevronLeft, Save, Globe, Trash2, BadgeEuro,
+  Sparkles, Copy, X
+} from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import API from '@/lib/api';
+
+const EMPTY_COSTS = {
+  site_price: '',
+  domain_price: '',
+  hosting_price: '',
+  extra_price: '',
+  extra_label: '',
+  currency: 'EUR',
+  notes: '',
+  paid: false,
+  payment_date: '',
+};
+
+const CURRENCY_SYMBOL = { EUR: '€', USD: '$', GBP: '£', CHF: 'CHF' };
+
+function formatCurrency(value, currency = 'EUR') {
+  const n = Number(value) || 0;
+  const sym = CURRENCY_SYMBOL[currency] || currency;
+  return `${sym} ${n.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function StatBox({ label, value, icon: Icon, color = 'bg-emerald-600' }) {
+  return (
+    <Card className="p-4">
+      <div className="flex items-start justify-between">
+        <div className={`p-2.5 rounded-lg ${color}`}>
+          <Icon size={20} className="text-white" />
+        </div>
+      </div>
+      <p className="text-xs text-neutral-500 mt-3 font-medium uppercase tracking-wide">{label}</p>
+      <p className="text-2xl font-bold mt-0.5 tracking-tight">{value}</p>
+    </Card>
+  );
+}
+
+function ClientRow({ client, demo, active, onClick }) {
+  const costs = client.client_costs || {};
+  const total = costs.total || 0;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid={`client-row-${client.lead_id}`}
+      className={`w-full text-left px-4 py-3 border-b border-neutral-100 transition-colors ${
+        active ? 'bg-emerald-50 border-l-4 border-l-emerald-600' : 'hover:bg-neutral-50 border-l-4 border-l-transparent'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-sm truncate">{client.name}</p>
+          <p className="text-xs text-neutral-500 truncate">{client.category || 'Categoria n/d'} · {client.city || ''}</p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-sm font-bold text-emerald-700">{formatCurrency(total, costs.currency)}</p>
+          {costs.paid ? (
+            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-[10px] py-0">PAGATO</Badge>
+          ) : total > 0 ? (
+            <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 text-[10px] py-0">DA INCASSARE</Badge>
+          ) : (
+            <span className="text-[10px] text-neutral-400">Imposta prezzo</span>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+export default function Clients() {
+  const navigate = useNavigate();
+  const { leadId } = useParams();
+
+  const [clients, setClients] = useState([]);
+  const [demos, setDemos] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [selectedId, setSelectedId] = useState(leadId || null);
+
+  const [costs, setCosts] = useState(EMPTY_COSTS);
+  const [saving, setSaving] = useState(false);
+  const [generatingQuote, setGeneratingQuote] = useState(false);
+  const [whatsappLoading, setWhatsappLoading] = useState(false);
+  const [whatsappMessage, setWhatsappMessage] = useState('');
+  const [whatsappVariant, setWhatsappVariant] = useState(null);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailRecipient, setEmailRecipient] = useState('');
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [leadsRes, demosRes] = await Promise.all([
+        axios.get(`${API}/leads?status=client`),
+        axios.get(`${API}/demos`),
+      ]);
+      const list = (leadsRes.data || []).filter((l) =>
+        ['client', 'cliente', 'cliente_acquisito'].includes(l.status)
+      );
+      setClients(list);
+      const map = {};
+      (demosRes.data || []).forEach((d) => {
+        if (d.lead_id) map[d.lead_id] = d;
+      });
+      setDemos(map);
+    } catch (error) {
+      console.error('Errore caricamento clienti:', error);
+      toast.error('Errore caricamento clienti');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
+
+  // When client changes, populate cost form
+  useEffect(() => {
+    if (!selectedId) {
+      setCosts(EMPTY_COSTS);
+      setWhatsappMessage('');
+      setEmailRecipient('');
+      return;
+    }
+    const current = clients.find((c) => c.lead_id === selectedId);
+    if (current) {
+      const c = current.client_costs || {};
+      setCosts({
+        site_price: c.site_price ?? '',
+        domain_price: c.domain_price ?? '',
+        hosting_price: c.hosting_price ?? '',
+        extra_price: c.extra_price ?? '',
+        extra_label: c.extra_label ?? '',
+        currency: c.currency || 'EUR',
+        notes: c.notes ?? '',
+        paid: !!c.paid,
+        payment_date: c.payment_date ?? '',
+      });
+      setEmailRecipient(current.email || '');
+      setWhatsappMessage('');
+      setWhatsappVariant(null);
+    }
+  }, [selectedId, clients]);
+
+  const selected = clients.find((c) => c.lead_id === selectedId) || null;
+  const selectedDemo = selected ? demos[selected.lead_id] : null;
+
+  const totalAmount =
+    (Number(costs.site_price) || 0) +
+    (Number(costs.domain_price) || 0) +
+    (Number(costs.hosting_price) || 0) +
+    (Number(costs.extra_price) || 0);
+
+  const filteredClients = clients.filter((c) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (c.name || '').toLowerCase().includes(q) || (c.city || '').toLowerCase().includes(q);
+  });
+
+  // Aggregate stats
+  const totalRevenue = clients.reduce((acc, c) => acc + (c.client_costs?.total || 0), 0);
+  const paidRevenue = clients.reduce((acc, c) => acc + (c.client_costs?.paid ? (c.client_costs?.total || 0) : 0), 0);
+  const pendingRevenue = totalRevenue - paidRevenue;
+
+  const handleSelect = (id) => {
+    setSelectedId(id);
+    navigate(`/clients/${id}`, { replace: true });
+  };
+
+  const handleSaveCosts = async () => {
+    if (!selectedId) return;
+    setSaving(true);
+    try {
+      const res = await axios.post(`${API}/leads?action=save_client_costs`, {
+        lead_id: selectedId,
+        ...costs,
+        site_price: Number(costs.site_price) || 0,
+        domain_price: Number(costs.domain_price) || 0,
+        hosting_price: Number(costs.hosting_price) || 0,
+        extra_price: Number(costs.extra_price) || 0,
+      });
+      const saved = res.data?.costs;
+      setClients((arr) =>
+        arr.map((c) => (c.lead_id === selectedId ? { ...c, client_costs: saved } : c))
+      );
+      toast.success('Costi salvati');
+    } catch (error) {
+      console.error('Errore salvataggio costi:', error);
+      toast.error('Errore salvataggio');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const _buildQuotePayload = () => {
+    const items = [];
+    if (Number(costs.site_price) > 0) items.push({ label: 'Sito web professionale', price: Number(costs.site_price) });
+    if (Number(costs.domain_price) > 0) items.push({ label: 'Dominio personalizzato (annuale)', price: Number(costs.domain_price) });
+    if (Number(costs.hosting_price) > 0) items.push({ label: 'Hosting annuale', price: Number(costs.hosting_price) });
+    if (Number(costs.extra_price) > 0 && costs.extra_label) items.push({ label: costs.extra_label, price: Number(costs.extra_price) });
+    return {
+      price: totalAmount > 0 ? totalAmount : undefined,
+      currency: costs.currency,
+      notes: costs.notes,
+      features: items.length > 0 ? items.map((i) => `${i.label} - ${formatCurrency(i.price, costs.currency)}`) : undefined,
+    };
+  };
+
+  const _downloadBase64Pdf = (base64, filename) => {
+    const byteChars = atob(base64);
+    const byteArr = new Uint8Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+    const blob = new Blob([byteArr], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleGenerateQuote = async () => {
+    if (!selectedDemo) {
+      toast.error('Questo cliente non ha ancora un sito demo associato');
+      return;
+    }
+    setGeneratingQuote(true);
+    try {
+      const res = await axios.post(`${API}/demos/${selectedDemo.demo_id}?action=quote`, _buildQuotePayload());
+      const safeName = selected.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const filename = res.data?.filename || `preventivo-${safeName}.pdf`;
+      if (res.data?.pdf_base64) {
+        _downloadBase64Pdf(res.data.pdf_base64, filename);
+        toast.success('Preventivo PDF scaricato');
+      } else {
+        toast.error('PDF non disponibile nella risposta');
+      }
+    } catch (error) {
+      console.error('Errore preventivo:', error);
+      toast.error(error?.response?.data?.error || 'Errore generazione preventivo');
+    } finally {
+      setGeneratingQuote(false);
+    }
+  };
+
+  const handleSendQuoteEmail = async () => {
+    if (!selectedDemo) {
+      toast.error('Questo cliente non ha ancora un sito demo associato');
+      return;
+    }
+    if (!emailRecipient || !emailRecipient.includes('@')) {
+      toast.error('Inserisci un indirizzo email valido');
+      return;
+    }
+    setEmailLoading(true);
+    try {
+      const res = await axios.post(`${API}/demos/${selectedDemo.demo_id}?action=quote`, {
+        ..._buildQuotePayload(),
+        send_email: true,
+        recipient_email: emailRecipient,
+      });
+      if (res.data?.sent) {
+        toast.success(`Preventivo inviato a ${emailRecipient}`);
+      } else {
+        toast.error(res.data?.send_error || 'Email non inviata');
+      }
+    } catch (error) {
+      console.error('Errore invio preventivo:', error);
+      toast.error('Errore invio email');
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  const handleGenerateWhatsapp = async () => {
+    if (!selectedDemo) {
+      toast.error('Questo cliente non ha ancora un sito demo associato');
+      return;
+    }
+    setWhatsappLoading(true);
+    try {
+      const rawUrl = selectedDemo.vercel_url || selectedDemo.demo_url || `/demo/${selectedDemo.demo_id}`;
+      const liveUrl = rawUrl.startsWith('http') ? rawUrl : `${window.location.origin}${rawUrl}`;
+      const nextCount = whatsappMessage ? 1 : 0;
+      const res = await axios.post(
+        `${API}/whatsapp/generate?lead_id=${selectedId}&demo_url=${encodeURIComponent(liveUrl)}&regenerate=${nextCount}`
+      );
+      setWhatsappMessage(res.data.message);
+      setWhatsappVariant(res.data.variant || (nextCount === 0 ? 'standard' : 'ai'));
+      toast.success(nextCount === 0 ? 'Messaggio standard pronto' : 'Variante AI generata');
+    } catch (error) {
+      console.error('Errore WhatsApp:', error);
+      toast.error('Errore generazione messaggio');
+    } finally {
+      setWhatsappLoading(false);
+    }
+  };
+
+  const handleOpenWhatsapp = () => {
+    if (!whatsappMessage || !selected) return;
+    const phone = (selected.phone || '').replace(/[^\d+]/g, '').replace(/^\+/, '');
+    const text = encodeURIComponent(whatsappMessage);
+    const url = phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCopyWhatsapp = async () => {
+    if (!whatsappMessage) return;
+    try {
+      await navigator.clipboard.writeText(whatsappMessage);
+      toast.success('Messaggio copiato');
+    } catch {
+      toast.error('Impossibile copiare');
+    }
+  };
+
+  const handleOpenDemo = () => {
+    if (!selectedDemo) return;
+    const rawUrl = selectedDemo.vercel_url || selectedDemo.demo_url || `/demo/${selectedDemo.demo_id}`;
+    const url = rawUrl.startsWith('http') ? rawUrl : `${window.location.origin}${rawUrl}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleRemoveClient = async () => {
+    if (!selected) return;
+    if (!window.confirm(`Rimuovere "${selected.name}" dai clienti acquisiti?\nVerrà riportato in "Contattato".`)) return;
+    try {
+      await axios.post(`${API}/leads?action=update_lead`, { lead_id: selected.lead_id, status: 'contattato' });
+      toast.success('Cliente riportato a "Contattato"');
+      setSelectedId(null);
+      navigate('/clients', { replace: true });
+      loadAll();
+    } catch {
+      toast.error('Errore aggiornamento');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div data-testid="clients-loading" className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin" size={32} />
+      </div>
+    );
+  }
+
+  return (
+    <div data-testid="clients-page" className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-5xl font-bold tracking-tight flex items-center gap-3">
+            <Crown size={42} className="text-amber-500" /> Clienti
+          </h1>
+          <p className="text-neutral-600 mt-2 text-lg">{clients.length} clienti acquisiti</p>
+        </div>
+        <Button onClick={loadAll} variant="outline" data-testid="refresh-clients-btn">
+          <RefreshCw size={16} />
+        </Button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatBox label="Fatturato totale" value={formatCurrency(totalRevenue)} icon={BadgeEuro} color="bg-emerald-600" />
+        <StatBox label="Incassato" value={formatCurrency(paidRevenue)} icon={CheckCircle2} color="bg-blue-600" />
+        <StatBox label="Da incassare" value={formatCurrency(pendingRevenue)} icon={Circle} color="bg-amber-500" />
+      </div>
+
+      {clients.length === 0 ? (
+        <Card className="p-12 text-center">
+          <Crown size={48} className="mx-auto text-neutral-300 mb-4" />
+          <h2 className="text-xl font-bold mb-2">Nessun cliente ancora</h2>
+          <p className="text-neutral-500 max-w-md mx-auto">
+            Quando sposti un lead nella colonna "Cliente" della pipeline Kanban, lo trovi qui per gestire costi,
+            preventivi e comunicazioni in un unico posto.
+          </p>
+          <Button className="mt-6" onClick={() => navigate('/leads')} data-testid="goto-leads-btn">
+            Vai ai Lead
+          </Button>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Lista clienti */}
+          <Card className="lg:col-span-1 overflow-hidden" data-testid="clients-list">
+            <div className="p-3 border-b border-neutral-100">
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <Input
+                  type="text"
+                  placeholder="Cerca cliente..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9"
+                  data-testid="clients-search"
+                />
+              </div>
+            </div>
+            <div className="max-h-[640px] overflow-y-auto">
+              {filteredClients.length === 0 ? (
+                <p className="p-6 text-center text-sm text-neutral-500">Nessun cliente corrisponde</p>
+              ) : (
+                filteredClients.map((c) => (
+                  <ClientRow
+                    key={c.lead_id}
+                    client={c}
+                    demo={demos[c.lead_id]}
+                    active={c.lead_id === selectedId}
+                    onClick={() => handleSelect(c.lead_id)}
+                  />
+                ))
+              )}
+            </div>
+          </Card>
+
+          {/* Pannello dettaglio */}
+          <div className="lg:col-span-2 space-y-4">
+            {!selected ? (
+              <Card className="p-12 text-center">
+                <Crown size={40} className="mx-auto text-neutral-300 mb-3" />
+                <p className="text-neutral-500">Seleziona un cliente per gestire costi, preventivi e comunicazioni.</p>
+              </Card>
+            ) : (
+              <>
+                {/* Header cliente */}
+                <Card className="p-5">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedId(null); navigate('/clients', { replace: true }); }}
+                        className="lg:hidden flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-900 mb-2"
+                      >
+                        <ChevronLeft size={16} /> Indietro
+                      </button>
+                      <h2 className="text-2xl font-bold tracking-tight" data-testid="client-detail-name">{selected.name}</h2>
+                      <p className="text-sm text-neutral-500 mt-0.5">{selected.category || 'Categoria n/d'} · {selected.city || ''}</p>
+                      <div className="flex flex-wrap gap-2 mt-2 text-xs text-neutral-600">
+                        {selected.phone && <span>📞 {selected.phone}</span>}
+                        {selected.email && <span>✉️ {selected.email}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {selectedDemo ? (
+                        <Button size="sm" variant="outline" onClick={handleOpenDemo} data-testid="open-demo-btn">
+                          <Globe size={14} className="mr-1" /> Vedi sito
+                        </Button>
+                      ) : (
+                        <Badge variant="outline" className="border-amber-300 text-amber-700">Nessun demo</Badge>
+                      )}
+                      {selectedDemo && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate(`/site-editor/${selectedDemo.demo_id}`)}
+                          data-testid="edit-site-btn"
+                        >
+                          Modifica sito
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" onClick={handleRemoveClient} className="text-red-500 hover:text-red-700" data-testid="remove-client-btn">
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Costi cliente */}
+                <Card className="p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-lg flex items-center gap-2">
+                      <BadgeEuro size={20} className="text-emerald-600" /> Costi del cliente
+                    </h3>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Switch
+                        checked={costs.paid}
+                        onCheckedChange={(v) => setCosts((s) => ({ ...s, paid: v, payment_date: v && !s.payment_date ? new Date().toISOString().slice(0, 10) : s.payment_date }))}
+                        data-testid="paid-switch"
+                      />
+                      <Label className="cursor-pointer select-none">Pagato</Label>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-neutral-600">Sito web ({CURRENCY_SYMBOL[costs.currency] || costs.currency})</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={costs.site_price}
+                        onChange={(e) => setCosts({ ...costs, site_price: e.target.value })}
+                        placeholder="es. 800"
+                        data-testid="cost-site"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-neutral-600">Dominio ({CURRENCY_SYMBOL[costs.currency] || costs.currency})</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={costs.domain_price}
+                        onChange={(e) => setCosts({ ...costs, domain_price: e.target.value })}
+                        placeholder="es. 15"
+                        data-testid="cost-domain"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-neutral-600">Hosting ({CURRENCY_SYMBOL[costs.currency] || costs.currency})</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={costs.hosting_price}
+                        onChange={(e) => setCosts({ ...costs, hosting_price: e.target.value })}
+                        placeholder="es. 60"
+                        data-testid="cost-hosting"
+                      />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="col-span-2">
+                        <Label className="text-xs text-neutral-600">Extra (descr.)</Label>
+                        <Input
+                          type="text"
+                          value={costs.extra_label}
+                          onChange={(e) => setCosts({ ...costs, extra_label: e.target.value })}
+                          placeholder="es. SEO, copy..."
+                          data-testid="cost-extra-label"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-neutral-600">Importo</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={costs.extra_price}
+                          onChange={(e) => setCosts({ ...costs, extra_price: e.target.value })}
+                          placeholder="0"
+                          data-testid="cost-extra"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {costs.paid && (
+                    <div className="mt-3 max-w-xs">
+                      <Label className="text-xs text-neutral-600">Data pagamento</Label>
+                      <Input
+                        type="date"
+                        value={costs.payment_date || ''}
+                        onChange={(e) => setCosts({ ...costs, payment_date: e.target.value })}
+                        data-testid="payment-date"
+                      />
+                    </div>
+                  )}
+
+                  <div className="mt-4">
+                    <Label className="text-xs text-neutral-600">Note interne</Label>
+                    <Textarea
+                      rows={2}
+                      value={costs.notes}
+                      onChange={(e) => setCosts({ ...costs, notes: e.target.value })}
+                      placeholder="Note di pagamento, accordi presi, scadenze..."
+                      data-testid="cost-notes"
+                    />
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-neutral-100 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-neutral-500 uppercase tracking-wide">Totale cliente</p>
+                      <p className="text-3xl font-bold text-emerald-700" data-testid="client-total">
+                        {formatCurrency(totalAmount, costs.currency)}
+                      </p>
+                    </div>
+                    <Button onClick={handleSaveCosts} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700" data-testid="save-costs-btn">
+                      {saving ? <Loader2 className="animate-spin mr-2" size={16} /> : <Save size={16} className="mr-2" />}
+                      Salva
+                    </Button>
+                  </div>
+                </Card>
+
+                {/* Azioni rapide */}
+                <Card className="p-5">
+                  <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
+                    <Sparkles size={20} className="text-blue-600" /> Invia preventivo & comunicazioni
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                    <Button
+                      onClick={handleGenerateQuote}
+                      disabled={generatingQuote || !selectedDemo}
+                      variant="outline"
+                      className="justify-start"
+                      data-testid="generate-quote-pdf-btn"
+                    >
+                      {generatingQuote ? <Loader2 className="animate-spin mr-2" size={16} /> : <FileText size={16} className="mr-2" />}
+                      Scarica PDF
+                    </Button>
+                    <Button
+                      onClick={handleSendQuoteEmail}
+                      disabled={emailLoading || !selectedDemo}
+                      variant="outline"
+                      className="justify-start"
+                      data-testid="send-quote-email-btn"
+                    >
+                      {emailLoading ? <Loader2 className="animate-spin mr-2" size={16} /> : <Mail size={16} className="mr-2" />}
+                      Invia via Email
+                    </Button>
+                    <Button
+                      onClick={handleGenerateWhatsapp}
+                      disabled={whatsappLoading || !selectedDemo}
+                      variant="outline"
+                      className="justify-start"
+                      data-testid="generate-whatsapp-btn"
+                    >
+                      {whatsappLoading ? <Loader2 className="animate-spin mr-2" size={16} /> : <MessageCircle size={16} className="mr-2" />}
+                      {whatsappMessage ? 'Variante (AI)' : 'Msg WhatsApp'}
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
+                    <div>
+                      <Label className="text-xs text-neutral-600">Email destinatario</Label>
+                      <Input
+                        type="email"
+                        value={emailRecipient}
+                        onChange={(e) => setEmailRecipient(e.target.value)}
+                        placeholder="cliente@email.com"
+                        data-testid="email-recipient-input"
+                      />
+                    </div>
+                  </div>
+
+                  {whatsappMessage && (
+                    <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-4 space-y-3" data-testid="whatsapp-message-card">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-green-700">
+                          {whatsappVariant === 'ai' ? 'Variante AI' : 'Messaggio standard'}
+                        </span>
+                        <div className="flex gap-2">
+                          <Button type="button" size="sm" variant="outline" onClick={handleCopyWhatsapp} className="h-7 text-xs" data-testid="copy-wa-btn">
+                            <Copy size={12} className="mr-1" /> Copia
+                          </Button>
+                          <Button type="button" size="sm" onClick={handleOpenWhatsapp} className="h-7 text-xs bg-green-600 hover:bg-green-700" data-testid="open-wa-btn">
+                            <ExternalLink size={12} className="mr-1" /> Apri WhatsApp
+                          </Button>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => setWhatsappMessage('')} className="h-7 w-7 p-0">
+                            <X size={12} />
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-sm text-neutral-700 whitespace-pre-wrap">{whatsappMessage}</p>
+                    </div>
+                  )}
+                </Card>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -42,6 +42,31 @@ class handler(BaseHTTPRequestHandler):
                 "clients_acquired": db.leads.count_documents({"status": {"$in": ["client", "cliente_acquisito"]}}),
                 "emails_sent": 0
             }
+
+            # Calculate total revenue from acquired clients (sum of client_costs.total)
+            revenue_pipeline = [
+                {"$match": {"status": {"$in": ["client", "cliente_acquisito"]}}},
+                {"$group": {
+                    "_id": None,
+                    "total_revenue": {"$sum": {"$ifNull": ["$client_costs.total", 0]}},
+                    "paid_revenue": {
+                        "$sum": {
+                            "$cond": [
+                                {"$eq": [{"$ifNull": ["$client_costs.paid", False]}, True]},
+                                {"$ifNull": ["$client_costs.total", 0]},
+                                0
+                            ]
+                        }
+                    }
+                }}
+            ]
+            agg = list(db.leads.aggregate(revenue_pipeline))
+            if agg:
+                stats["total_revenue"] = round(agg[0].get("total_revenue", 0) or 0, 2)
+                stats["paid_revenue"] = round(agg[0].get("paid_revenue", 0) or 0, 2)
+            else:
+                stats["total_revenue"] = 0
+                stats["paid_revenue"] = 0
             
             client.close()
             log(f"Stats: {stats}")

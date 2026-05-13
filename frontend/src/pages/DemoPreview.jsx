@@ -52,6 +52,31 @@ const AVAILABLE_LANGUAGES = {
   de: { name: 'Deutsch', flag: '🇩🇪' }
 };
 
+// Ordine sezioni default (interne al contenitore principale)
+const DEFAULT_SECTION_ORDER = ['about', 'services', 'whyus', 'gallery', 'reviews', 'hours', 'booking', 'faq', 'location', 'contact', 'social'];
+
+const getOrderMap = (customOrder) => {
+  const map = {};
+  // Prima applico ordine custom (se valido)
+  const seen = new Set();
+  if (Array.isArray(customOrder)) {
+    customOrder.forEach((id, idx) => {
+      if (DEFAULT_SECTION_ORDER.includes(id) && !seen.has(id)) {
+        map[id] = idx;
+        seen.add(id);
+      }
+    });
+  }
+  // Poi accodo le sezioni non incluse mantenendo l'ordine di default
+  let nextIdx = seen.size;
+  DEFAULT_SECTION_ORDER.forEach((id) => {
+    if (!(id in map)) {
+      map[id] = nextIdx++;
+    }
+  });
+  return map;
+};
+
 // Filtra recensioni inappropriate
 const filterReviews = (reviews) => {
   if (!reviews || reviews.length === 0) return [];
@@ -535,6 +560,7 @@ export default function DemoPreview() {
 
   const business = demo.business_data || {};
   const content = demo.content || {};
+  const sectionOrderMap = getOrderMap(content.section_order);
   const photos = business.photos || [];
   const rawReviews = filterReviews(business.reviews);
   const reviews = sortReviewsByRecency(rawReviews);
@@ -794,11 +820,12 @@ export default function DemoPreview() {
           </div>
         </div>
 
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-12 md:py-16 space-y-12 sm:space-y-16 md:space-y-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-12 md:py-16 space-y-12 sm:space-y-16 md:space-y-20 flex flex-col" data-testid="demo-sections-container" style={{ '--noop': 0 }}>
+          {/* Ogni <section> riceve style={{ order: orderMap[id] }} via classe contestuale */}
           
           {/* About Section */}
           {content.about_text && (
-            <section id="about">
+            <section id="about" style={{ order: sectionOrderMap.about }}>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">{t('sections.aboutTitle', lang)}</h2>
               <p className="text-base sm:text-lg md:text-xl text-neutral-700 leading-relaxed max-w-4xl">{content.about_text}</p>
             </section>
@@ -806,7 +833,7 @@ export default function DemoPreview() {
 
           {/* Menu (for restaurants) */}
           {hasMenu && content.show_services !== false && (
-            <section id="services">
+            <section id="services" style={{ order: sectionOrderMap.services }}>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">{t('sections.menuTitle', lang)}</h2>
               <div className="space-y-6 sm:space-y-8">
                 {content.menu_categories.map((category, idx) => (
@@ -828,7 +855,7 @@ export default function DemoPreview() {
 
           {/* Services (for non-restaurants) */}
           {!hasMenu && content.show_services !== false && content.services && content.services.length > 0 && (
-            <section id="services">
+            <section id="services" style={{ order: sectionOrderMap.services }}>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">{t('sections.servicesTitle', lang)}</h2>
               {content.services_intro && (
                 <p className="text-base sm:text-lg text-neutral-700 mb-6 sm:mb-8 max-w-3xl">{content.services_intro}</p>
@@ -858,7 +885,7 @@ export default function DemoPreview() {
 
           {/* Why Choose Us */}
           {content.show_whyus !== false && content.why_choose_us && content.why_choose_us.length > 0 && (
-            <section id="why-us" className="py-8 sm:py-12">
+            <section id="why-us" className="py-8 sm:py-12" style={{ order: sectionOrderMap.whyus }}>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-8 tracking-tight text-center">
                 {t('sections.whyChooseUs', lang) || 'Perché Sceglierci'}
               </h2>
@@ -878,7 +905,7 @@ export default function DemoPreview() {
 
           {/* Gallery */}
           {content.show_gallery !== false && galleryPhotos.length > 0 && (
-            <section id="gallery">
+            <section id="gallery" style={{ order: sectionOrderMap.gallery }}>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">{t('sections.galleryTitle', lang)}</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
                 {galleryPhotos.map((photo, index) => (
@@ -943,7 +970,7 @@ export default function DemoPreview() {
 
           {/* Booking Section */}
           {bookingMode !== 'none' && (
-            <section id="booking">
+            <section id="booking" style={{ order: sectionOrderMap.booking }}>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">
                 {bookingMode === 'table' ? t('sections.bookTableTitle', lang) : t('sections.bookAppointmentTitle', lang)}
               </h2>
@@ -956,7 +983,7 @@ export default function DemoPreview() {
 
           {/* FAQ Section */}
           {content.show_faq !== false && content.faq && content.faq.length > 0 && (
-            <section id="faq" className="py-8 sm:py-12">
+            <section id="faq" className="py-8 sm:py-12" style={{ order: sectionOrderMap.faq }}>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-8 tracking-tight">
                 {t('sections.faqTitle', lang) || 'Domande Frequenti'}
               </h2>
@@ -978,7 +1005,7 @@ export default function DemoPreview() {
 
           {/* Map */}
           {content.show_map !== false && business.location && (
-            <section id="location">
+            <section id="location" style={{ order: sectionOrderMap.location }}>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">{t('sections.locationTitle', lang)}</h2>
               <div className="rounded-xl sm:rounded-2xl overflow-hidden shadow-xl border-2 border-neutral-200">
                 <iframe src={`https://www.google.com/maps?q=${business.location.lat},${business.location.lng}&output=embed`}
@@ -997,7 +1024,7 @@ export default function DemoPreview() {
           )}
 
           {/* Contact Section */}
-          <section id="contact">
+          <section id="contact" style={{ order: sectionOrderMap.contact }}>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">{t('sections.contactTitle', lang)}</h2>
             <div className={`bg-gradient-to-br ${style.primaryColor} p-6 sm:p-8 md:p-10 rounded-xl sm:rounded-2xl text-white shadow-xl`}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
@@ -1046,7 +1073,7 @@ export default function DemoPreview() {
           </section>
 
           {/* Social Media Section - SEMPRE visibile con Instagram e Facebook come base */}
-          <section id="social" className="text-center">
+          <section id="social" className="text-center" style={{ order: sectionOrderMap.social }}>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">{t('sections.socialTitle', lang)}</h2>
             <p className="text-neutral-600 mb-6 sm:mb-8 text-base sm:text-lg">
               {lang === 'it' && 'Resta aggiornato sulle nostre novità!'}

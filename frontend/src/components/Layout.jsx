@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Search, Users, Globe, Mail, Settings as SettingsIcon, Menu, CalendarCheck, X } from 'lucide-react';
+import { LayoutDashboard, Search, Users, Globe, Mail, Settings as SettingsIcon, Menu, Crown, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
@@ -8,7 +8,7 @@ const navItems = [
   { path: '/search', icon: Search, label: 'Cerca Aziende' },
   { path: '/leads', icon: Users, label: 'Lead' },
   { path: '/demos', icon: Globe, label: 'Siti Demo' },
-  { path: '/bookings', icon: CalendarCheck, label: 'Prenotazioni' },
+  { path: '/clients', icon: Crown, label: 'Clienti' },
   { path: '/email', icon: Mail, label: 'Email' },
   { path: '/settings', icon: SettingsIcon, label: 'Impostazioni API' }
 ];

@@ -311,6 +311,45 @@ class handler(BaseHTTPRequestHandler):
                 client.close()
                 return self._json_response(200, {"success": True, "deleted_lead": lead_id})
 
+            if action == "save_client_costs":
+                # Salva i costi che il cliente acquisito sta pagando
+                lead_id = data.get('lead_id')
+                if not lead_id:
+                    return self._error(400, "lead_id richiesto")
+                from datetime import datetime, timezone
+
+                def _num(v):
+                    try:
+                        return float(v) if v not in (None, '', False) else 0.0
+                    except Exception:
+                        return 0.0
+
+                costs = {
+                    "site_price": _num(data.get('site_price')),
+                    "domain_price": _num(data.get('domain_price')),
+                    "hosting_price": _num(data.get('hosting_price')),
+                    "extra_price": _num(data.get('extra_price')),
+                    "extra_label": (data.get('extra_label') or '').strip()[:80],
+                    "currency": (data.get('currency') or 'EUR').upper()[:6],
+                    "notes": (data.get('notes') or '').strip()[:500],
+                    "paid": bool(data.get('paid')),
+                    "payment_date": (data.get('payment_date') or '').strip()[:20],
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+                costs["total"] = round(
+                    costs["site_price"] + costs["domain_price"] + costs["hosting_price"] + costs["extra_price"], 2
+                )
+                client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+                db = client[DB_NAME]
+                result = db.leads.update_one(
+                    {"lead_id": lead_id},
+                    {"$set": {"client_costs": costs}}
+                )
+                client.close()
+                if result.matched_count == 0:
+                    return self._error(404, "Lead non trovato")
+                return self._json_response(200, {"success": True, "costs": costs})
+
             if action == "send_followups":
                 # Send batch follow-up: returns the message + WhatsApp links so user can fire from device.
                 # We don't actually send via Resend here unless emails are provided.

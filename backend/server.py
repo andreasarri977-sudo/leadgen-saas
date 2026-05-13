@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks
+from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks, Request
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -84,6 +84,7 @@ class Lead(BaseModel):
     site_language: str = "it"  # Lingua del sito (it, fr, en, es, de)
     booking_mode: str = "none"  # none, appointment, table
     external_booking_url: Optional[str] = None  # URL prenotazione esterna (TheFork, Treatwell, etc.)
+    client_costs: Optional[Dict[str, Any]] = None  # Costi cliente acquisito (sito, dominio, hosting, extra)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class DemoSite(BaseModel):
@@ -130,6 +131,8 @@ class DashboardStats(BaseModel):
     clients_acquired: int
     new_leads: int
     emails_sent: int = 0
+    total_revenue: float = 0.0
+    paid_revenue: float = 0.0
 
 class ApiSettings(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -801,6 +804,81 @@ async def update_lead_status(lead_id: str, status: str):
     
     return {"success": True, "message": "Status aggiornato"}
 
+
+@api_router.post("/leads")
+async def leads_action(request: Request):
+    """Endpoint POST con dispatch via query param ?action= per parity con Vercel."""
+    try:
+        action = request.query_params.get('action')
+        body = await request.json() if await request.body() else {}
+    except Exception:
+        body = {}
+        action = request.query_params.get('action')
+
+    if action == "update_lead":
+        lead_id = body.get('lead_id')
+        if not lead_id:
+            raise HTTPException(status_code=400, detail="lead_id richiesto")
+        allowed = ['status', 'name', 'phone', 'email', 'notes', 'last_contact_at',
+                   'booking_mode', 'external_booking_url', 'site_language', 'category', 'city']
+        update_data = {k: body[k] for k in allowed if k in body}
+        if not update_data:
+            raise HTTPException(status_code=400, detail="Nessun campo aggiornabile")
+        update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+        result = await db.leads.update_one({"lead_id": lead_id}, {"$set": update_data})
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Lead non trovato")
+        return {"success": True, "updated": list(update_data.keys())}
+
+    if action == "delete_lead":
+        lead_id = body.get('lead_id')
+        if not lead_id:
+            raise HTTPException(status_code=400, detail="lead_id richiesto")
+        await db.leads.delete_one({"lead_id": lead_id})
+        demo = await db.demo_sites.find_one({"lead_id": lead_id})
+        if demo:
+            demo_id_d = demo.get("demo_id")
+            await db.demo_sites.delete_one({"lead_id": lead_id})
+            await db.bookings.delete_many({"demo_id": demo_id_d})
+            await db.demo_views.delete_many({"demo_id": demo_id_d})
+            await db.quotes.delete_many({"demo_id": demo_id_d})
+        return {"success": True, "deleted_lead": lead_id}
+
+    if action == "save_client_costs":
+        lead_id = body.get('lead_id')
+        if not lead_id:
+            raise HTTPException(status_code=400, detail="lead_id richiesto")
+
+        def _num(v):
+            try:
+                return float(v) if v not in (None, '', False) else 0.0
+            except Exception:
+                return 0.0
+
+        costs = {
+            "site_price": _num(body.get('site_price')),
+            "domain_price": _num(body.get('domain_price')),
+            "hosting_price": _num(body.get('hosting_price')),
+            "extra_price": _num(body.get('extra_price')),
+            "extra_label": (body.get('extra_label') or '').strip()[:80],
+            "currency": (body.get('currency') or 'EUR').upper()[:6],
+            "notes": (body.get('notes') or '').strip()[:500],
+            "paid": bool(body.get('paid')),
+            "payment_date": (body.get('payment_date') or '').strip()[:20],
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        costs["total"] = round(
+            costs["site_price"] + costs["domain_price"] + costs["hosting_price"] + costs["extra_price"], 2
+        )
+        result = await db.leads.update_one(
+            {"lead_id": lead_id}, {"$set": {"client_costs": costs}}
+        )
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Lead non trovato")
+        return {"success": True, "costs": costs}
+
+    raise HTTPException(status_code=400, detail=f"Azione non riconosciuta: {action}")
+
 class LeadStatusUpdate(BaseModel):
     status: str
 
@@ -1294,14 +1372,40 @@ async def get_dashboard_stats():
     clients = await db.leads.count_documents({"status": {"$in": ["client", "cliente_acquisito"]}})
     new_leads = await db.leads.count_documents({"status": {"$in": ["new", "nuovo_lead"]}})
     emails_sent = await db.emails_sent.count_documents({})
-    
+
+    # Revenue totale (somma client_costs.total) dei clienti acquisiti
+    revenue_pipeline = [
+        {"$match": {"status": {"$in": ["client", "cliente_acquisito"]}}},
+        {"$group": {
+            "_id": None,
+            "total_revenue": {"$sum": {"$ifNull": ["$client_costs.total", 0]}},
+            "paid_revenue": {
+                "$sum": {
+                    "$cond": [
+                        {"$eq": [{"$ifNull": ["$client_costs.paid", False]}, True]},
+                        {"$ifNull": ["$client_costs.total", 0]},
+                        0
+                    ]
+                }
+            }
+        }}
+    ]
+    total_revenue = 0.0
+    paid_revenue = 0.0
+    async for doc in db.leads.aggregate(revenue_pipeline):
+        total_revenue = round(float(doc.get('total_revenue') or 0), 2)
+        paid_revenue = round(float(doc.get('paid_revenue') or 0), 2)
+        break
+
     return DashboardStats(
         total_leads=total_leads,
         demos_created=demos_created,
         contacted=contacted,
         clients_acquired=clients,
         new_leads=new_leads,
-        emails_sent=emails_sent
+        emails_sent=emails_sent,
+        total_revenue=total_revenue,
+        paid_revenue=paid_revenue,
     )
 
 @api_router.get("/settings/api", response_model=ApiSettings)
@@ -2228,7 +2332,29 @@ async def update_site_content(demo_id: str, update: SiteEditorUpdate):
                 }}
             )
             return {"success": True, "message": "Logo rimosso"}
-    
+
+    elif update.section == "layout":
+        # Save section ordering
+        order = update.data.get('section_order') if isinstance(update.data, dict) else None
+        if not isinstance(order, list):
+            errors.append("section_order deve essere un array")
+        else:
+            allowed = {'about', 'services', 'whyus', 'gallery', 'reviews', 'hours', 'booking', 'faq', 'location', 'contact', 'social'}
+            cleaned = []
+            seen = set()
+            for x in order:
+                if isinstance(x, str) and x in allowed and x not in seen:
+                    cleaned.append(x)
+                    seen.add(x)
+            await db.demo_sites.update_one(
+                {"demo_id": demo_id},
+                {"$set": {
+                    "content.section_order": cleaned,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            return {"success": True, "message": "Ordine sezioni salvato", "section_order": cleaned}
+
     else:
         errors.append(f"Sezione non valida: {update.section}")
     

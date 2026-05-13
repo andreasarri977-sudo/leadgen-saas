@@ -1,6 +1,28 @@
 # WebFinder Studio - Product Requirements Document
 
 ## CHANGELOG
+- **13/05/2026** - FASE 1 + FASE 2 completate:
+
+  **FASE 1 — Pagina "Clienti" dedicata** (sostituisce "Prenotazioni" in sidebar):
+  - Nuova pagina `/clients` con lista clienti acquisiti + dettaglio.
+  - Tracking costi manuali per cliente: sito, dominio, hosting, extra (con label custom).
+  - Totale calcolato automaticamente + toggle "Pagato" con data pagamento.
+  - Note interne per ogni cliente.
+  - Stats top-page: fatturato totale, incassato, da incassare.
+  - Stats dashboard estese con `total_revenue` e `paid_revenue` (aggregate MongoDB pipeline).
+  - 1-click da dettaglio cliente: vedi sito, modifica sito, genera/scarica preventivo PDF, invia preventivo via email (Resend), genera/invia messaggio WhatsApp (standard + variante AI).
+  - Salvataggio costi via `POST /api/leads?action=save_client_costs` (Vercel + FastAPI in parità).
+  - Rimosso "Prenotazioni" dalla sidebar (vecchia pagina Bookings ancora raggiungibile via route dedicata se serve).
+
+  **FASE 2 — Riordinamento sezioni del sito**:
+  - Nuovo tab "Layout" nell'editor con drag & drop verticale + frecce ▲▼.
+  - 11 sezioni riordinabili: Chi siamo, Servizi/Menu, Perché sceglierci, Galleria, Recensioni, Orari, Prenotazioni, FAQ, Mappa, Contatti, Social.
+  - Implementazione via CSS `order` su ogni `<section>` di `DemoPreview.jsx` (zero rischio di regressione sui contenuti).
+  - Persistenza: `content.section_order: ['hero', 'services', ...]` in MongoDB.
+  - Endpoint `POST /api/demos/{id}?action=update` con `section='layout'` (Vercel + FastAPI in parità).
+  - Validazione server-side: solo id di sezioni note, no duplicati.
+  - Pulsante "Ripristina default" per tornare all'ordine originale.
+
 - **11/05/2026** - Fix generazione batch demo:
   - Risolto crash modal "Generazione Bulk Demo" causato da `<SelectItem value="">` non supportato da Radix UI (sentinel `__none__`).
   - Aggiunti pulsanti **Seleziona tutti / Deseleziona** in testa alla board + select-all per colonna Kanban.

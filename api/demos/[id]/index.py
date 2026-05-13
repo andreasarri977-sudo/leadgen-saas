@@ -236,7 +236,8 @@ class handler(BaseHTTPRequestHandler):
                     "show_faq": content.get('show_faq', True),
                     "show_hours": content.get('show_hours', True),
                     "show_map": content.get('show_map', True),
-                    "show_services": content.get('show_services', True)
+                    "show_services": content.get('show_services', True),
+                    "section_order": content.get('section_order', [])
                 }
                 client.close()
                 return self._json_response(200, editor_data)
@@ -531,6 +532,29 @@ class handler(BaseHTTPRequestHandler):
                         db.demo_sites.update_one({"demo_id": demo_id}, {"$set": updates})
                     client.close()
                     return self._json_response(200, {"success": True, "message": "Impostazioni sito salvate"})
+
+                elif section == 'layout':
+                    # Save section ordering (array di id sezione)
+                    order = section_data.get('section_order') if isinstance(section_data, dict) else None
+                    if not isinstance(order, list):
+                        client.close()
+                        return self._error(400, "section_order deve essere un array")
+                    allowed = {'about', 'services', 'whyus', 'gallery', 'reviews', 'hours', 'booking', 'faq', 'location', 'contact', 'social'}
+                    cleaned = []
+                    seen = set()
+                    for x in order:
+                        if isinstance(x, str) and x in allowed and x not in seen:
+                            cleaned.append(x)
+                            seen.add(x)
+                    db.demo_sites.update_one(
+                        {"demo_id": demo_id},
+                        {"$set": {
+                            "content.section_order": cleaned,
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        }}
+                    )
+                    client.close()
+                    return self._json_response(200, {"success": True, "message": "Ordine sezioni salvato", "section_order": cleaned})
                 
                 # Standard field updates (backward compatibility)
                 content_fields = ['tagline', 'about_text', 'homepage_subtitle', 'services_intro', 'services', 'cta_text', 'theme', 'color_scheme', 'hero_image', 'why_choose_us', 'faq']
