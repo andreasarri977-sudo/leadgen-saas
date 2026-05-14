@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import API from '@/lib/api';
+import TemplateChooserModal from '@/components/TemplateChooserModal';
 
 const STATUS_COLORS = {
   nuovo_lead: 'bg-blue-500',
@@ -52,6 +53,7 @@ export default function LeadDetail() {
   const [whatsappVariant, setWhatsappVariant] = useState(null);
   const [updatingSettings, setUpdatingSettings] = useState(false);
   const [externalBookingUrl, setExternalBookingUrl] = useState('');
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
 
   useEffect(() => {
     loadLeadData();
@@ -75,12 +77,22 @@ export default function LeadDetail() {
     }
   };
 
-  const handleGenerateDemo = async () => {
+  // Apre il modale "Scegli Template" prima di generare il sito
+  const handleGenerateDemo = () => {
+    setTemplateModalOpen(true);
+  };
+
+  // Effettuato il choose: genera il sito con design_template scelto
+  const generateWithTemplate = async (designTemplateId) => {
+    setTemplateModalOpen(false);
     setGeneratingDemo(true);
     try {
-      const response = await axios.post(`${API}/demo/generate`, { lead_id: leadId });
+      const response = await axios.post(`${API}/demo/generate`, {
+        lead_id: leadId,
+        design_template: designTemplateId,
+      });
       setDemo(response.data);
-      toast.success('Sito demo generato con successo!');
+      toast.success(`Sito demo generato (stile: ${designTemplateId})`);
       await loadLeadData();
     } catch (error) {
       console.error('Errore generazione demo:', error);
@@ -546,6 +558,15 @@ export default function LeadDetail() {
           </Card>
         </div>
       </div>
+
+      <TemplateChooserModal
+        open={templateModalOpen}
+        onClose={() => setTemplateModalOpen(false)}
+        onConfirm={generateWithTemplate}
+        businessCategory={lead?.business_data?.category || lead?.category}
+        title="Scegli lo stile del sito demo"
+        subtitle={`Quale look vuoi dare al sito di "${lead?.business_name || lead?.business_data?.name || 'questa attività'}"?`}
+      />
     </div>
   );
 }

@@ -38,6 +38,7 @@ class handler(BaseHTTPRequestHandler):
             data = json.loads(body) if body else {}
             
             lead_id = data.get('lead_id')
+            design_template = data.get('design_template') or 'classic'
             if not lead_id:
                 return self._error(400, "lead_id richiesto")
             
@@ -220,6 +221,7 @@ class handler(BaseHTTPRequestHandler):
                 "status": "created",
                 "content": content,
                 "business_data": business_data,
+                "design_template": design_template,
                 "logo_base64": None,
                 "vercel_url": None,
                 "vercel_project_id": None,

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { Filter, Download, RefreshCw, Loader2, Star, CheckCircle, Circle, X, Zap, FileText, LayoutGrid, List as ListIcon, GripVertical, Trash2, CheckSquare, Square, Crown, Search } from 'lucide-react';
+import { Filter, Download, RefreshCw, Loader2, Star, CheckCircle, Circle, X, Zap, FileText, LayoutGrid, List as ListIcon, GripVertical, Trash2, CheckSquare, Square, Crown, Search, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import API from '@/lib/api';
+import { DESIGN_TEMPLATES } from '@/lib/designTemplates';
 
 const STATUS_COLORS = {
   new: 'bg-blue-500',
@@ -177,6 +178,7 @@ export default function LeadsList() {
   const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState('__none__');
+  const [selectedDesignTemplate, setSelectedDesignTemplate] = useState('classic');
   const [batchResult, setBatchResult] = useState(null);
   const [draggingLead, setDraggingLead] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -277,6 +279,7 @@ export default function LeadsList() {
     try {
       const payload = { lead_ids: selectedLeads };
       if (selectedTemplate && selectedTemplate !== '__none__') payload.template_id = selectedTemplate;
+      if (selectedDesignTemplate && selectedDesignTemplate !== 'none') payload.design_template = selectedDesignTemplate;
 
       // Try primary endpoint, fallback to legacy one
       let res;
@@ -531,17 +534,58 @@ export default function LeadsList() {
             <div className="p-5 space-y-4">
               {!batchResult ? (
                 <>
+                  {/* === SCEGLI TEMPLATE DESIGN === */}
                   <div>
                     <Label className="flex items-center gap-2 mb-2">
+                      🎨 Stile Sito (template visivo)
+                    </Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {DESIGN_TEMPLATES.map((tpl) => {
+                        const isActive = selectedDesignTemplate === tpl.id;
+                        return (
+                          <button
+                            key={tpl.id}
+                            type="button"
+                            onClick={() => setSelectedDesignTemplate(tpl.id)}
+                            data-testid={`batch-design-${tpl.id}`}
+                            className={`relative text-left rounded-lg overflow-hidden border-2 transition-all ${
+                              isActive ? 'border-blue-600 ring-2 ring-blue-200 shadow' : 'border-neutral-200 hover:border-blue-300'
+                            }`}
+                          >
+                            {/* mini preview */}
+                            <div className={`h-10 bg-gradient-to-br ${tpl.preview.primary} flex items-end px-1.5 pb-0.5`}>
+                              {tpl.vivid_mode && <span className="w-2 h-2 rounded-full bg-white/60 mr-1" />}
+                              <span className="text-white text-[8px] font-bold drop-shadow">{tpl.emoji}</span>
+                            </div>
+                            <div className="px-1.5 py-1 bg-white">
+                              <p className="text-[10px] font-bold text-neutral-900 truncate">{tpl.name}</p>
+                            </div>
+                            {isActive && (
+                              <span className="absolute top-1 right-1 bg-blue-600 text-white rounded-full w-4 h-4 flex items-center justify-center">
+                                <Check size={10} strokeWidth={3} />
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] text-neutral-500 mt-1.5">
+                      Stile selezionato: <span className="font-semibold">{DESIGN_TEMPLATES.find(t => t.id === selectedDesignTemplate)?.name}</span>
+                      {' '}— {DESIGN_TEMPLATES.find(t => t.id === selectedDesignTemplate)?.tagline}
+                    </p>
+                  </div>
+
+                  <div className="border-t border-neutral-100 pt-3">
+                    <Label className="flex items-center gap-2 mb-2">
                       <FileText size={16} />
-                      Template da applicare (opzionale)
+                      Template salvato da te (opzionale)
                     </Label>
                     <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
                       <SelectTrigger data-testid="batch-template-select">
-                        <SelectValue placeholder="Nessun template (uso default)" />
+                        <SelectValue placeholder="Nessun template salvato" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__none__">Nessun template (uso default)</SelectItem>
+                        <SelectItem value="__none__">Nessun template salvato</SelectItem>
                         {templates.map((t) => (
                           <SelectItem key={t.template_id} value={t.template_id}>
                             {t.name} {t.category ? `· ${t.category}` : ''}
@@ -549,11 +593,6 @@ export default function LeadsList() {
                         ))}
                       </SelectContent>
                     </Select>
-                    {templates.length === 0 && (
-                      <p className="text-xs text-neutral-500 mt-2">
-                        Nessun template salvato. Aprine uno dal SiteEditor → click "Template" → "Salva come Template".
-                      </p>
-                    )}
                   </div>
 
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
@@ -561,7 +600,7 @@ export default function LeadsList() {
                     <ul className="text-xs space-y-0.5">
                       <li>• Verranno creati {selectedLeads.length} siti demo in parallelo</li>
                       <li>• I lead con un demo già esistente verranno saltati</li>
-                      <li>• {selectedTemplate && selectedTemplate !== '__none__' ? 'Il template sarà applicato a ciascun demo' : 'Verrà usato lo stile default (blu, contenuti generici)'}</li>
+                      <li>• Stile visivo: <strong>{DESIGN_TEMPLATES.find(t => t.id === selectedDesignTemplate)?.name}</strong></li>
                       <li>• Ciascun demo sarà disponibile su /demo/{'{id}'} per il preview</li>
                     </ul>
                   </div>

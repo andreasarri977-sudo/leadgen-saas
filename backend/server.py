@@ -96,6 +96,7 @@ class DemoSite(BaseModel):
     logo_base64: Optional[str] = None
     content: Dict[str, Any]
     business_data: Optional[Dict[str, Any]] = None  # Dati completi azienda per rendering
+    design_template: Optional[str] = "classic"  # 9 stili: classic|vibrant|luxury|magazine|minimal|bold|earthy|pastel|neon
     # Publishing
     publish_status: str = "draft"  # draft, approved, publishing, published, error
     production_url: Optional[str] = None  # URL Vercel (es: sitename.vercel.app)
@@ -120,9 +121,12 @@ class EmailTemplate(BaseModel):
 
 class GenerateDemoRequest(BaseModel):
     lead_id: str
+    design_template: Optional[str] = None  # ID stile: classic|vibrant|luxury|magazine|minimal|bold|earthy|pastel|neon
 
 class BatchGenerateRequest(BaseModel):
     lead_ids: List[str]
+    template_id: Optional[str] = None  # user-saved template (existing feature)
+    design_template: Optional[str] = None  # nuovo: stile visivo predefinito
 
 class DashboardStats(BaseModel):
     total_leads: int
@@ -1315,6 +1319,7 @@ async def generate_demo_site(request: GenerateDemoRequest):
         logo_base64=logo_base64,
         content=content,
         business_data=business_data,
+        design_template=(request.design_template or "classic"),
         publish_status="draft"
     )
     
@@ -1346,7 +1351,7 @@ async def generate_batch_demos(request: BatchGenerateRequest):
                     "reason": "Demo già esistente"
                 })
                 continue
-            demo = await generate_demo_site(GenerateDemoRequest(lead_id=lead_id))
+            demo = await generate_demo_site(GenerateDemoRequest(lead_id=lead_id, design_template=request.design_template))
             results["created"].append({
                 "lead_id": lead_id,
                 "demo_id": getattr(demo, "demo_id", None),

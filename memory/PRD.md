@@ -1,6 +1,16 @@
 # WebFinder Studio - Product Requirements Document
 
 ## CHANGELOG
+- **14/05/2026 (notte)** - 🎨 **9 Design Template + Vivid Mode** — i siti demo nascono già pronti:
+  - **TemplateChooserModal** (`/app/frontend/src/components/TemplateChooserModal.jsx`) con 9 stili predefiniti ognuno con preview visivo (hero gradient, body sample, decoration dots): Classic 🎯, Vibrant 🌈, Luxury 💎, Magazine 📰, Minimal ⚪, Bold ⚡, Earthy 🌿, Pastel Dream 🌸, Neon Cyber ⚡. Badge "Consigliato" sui template coerenti con la categoria dell'attività.
+  - **Configurazione** in `/app/frontend/src/lib/designTemplates.js`: ogni template ha `color_scheme`, `font_set`, `vivid_mode`, `dark_bg`, `decoration_intensity`, `cssGradient`, `preview` (per il mockup nel modale).
+  - **Flow singolo**: `LeadDetail.jsx` → click "Genera Sito" apre il modale. Confermato → POST `/api/demo/generate { lead_id, design_template }` salva il template nel demo.
+  - **Flow batch**: `LeadsList.jsx` → modale batch mostra la griglia 3×3 dei 9 stili (compact preview) + selezione + invia `design_template` insieme a `lead_ids`. Sia FastAPI (`/app/backend/server.py`) sia Vercel (`/app/api/demo/batch/index.py` e `/app/api/demo/generate/index.py`) salvano `design_template` su `demo_sites`.
+  - **🌈 Vivid Mode applicato in `DemoPreview.jsx`**: quando `template.vivid_mode === true` (Vibrant/Bold/Earthy/Pastel) un blocco `<style>` aggiunge una rule CSS che dà a **ogni `<section>`** (tranne `#contact` già gradient) lo stesso look della sezione Contatti: gradient bg pieno (var `--wf-template-gradient`), testo bianco, card glassmorphic con `bg-white/15 backdrop-blur`, border bianchi semitrasparenti, rounded-3xl, shadow.
+  - **🌑 Dark Mode** per Luxury/Neon: bg pagina dark, card translucent, heading colorato preview.text.
+  - **Font automatici via template**: se template specifica un `font_set` (non `default`), sovrascrive il font derivato dalla categoria.
+  - **Backward compat**: demo esistenti senza `design_template` → fallback 'classic' (look identico a prima).
+
 - **14/05/2026 (sera)** - Pacchetto "Siti più stilosi" — 4 feature gratis attivate:
   - 🔠 **Font per categoria** (Google Fonts dinamici): `getFontSetForCategory()` in `/app/frontend/src/lib/categoryFonts.js` mappa le 7 macro-categorie (luxury/food/wellness/sport/tech/professional/default) a coppie heading+body. In `DemoPreview.jsx` carichiamo il link Google Fonts e impostiamo CSS variables `--wf-font-heading` e `--wf-font-body` su tutti gli h1..h6 e su body. Es: pizzeria → Bricolage Grotesque, parrucchiere → Playfair Display.
   - 🎬 **CategoryDecorations** (SVG + CSS animations) in `/app/frontend/src/components/CategoryDecorations.jsx`: 3 elementi galleggianti (sparkle/circle/triangle/square/dot) variano per macro-categoria e si animano con keyframes CSS (no Lottie/lib esterne = zero peso). Posizionati `absolute` dentro l'hero, `pointer-events:none`, rispettano `prefers-reduced-motion`.

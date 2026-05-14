@@ -8,9 +8,10 @@ import 'yet-another-react-lightbox/styles.css';
 import { t, localizeHours, getLanguageFromCountry, getServiceDescription } from '@/lib/translations';
 import { toast } from 'sonner';
 import API from '@/lib/api';
-import { getFontSetForCategory } from '@/lib/categoryFonts';
+import { getFontSetForCategory, FONT_SETS } from '@/lib/categoryFonts';
 import { cloudinaryEnhance, CLOUDINARY_CONFIGURED } from '@/lib/cloudinary';
 import CategoryDecorations from '@/components/CategoryDecorations';
+import { getDesignTemplateById } from '@/lib/designTemplates';
 
 // TikTok Icon (not in lucide-react)
 const TikTokIcon = ({ size = 24, className = '' }) => (
@@ -596,8 +597,14 @@ export default function DemoPreview() {
   
   const style = getStyleFromPlaceId(business.place_id, content.color_scheme);
   
+  // === DESIGN TEMPLATE (9 stili predefiniti) ===
+  const designTemplate = getDesignTemplateById(demo.design_template || content.design_template || 'classic');
+  
   // === FONT PER CATEGORIA (Google Fonts dinamici) ===
-  const fontSet = getFontSetForCategory(business.category);
+  // Se il template specifica un font_set, usalo; altrimenti deriva dalla categoria
+  const fontSet = designTemplate.font_set && designTemplate.font_set !== 'default'
+    ? (FONT_SETS[designTemplate.font_set] || getFontSetForCategory(business.category))
+    : getFontSetForCategory(business.category);
   
   // === Use hero_image if set, otherwise first photo ===
   const rawHeroPhoto = content.hero_image || (photos.length > 0 ? photos[0].url : null);
@@ -640,6 +647,7 @@ export default function DemoPreview() {
         :root {
           --wf-font-heading: "${fontSet.heading}", system-ui, -apple-system, sans-serif;
           --wf-font-body: "${fontSet.body}", system-ui, -apple-system, sans-serif;
+          --wf-template-gradient: ${designTemplate.cssGradient};
         }
         .wf-demo-root,
         .wf-demo-root p,
@@ -658,9 +666,77 @@ export default function DemoPreview() {
           font-family: var(--wf-font-heading);
           letter-spacing: -0.02em;
         }
+
+        /* === Design Template: VIVID MODE — tutte le sezioni colorate === */
+        ${designTemplate.vivid_mode ? `
+          .wf-demo-root section[id]:not(#contact) {
+            background: var(--wf-template-gradient);
+            color: #ffffff;
+            border-radius: 28px;
+            padding: 2.5rem 1.5rem;
+            margin-block: 0.5rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+          }
+          @media (min-width: 768px) {
+            .wf-demo-root section[id]:not(#contact) {
+              padding: 3rem 2.5rem;
+            }
+          }
+          /* Alterna leggermente l'angolo del gradiente per variare visivamente */
+          .wf-demo-root section[id]:nth-of-type(even):not(#contact) {
+            background: linear-gradient(225deg, var(--tw-gradient-from, transparent), var(--tw-gradient-to, transparent)),
+                        var(--wf-template-gradient);
+          }
+          /* Heading e testi → bianco con buon contrasto */
+          .wf-demo-root section[id]:not(#contact) h2,
+          .wf-demo-root section[id]:not(#contact) h3,
+          .wf-demo-root section[id]:not(#contact) h4,
+          .wf-demo-root section[id]:not(#contact) p,
+          .wf-demo-root section[id]:not(#contact) li,
+          .wf-demo-root section[id]:not(#contact) span,
+          .wf-demo-root section[id]:not(#contact) a:not(.btn-keep) {
+            color: #ffffff !important;
+          }
+          .wf-demo-root section[id]:not(#contact) .text-neutral-500,
+          .wf-demo-root section[id]:not(#contact) .text-neutral-600,
+          .wf-demo-root section[id]:not(#contact) .text-neutral-700,
+          .wf-demo-root section[id]:not(#contact) .text-neutral-900 {
+            color: rgba(255,255,255,0.9) !important;
+          }
+          /* Card interne → glass effect */
+          .wf-demo-root section[id]:not(#contact) .bg-white,
+          .wf-demo-root section[id]:not(#contact) .bg-neutral-50,
+          .wf-demo-root section[id]:not(#contact) .bg-neutral-100 {
+            background: rgba(255,255,255,0.15) !important;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.2);
+          }
+          /* Borders dei card → bianchi semitrasparenti */
+          .wf-demo-root section[id]:not(#contact) .border,
+          .wf-demo-root section[id]:not(#contact) .border-neutral-100,
+          .wf-demo-root section[id]:not(#contact) .border-neutral-200 {
+            border-color: rgba(255,255,255,0.25) !important;
+          }
+        ` : ''}
+
+        /* === Design Template: DARK BG === */
+        ${designTemplate.dark_bg ? `
+          .wf-demo-root {
+            background: ${designTemplate.preview.bg} !important;
+            color: ${designTemplate.preview.text};
+          }
+          .wf-demo-root .bg-white,
+          .wf-demo-root .bg-neutral-50 {
+            background: rgba(255,255,255,0.06) !important;
+            color: ${designTemplate.preview.text};
+          }
+          .wf-demo-root h1, .wf-demo-root h2, .wf-demo-root h3, .wf-demo-root h4 {
+            color: ${designTemplate.preview.text};
+          }
+        ` : ''}
       `}</style>
 
-      <div className="min-h-screen bg-white font-sans wf-demo-root">
+      <div className={`min-h-screen bg-white font-sans wf-demo-root ${designTemplate.vivid_mode ? 'wf-vivid' : ''} ${designTemplate.dark_bg ? 'wf-dark' : ''}`} data-design-template={designTemplate.id}>
         {/* Navigation - WHITE LABEL (no Emergent branding) */}
         <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-neutral-200 shadow-sm">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4">

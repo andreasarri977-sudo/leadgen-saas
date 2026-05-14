@@ -143,6 +143,7 @@ class handler(BaseHTTPRequestHandler):
 
             lead_ids = data.get('lead_ids', [])
             template_id = data.get('template_id')
+            design_template = data.get('design_template') or 'classic'
             if not lead_ids:
                 return self._error(400, "lead_ids richiesto (array)")
 
@@ -211,6 +212,7 @@ class handler(BaseHTTPRequestHandler):
                         "status": "created",
                         "content": content,
                         "business_data": business_data,
+                        "design_template": design_template,
                         "logo_base64": None,
                         "vercel_url": None,
                         "vercel_project_id": None,
