@@ -682,40 +682,53 @@ export default function DemoPreview() {
               padding: 3rem 2.5rem;
             }
           }
-          /* Alterna leggermente l'angolo del gradiente per variare visivamente */
-          .wf-demo-root section[id]:nth-of-type(even):not(#contact) {
-            background: linear-gradient(225deg, var(--tw-gradient-from, transparent), var(--tw-gradient-to, transparent)),
-                        var(--wf-template-gradient);
-          }
-          /* Heading e testi → bianco con buon contrasto */
+          /* Titoli e testo "diretto" della sezione → bianco con buon contrasto */
           .wf-demo-root section[id]:not(#contact) h2,
           .wf-demo-root section[id]:not(#contact) h3,
-          .wf-demo-root section[id]:not(#contact) h4,
-          .wf-demo-root section[id]:not(#contact) p,
-          .wf-demo-root section[id]:not(#contact) li,
-          .wf-demo-root section[id]:not(#contact) span,
-          .wf-demo-root section[id]:not(#contact) a:not(.btn-keep) {
+          .wf-demo-root section[id]:not(#contact) h4 {
             color: #ffffff !important;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.15);
           }
-          .wf-demo-root section[id]:not(#contact) .text-neutral-500,
-          .wf-demo-root section[id]:not(#contact) .text-neutral-600,
-          .wf-demo-root section[id]:not(#contact) .text-neutral-700,
-          .wf-demo-root section[id]:not(#contact) .text-neutral-900 {
-            color: rgba(255,255,255,0.9) !important;
+          .wf-demo-root section[id]:not(#contact) > p,
+          .wf-demo-root section[id]:not(#contact) > div > p:first-of-type {
+            color: rgba(255,255,255,0.95) !important;
           }
-          /* Card interne → glass effect */
+
+          /* === LE CARD INTERNE: bianche piene, testo NERO → leggibilità perfetta === */
           .wf-demo-root section[id]:not(#contact) .bg-white,
           .wf-demo-root section[id]:not(#contact) .bg-neutral-50,
           .wf-demo-root section[id]:not(#contact) .bg-neutral-100 {
-            background: rgba(255,255,255,0.15) !important;
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255,255,255,0.2);
+            background: #ffffff !important;
+            backdrop-filter: none !important;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18) !important;
+            border: 1px solid rgba(255,255,255,0.4) !important;
           }
-          /* Borders dei card → bianchi semitrasparenti */
-          .wf-demo-root section[id]:not(#contact) .border,
+          /* Testo dentro le card → SEMPRE NERO (override del white globale della sezione) */
+          .wf-demo-root section[id]:not(#contact) .bg-white,
+          .wf-demo-root section[id]:not(#contact) .bg-white *,
+          .wf-demo-root section[id]:not(#contact) .bg-neutral-50,
+          .wf-demo-root section[id]:not(#contact) .bg-neutral-50 *,
+          .wf-demo-root section[id]:not(#contact) .bg-neutral-100,
+          .wf-demo-root section[id]:not(#contact) .bg-neutral-100 * {
+            color: #1f2937 !important;
+          }
+          /* Eccezione: classi accent text-X-NUM colorate restano colorate */
+          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-blue-"],
+          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-red-"],
+          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-green-"],
+          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-orange-"],
+          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-yellow-"],
+          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-purple-"],
+          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-pink-"],
+          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-emerald-"],
+          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-teal-"],
+          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-indigo-"] {
+            color: revert-layer !important;
+          }
+          /* Bordi grigi → trasparenti chiari */
           .wf-demo-root section[id]:not(#contact) .border-neutral-100,
           .wf-demo-root section[id]:not(#contact) .border-neutral-200 {
-            border-color: rgba(255,255,255,0.25) !important;
+            border-color: rgba(255,255,255,0.3) !important;
           }
         ` : ''}
 

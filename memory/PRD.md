@@ -1,6 +1,11 @@
 # WebFinder Studio - Product Requirements Document
 
 ## CHANGELOG
+- **14/05/2026 (notte+1)** - 🔧 Fix leggibilità Vivid Mode:
+  - Le sezioni colorate ora **mantengono il gradient di sfondo** ma le card interne sono **bianche piene con testo NERO** invece che translucide. In questo modo orari/menu/dettagli sono sempre leggibili.
+  - Titoli di sezione (h2/h3) restano bianchi con `text-shadow` per stagliarsi sul gradient.
+  - Border delle card → bianchi semitrasparenti per "raccordo" estetico col fondo gradient.
+
 - **14/05/2026 (notte)** - 🎨 **9 Design Template + Vivid Mode** — i siti demo nascono già pronti:
   - **TemplateChooserModal** (`/app/frontend/src/components/TemplateChooserModal.jsx`) con 9 stili predefiniti ognuno con preview visivo (hero gradient, body sample, decoration dots): Classic 🎯, Vibrant 🌈, Luxury 💎, Magazine 📰, Minimal ⚪, Bold ⚡, Earthy 🌿, Pastel Dream 🌸, Neon Cyber ⚡. Badge "Consigliato" sui template coerenti con la categoria dell'attività.
   - **Configurazione** in `/app/frontend/src/lib/designTemplates.js`: ogni template ha `color_scheme`, `font_set`, `vivid_mode`, `dark_bg`, `decoration_intensity`, `cssGradient`, `preview` (per il mockup nel modale).
