@@ -626,6 +626,23 @@ class handler(BaseHTTPRequestHandler):
                 renewals.sort(key=lambda x: x['days_to'])
                 return self._json_response(200, {"renewals": renewals, "count": len(renewals), "days_window": days})
 
+            if action == "existing_place_ids":
+                # Return just the list of place_ids already saved as leads.
+                # Used by SearchLeads frontend to mark results as "Già Salvato"
+                # without forcing the user to wait for the full leads list.
+                client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+                db = client[DB_NAME]
+                pids = [
+                    d.get('place_id')
+                    for d in db.leads.find(
+                        {"place_id": {"$exists": True, "$nin": [None, ""]}},
+                        {"_id": 0, "place_id": 1}
+                    )
+                    if d.get('place_id')
+                ]
+                client.close()
+                return self._json_response(200, {"place_ids": pids, "count": len(pids)})
+
             if action == "hot_leads":
                 client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
                 db = client[DB_NAME]

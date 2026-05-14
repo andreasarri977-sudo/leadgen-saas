@@ -1,142 +1,113 @@
 <analysis>**original_problem_statement:**
-L'utente ha richiesto di trasformare la sua applicazione SaaS di lead generation in una piattaforma di produzione stabile per vendere siti demo a prezzo premium (800-1000€). Il sistema deve includere ricerca lead via Google, generazione siti automatizzata (singola, bulk e via AI), gestione contatti tramite pipeline Kanban, tracking delle visite ai demo, e generazione automatica di preventivi PDF brandizzati (WebFinder Studio). È richiesto il pieno controllo dell'editor per mostrare/nascondere singole sezioni (FAQ, recensioni, orari, ecc.). PRODUCT REQUIREMENTS: Piattaforma React + Serverless Python (Vercel) + MongoDB.
+L'utente ha richiesto di trasformare la sua applicazione SaaS di lead generation in una piattaforma di produzione stabile per vendere siti demo a prezzo premium (800-1000€). Il sistema deve includere ricerca lead via Google, generazione siti automatizzata (singola, bulk e via AI), gestione contatti tramite pipeline Kanban, tracking delle visite ai demo, generazione automatica di preventivi PDF brandizzati, gestione dei clienti acquisiti e monitoraggio dei rinnovi annuali (hosting/dominio). PRODUCT REQUIREMENTS: Piattaforma React + Serverless Python (Vercel) + MongoDB.
 
-**User's preferred language**: italiano (INSTRUCT next agent to respond in Italian)
+**User's preferred language**: italiano (INSTRUCT next agent to respond in Italian only)
 
-**what currently exists?**
-Un'app SaaS full-stack su Vercel (React + Python Serverless + MongoDB). Include ricerca lead Google, dashboard statistiche (con tracking pixel visite), gestione pipeline Kanban, generatore di preventivi PDF, e un editor avanzato per siti demo. L'editor supporta generazione bulk, creazione template, generazione testi tramite AI (Claude), anteprima live, toggle sezioni e branding personalizzato. Il backend utilizza esattamente 12 Serverless Functions (il limite massimo del piano Vercel Free).
+**what currently exists?** 
+Un'app SaaS full-stack su Vercel (React + Python Serverless + MongoDB). Include ricerca lead Google, pipeline Kanban, generatore di preventivi PDF (con logiche IVA/Forfettario/Occasionale), un editor avanzato per siti demo con riordinamento dinamico delle sezioni, e una pagina dedicata ai Clienti per tracciare costi, ricavi e scadenze dei rinnovi (con widget di notifica). Il backend è sdoppiato:  per Vercel in produzione e  per l'ambiente locale/preview.
 
 **Last working item**:
-- **Last item agent was working**: L'agente ha completato la conversione forzata della pagina Leads in una vista puramente Kanban, risolvendo i bug di drag&drop (aggirando i limiti CORS/Vercel passando da PATCH a POST) e aggiungendo la funzionalità di eliminazione lead. Ha inoltre implementato un nuovo tab Impostazioni Sito completo nell'editor per permettere di mostrare/nascondere sezioni specifiche (galleria, recensioni, mappa, orari, servizi) con aggiornamento dinamico in .
-- **Status**: USER VERIFICATION PENDING
-- **Agent Testing Done**: Y
-- **Which testing method agent to use?**: manual testing by curl / python -c e screenshot tool.
+- **Last item agent was working**: L'agente stava implementando un pacchetto di modifiche UI/UX richieste dall'utente: rimozione di widget inutilizzati dalla Dashboard (Lead Caldi/Followup), aggiunta del bottone Elimina sulle card in Siti Demo, aggiunta del toggle Aggiungi/Rimuovi nel tab Layout dell'Editor, inserimento di nuovi colori a doppia sfumatura, e miglioramenti alla UI.
+- **Status**: IN PROGRESS
+- **Agent Testing Done**: N (L'agente ha modificato i file ma non ha testato l'ultima iterazione prima di terminare).
+- **Which testing method agent to use?**: screenshot tool per frontend, curl per backend.
 - **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-Nessun blocco tecnico o issue in progress attuale, si attende il test dell'utente dopo il deploy dell'ultima iterazione (Kanban-only, impostazioni toggle sezioni e fix drag&drop).
+- **Issue 1**: Completamento modifiche UI/UX dell'ultima richiesta utente.
+  - **Attempted fixes**: L'agente ha nascosto la CTA Contattaci, pulito la Dashboard e aggiunto i colori sfumati, ma si è fermato.
+  - **Next debug checklist**: 
+    1. Migliorare l'UX della posizione immagine in  (LiveSitePreview) per evitare immagini tagliate.
+    2. Modificare  per mostrare un badge Già Salvato sui lead che sono già presenti nel DB, disabilitando il bottone di aggiunta per evitare duplicati.
+  - **Why fix this issue and what will be achieved with the fix?**: Soddisfa pienamente l'ultima richiesta dell'utente migliorando l'usabilità dell'editor e prevenendo l'inserimento di lead duplicati.
+  - **Status**: IN PROGRESS
+  - **Is recurring issue?**: N
+  - **Should Test frontend/backend/both after fix?**: both (Frontend per l'editor, Backend/Frontend per il check dei lead salvati).
+  - **Blocked on other issue**: Nessuno.
 
 **In progress Task List**:
-Nessuno.
+- **Task 1**: Testare le modifiche alla Dashboard, Demo Sites e Site Editor.
+  - **Where to resume**: Frontend UI (Dashboard, DemoSites, SiteEditor).
+  - **What will be achieved with this?**: Verifica che le card Demo abbiano il tasto cestino visibile, che la Dashboard non abbia i widget Lead Caldi, e che il tab Layout permetta di accendere/spegnere le sezioni.
+  - **Status**: TESTING PENDING
+  - **Should Test frontend/backend/both after fix?**: frontend
+  - **Blocked on something**: Nessuno.
 
 **Upcoming and Future Tasks**:
-- P1: Traduzione a runtime del parametro  nei nuovi tab settings.
+- P1: Traduzione a runtime del parametro  nei nuovi tab settings (rimangono stringhe hardcoded in italiano).
 - P1: Rigenerazione testi con AI per singole sezioni (Genera/Riscrivi testi per About, Servizi, Why us direttamente dai rispettivi tab dell'editor senza sovrascrivere tutto il sito).
-- P2: Implementazione di cron job per follow-up automatici (Nota: Richiede Vercel Pro, al momento il sistema supporta solo l'invio batch manuale basato sui lead da ricontattare).
-- P3: Verifica DNS automatica per i domini personalizzati.
+- P2: Integrazione API Vercel per aggiungere i domini custom (custom_domain) automaticamente ai Vercel Projects e configurare i record DNS reali (attualmente mockati).
 
 **Completed work in this session**:
-- Bugfix mappa colori in  per mostrare i 27 nuovi colori (DONE).
-- Componente  iframe aggiunto in  (DONE).
-- Generatore PDF Preventivi con logo WebFinder Studio e logica condizionale (DONE).
-- Watermark Realizzato da WebFinder Studio disattivabile (DONE).
-- Sistema gestione Template (Salva/Applica) (DONE).
-- Generazione Demo Bulk (selezionando template multipli) (DONE).
-- Integrazione Pixel di tracciamento visite ai demo e Dashboard Lead Caldi (DONE).
-- Pipeline Leads Kanban (DONE).
-- Generazione template siti basata su AI Claude tramite proxy Emergent (DONE).
-- Fix routing backend (CORS su PATCH aggirato usando POST per gli aggiornamenti status) (DONE).
-- Refactoring  per usare esclusivamente la Kanban board e aggiunta eliminazione lead (DONE).
-- Nuovo tab Impostazioni Sito in  per togglare la visibilità di singole sezioni del demo (DONE).
+- Fix crash del modal Generazione Batch (Radix UI Select fallback) (DONE).
+- Messaggio WhatsApp standardizzato (primo click usa template standard, successivi usano AI) (DONE).
+- Nuova pagina  per gestire i clienti paganti, inserire costi di sito/dominio/hosting e visualizzare il fatturato (DONE).
+- Riordinamento dinamico delle sezioni (Drag & Drop nel Site Editor -> CSS  nel DemoPreview) (DONE).
+- Barra di ricerca nella Kanban board e pulsante rapido Sì, è cliente! sulle card (DONE).
+- 3 modalità di preventivo PDF (Forfettario, Prestazione Occasionale, Standard + IVA) con voci dinamiche basate sulle sezioni attive del sito (DONE).
+- Calendario Scadenze Rinnovi con calcolo automatico (+1 anno), widget notifiche e badge animato nella sidebar (DONE).
+- Miglioramento massiccio dell'esperienza Mobile (Tab switcher orizzontale al posto della Kanban verticale, testi ridimensionati) (DONE).
+- Aggiunta indicatore di Build Version (es. ) nella sidebar e header  per bypassare i problemi di caching di Vercel (DONE).
 
 **Earlier issues found/mentioned but not fixed**:
-Nessuno. Tutti i bug segnalati dall'utente (drag&drop kanban rotto, impostazioni sito in errore, generazione batch pagina bianca) sono stati risolti nell'ultima iterazione.
+Nessuno.
 
 **Known issue recurrence from previous fork**:
-- **Issue recurrence in previous fork**: Problemi cronici di caching nel deployment su Vercel e mancate sincronizzazioni GitHub. L'utente a volte visualizza errori di build Vercel tipo HTTP 500 GitHub.
+- **Issue recurrence in previous fork**: Vercel Caching / Disallineamento tra preview Emergent e produzione Vercel.
 - **Recurrence count**: Multipli.
-- **Status**: RESOLVED (Workaround: istruire sempre l'utente a cliccare Save to GitHub -> spuntare Force Push -> su Vercel fare Redeploy disattivando Use existing Build Cache in caso di disallineamenti).
+- **Status**: RESOLVED (Gestito aggiungendo indicatore visivo di versione in basso a sinistra nella sidebar e header di cache-busting).
 
 **Code Architecture**
-
+style={{ order }}
 
 **Key Technical Concepts**
 - Frontend: React, react-router-dom, TailwindCSS, Shadcn UI.
-- Backend: Vercel Serverless Functions (Python 3.12).
-- DB: MongoDB Atlas.
-- AI LLM:  package usato direttamente verso l'URL proxy  passando la Emergent LLM Key, senza usare la libreria  (troppo pesante per il limite dimensioni Serverless di Vercel).
-- PDF Gen: 
+- Backend: Vercel Serverless Functions (Python 3.12) per prod, FastAPI per preview locale.
+- Database: MongoDB Atlas.
+- Generazione PDF:  (con calcoli dinamici IVA/Ritenuta d'acconto).
 
 **key DB schema**
-- : {lead_id, place_id, name, status, last_contact_at, ...}
-- : {demo_id, business_data, content, client_settings, site_settings: {show_reviews, show_gallery, ...}, publish_status, ...}
-- : {template_id, name, category, color_scheme, why_choose_us, faq}
+- : {lead_id, place_id, name, status, client_costs: {site_price, domain_price, hosting_price, paid, payment_date}, renewals: {domain_date, hosting_date}, ...}
+- : {demo_id, content: {section_order: [...]}, site_settings: {...}, ...}
 
 **changes in tech stack**
-- Integrazione Emergent LLM fatta tramite standard HTTP  invece della SDK Python per evitare lo sforamento del limite grandezza del pacchetto lambda su Vercel (la libreria portava con sé troppe dipendenze pesanti).
+Nessun cambio.
 
 **All files of reference**
-- : Endpoint principale per pipeline CRM aggiornato (usa POST ).
-- : Generatore PDF e logic update configurazione e toggle.
-- : Aggiunta logica per gestire  tramite Claude.
-- : Rimosso tabella lista, usa solo componente Kanban.
-- : Enorme refactoring con aggiunta pannelli per Preventivo PDF, AI Template, Live Preview iframe, e tab Settings vari.
-- : Aggiunto script di tracciamento e mapping visibilità per le sezioni tramite .
+-  (Nuova pagina creata per gestire clienti e preventivi).
+-  (Tab Layout, Live Preview).
+-  (Da modificare per mostrare i lead già salvati).
+-  e  (Per la logica di update sito e PDF).
 
 **Areas that need refactoring**:
--  e  sono colossali (>2000 righe). Hanno bisogno in futuro di essere spezzati in componenti più piccoli (es. un componente separato per ogni Tab).
+-  e  rimangono estremamente grandi. In futuro i tab dell'editor dovrebbero essere estratti in componenti standalone.
+- Sincronizzazione manuale tra  e  è prona a errori (ricordarsi sempre di aggiornare entrambi).
 
 **key api endpoints**
--  (POST): Usato per il Kanban drag & drop (sovrascrive Vercel CORS issue sui PATCH).
--  (POST): Triggera l'agente Claude per creare un template.
--  (POST): Genera file preventivo FPDF.
+-  (POST): Salva l'ordine sezioni e le modifiche del sito.
+-  (POST): Genera PDF con parametro .
+-  (GET): Recupera scadenze dominio/hosting imminenti.
+-  (POST): Aggiorna date di pagamento e calcola rinnovi +1 anno.
 
 **Critical Info for New Agent**
-1. **LIMITE VERCEL STRICT 12 FUNZIONI:** Ci sono attualmente 12 funzioni (file  root) registrate in . **NON** creare nuovi file/cartelle python nel backend, altrimenti il deploy su Vercel si spacca. Per ogni nuova feature, aggiungi un parametro  nei file esistenti (es.  o ).
-2. **VERCEL E METODI HTTP:** Le richieste  frontend verso Vercel serverless functions in combinazione col  rewrite stanno causando 404 e drop di rete. Per aggiornamenti (come i drag&drop) usa SEMPRE il metodo  accompagnato dal query param .
-3. **Emergent Integrations**: A causa del limite di grandezza dei pacchetti Serverless su Vercel, non installare  o usage: openai [-h] [-v] [-b API_BASE] [-k API_KEY] [-p PROXY [PROXY ...]]
-              [-o ORGANIZATION] [-t {openai,azure}]
-              [--api-version API_VERSION] [--azure-endpoint AZURE_ENDPOINT]
-              [--azure-ad-token AZURE_AD_TOKEN] [-V]
-              {api,tools,migrate,grit} ...
-
-positional arguments:
-  {api,tools,migrate,grit}
-    api                 Direct API calls
-    tools               Client side tools for convenience
-
-options:
-  -h, --help            show this help message and exit
-  -v, --verbose         Set verbosity.
-  -b API_BASE, --api-base API_BASE
-                        What API base url to use.
-  -k API_KEY, --api-key API_KEY
-                        What API key to use.
-  -p PROXY [PROXY ...], --proxy PROXY [PROXY ...]
-                        What proxy to use.
-  -o ORGANIZATION, --organization ORGANIZATION
-                        Which organization to run as (will use your default
-                        organization if not specified)
-  -t {openai,azure}, --api-type {openai,azure}
-                        The backend API to call, must be `openai` or `azure`
-  --api-version API_VERSION
-                        The Azure API version, e.g.
-                        'https://learn.microsoft.com/en-us/azure/ai-
-                        services/openai/reference#rest-api-versioning'
-  --azure-endpoint AZURE_ENDPOINT
-                        The Azure endpoint, e.g.
-                        'https://endpoint.openai.azure.com'
-  --azure-ad-token AZURE_AD_TOKEN
-                        A token from Azure Active Directory,
-                        https://www.microsoft.com/en-
-                        us/security/business/identity-access/microsoft-entra-
-                        id
-  -V, --version         show program's version number and exit sdk via pip. Per chiamare i modelli AI, fai direttamente una POST request al proxy  passando l'Universal Key come Bearer token.
+1. **DOPPIO BACKEND:** Tutto ciò che modifichi dentro  (ambiente Vercel) **DEVE** essere replicato identico dentro  (ambiente Preview FastAPI). Se non lo fai, la funzionalità andrà in produzione ma non funzionerà nella preview locale, causando confusione.
+2. **VERCEL 12 FUNCTIONS LIMIT:** Non creare mai nuovi file  nella root di . Usa sempre file esistenti aggiungendo una rotta tramite query param .
+3. L'utente apprezza molto la proattività per flussi di business (es. gestione costi, rinnovi annuali automatizzati senza pesare sui costi server tramite widget frontend).
 
 **documents and test reports created in this job**
-Nessuno (aggiornato  in memoria).
+Nessuno (PRD e file log backend).
 
 **Last 10 User Messages and any pending HUMAN messages**
-- **User**: Richiesto fix per generazione batch pagina bianca.
-- **Agent**: Fixato aggiungendo content mapping in .
-- **User**: Richiesto fix AI template (rimuoveva dati esistenti prenotazione).
-- **Agent**: Fixato  per preservare keys preesistenti.
-- **User**: Richiesto rimuovere vista tabella CRM, fixare Kanban slide non funzionante e aggiungere cancellazione lead + tab impostazioni sito configurabile.
-- **Agent**: Refactoring totale CRM -> Kanban Only, passato drag&drop endpoint da PATCH a POST (risolve bug), aggiunto bottone elimina, aggiunto nuovo  in  e testata logica toggle in . (COMPLETATO, IN ATTESA DI TEST UTENTE)
+- **User**: Richiesta di migliorare la UX Mobile (Kanban infinito).
+- **Agent**: (DONE) Cambiato Kanban in un tab switcher orizzontale su schermi piccoli.
+- **User**: Su modifica sito e cambio i layout, l’ordine delle cose me le salva ma non me le applica nei siti.
+- **Agent**: (DONE) Fixato aggiungendo le proprietà CSS  mancanti e il Cache-Control.
+- **User**: Ora nei siti appare sotto Chi Siamo ce la casella contattaci oggi, togliamola... e nel modifica sito vorrei poter scegliere se togliere qualche sezione dal layout... pagina siti demo un modo più veloce per cancellare... Dashboard via sezioni lead caldi/mail e aggiungi clienti... aggiungere altri colori doppi sfumati... e sezione posizione immagine fatta meglio... su cerca aziende quando salvo un cliente voglio che si veda che è salvato.
+- **Agent**: (IN PROGRESS) L'agente ha iniziato a implementare i fix visivi (rimozione widget dashboard, colori sfumati, bottoni nel layout editor, tasto cestino), ma si è interrotto prima di migliorare il posizionamento dell'immagine e l'evidenziazione dei lead salvati nella pagina di ricerca.
 
 **Project Health Check:**
-- Broken: None apparent.
-- Mocked: Invio email massivo (limitato dal piano free Vercel, da sostituire con cron tasks per invii automatici reali).
+- Broken: N/A.
+- Mocked: Aggiunta domini custom (il backend API salva il record ma non chiama realmente l'API di Vercel per aggiornare i DNS).
 
 **3rd Party Integrations**
 - Google Places API (Search) - User API Key
@@ -151,11 +122,9 @@ Nessuno (aggiornato  in memoria).
 - Known regressions: Nessuna.
 
 **Credentials to test flow:**
-Non necessarie. Configurate nel db MongoDB e  locale.
+Non necessarie (MongoDB e URL configurati localmente tramite preview link).
 
 **What agent forgot to execute**
-L'agente ha coperto le modifiche principali ma le stringhe  sui nuovi selettori aggiunti non sono state tradotte dinamicamente a runtime; rimangono per il momento i nomi in italiano nel database/configurazione, questo è inserito nella Upcoming tasks.
-
-**Debugging checklist for current issue**
-Nessun issue corrente - ma in caso di segnalazione drag&drop Kanban ancora rotto da parte dell'utente, assicurarsi che la migrazione a  su  stia effettivamente aggiornando correttamente lo stato in MongoDB.
-- Backend file to check:  (cercare la clausola action == update_lead).</analysis>
+L'agente non ha completato l'ultima richiesta dell'utente:
+1. Migliorare l'UX di  (immagine hero) per fare in modo che non si veda tagliata nel Site Editor.
+2. Nella pagina , controllare se un'azienda trovata da Google Places esiste già nel database e mostrare uno stato visivo Già Salvato (per evitare doppioni).</analysis>

@@ -1127,7 +1127,8 @@ export default function DemoPreview() {
             </div>
           </section>
 
-          {/* Final CTA */}
+          {/* Final CTA (disattivata di default - può essere riattivata da content.show_final_cta) */}
+          {content.show_final_cta && (
           <section className={`text-center py-10 sm:py-12 md:py-14 bg-gradient-to-br ${style.primaryColor} rounded-xl sm:rounded-2xl text-white shadow-xl`}>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 px-4">
               {content.cta_text || t('cta.contactToday', lang)}
@@ -1158,6 +1159,7 @@ export default function DemoPreview() {
               )}
             </div>
           </section>
+          )}
         </div>
 
         {/* Footer - WHITE LABEL (no Emergent branding) */}

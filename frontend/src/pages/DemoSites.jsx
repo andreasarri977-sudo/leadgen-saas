@@ -229,8 +229,20 @@ export default function DemoSites() {
             <Card
               key={demo.demo_id}
               data-testid={`demo-card-${demo.demo_id}`}
-              className="p-6 hover:shadow-lg transition-shadow flex flex-col"
+              className="p-6 hover:shadow-lg transition-shadow flex flex-col relative group"
             >
+              {/* Pulsante elimina rapido (top-right) */}
+              <button
+                type="button"
+                onClick={() => handleDelete(demo.demo_id, demo.business_name)}
+                disabled={deleting[demo.demo_id]}
+                data-testid={`quick-delete-${demo.demo_id}`}
+                title="Elimina sito"
+                className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white border border-red-200 text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 flex items-center justify-center shadow-sm opacity-60 group-hover:opacity-100 transition-all z-10"
+              >
+                {deleting[demo.demo_id] ? <Loader2 size={14} className="animate-spin" /> : <X size={16} />}
+              </button>
+
               {/* Header con logo e status */}
               <div className="flex items-start justify-between mb-4">
                 {demo.logo_base64 ? (

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { TrendingUp, Users, Globe, CheckCircle, Target, Search, Mail, RefreshCw, WifiOff, Wifi, Flame, Bell, ExternalLink, Send, Loader2 } from 'lucide-react';
+import { TrendingUp, Users, Globe, CheckCircle, Target, Search, Mail, RefreshCw, WifiOff, Wifi, Crown, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -358,105 +358,35 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Hot Leads + Follow-ups widgets */}
-      {(hotLeads.length > 0 || followups.length > 0) && (
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Hot Leads */}
-          <Card className="p-6" data-testid="hot-leads-widget">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Flame size={20} className="text-orange-500" />
-                <h2 className="text-xl font-bold">Lead Caldi</h2>
-              </div>
-              <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full font-medium">{hotLeads.length}</span>
-            </div>
-            {hotLeads.length === 0 ? (
-              <p className="text-sm text-neutral-500">Ancora nessun lead ha visualizzato un sito demo. Invia i primi demo!</p>
-            ) : (
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {hotLeads.slice(0, 6).map((l) => (
-                  <Link key={l.lead_id} to={`/leads`} className="flex items-center justify-between p-2 hover:bg-orange-50 rounded-lg" data-testid={`hot-lead-${l.lead_id}`}>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-sm truncate flex items-center gap-1">
-                        {l.score >= 15 && <span title="Lead bollente">🔥</span>}
-                        {l.score >= 8 && l.score < 15 && <span title="Lead caldo">🌶️</span>}
-                        {l.name}
-                      </p>
-                      <p className="text-xs text-neutral-500 truncate">
-                        {l.views} viste · {l.sessions} sessioni · {l.clicks} click
-                      </p>
-                    </div>
-                    <ExternalLink size={14} className="text-neutral-400" />
-                  </Link>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          {/* Follow-ups */}
-          <Card className="p-6" data-testid="followups-widget">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Bell size={20} className="text-blue-500" />
-                <h2 className="text-xl font-bold">Da Ricontattare</h2>
-              </div>
-              <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">{followups.length}</span>
-            </div>
-            {followups.length === 0 ? (
-              <p className="text-sm text-neutral-500">Nessun lead da ricontattare oggi.</p>
-            ) : (
-              <>
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1 mb-3">
-                  {followups.slice(0, 8).map((l) => (
-                    <div key={l.lead_id} className="flex items-center justify-between p-2 hover:bg-blue-50 rounded-lg" data-testid={`followup-${l.lead_id}`}>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-sm truncate">{l.name}</p>
-                        <p className="text-xs text-neutral-500 truncate">{l.category || ''} · {l.city || ''}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <Button
-                  onClick={sendBatchFollowups}
-                  disabled={sendingFollowups}
-                  data-testid="send-batch-followups"
-                  className="w-full bg-blue-600 hover:bg-blue-700"
-                  size="sm"
-                >
-                  {sendingFollowups ? <Loader2 className="mr-2 animate-spin" size={14} /> : <Send className="mr-2" size={14} />}
-                  Invia Follow-up a Tutti ({followups.length})
-                </Button>
-                <p className="text-[10px] text-neutral-500 mt-2 text-center">
-                  Email automatiche via Resend + apertura sequenziale chat WhatsApp
-                </p>
-              </>
-            )}
-          </Card>
-        </div>
-      )}
+      {/* Hot Leads + Follow-ups widgets - RIMOSSI temporaneamente */}
 
       <Card className="mt-8 p-6" data-testid="quick-actions-card">
         <h2 className="text-2xl font-bold mb-4 tracking-tight">Azioni Rapide</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <Link to="/search" className="p-4 border border-neutral-200 rounded-lg hover:shadow-md hover:border-blue-300 transition-all cursor-pointer">
             <Search className="mb-2" size={24} />
-            <h3 className="font-bold mb-1">Cerca Nuove Aziende</h3>
-            <p className="text-sm text-neutral-600">Trova aziende senza sito web nella tua zona</p>
+            <h3 className="font-bold mb-1">Cerca Aziende</h3>
+            <p className="text-sm text-neutral-600">Trova nuovi lead</p>
           </Link>
           <Link to="/leads" className="p-4 border border-neutral-200 rounded-lg hover:shadow-md hover:border-blue-300 transition-all cursor-pointer">
             <Users className="mb-2" size={24} />
             <h3 className="font-bold mb-1">Gestisci Lead</h3>
-            <p className="text-sm text-neutral-600">Visualizza e gestisci i tuoi lead attivi</p>
-          </Link>
-          <Link to="/email" className="p-4 border-2 border-purple-300 rounded-lg hover:shadow-md hover:border-purple-400 transition-all cursor-pointer bg-purple-50">
-            <Mail className="mb-2 text-purple-600" size={24} />
-            <h3 className="font-bold mb-1 text-purple-900">Email & WhatsApp</h3>
-            <p className="text-sm text-purple-700">Invia messaggi AI ai tuoi lead</p>
+            <p className="text-sm text-neutral-600">Pipeline Kanban</p>
           </Link>
           <Link to="/demos" className="p-4 border border-neutral-200 rounded-lg hover:shadow-md hover:border-blue-300 transition-all cursor-pointer">
             <Globe className="mb-2" size={24} />
             <h3 className="font-bold mb-1">Siti Demo</h3>
-            <p className="text-sm text-neutral-600">Visualizza i siti demo generati</p>
+            <p className="text-sm text-neutral-600">Tutti i siti generati</p>
+          </Link>
+          <Link to="/clients" className="p-4 border-2 border-amber-300 rounded-lg hover:shadow-md hover:border-amber-500 transition-all cursor-pointer bg-amber-50">
+            <Crown className="mb-2 text-amber-600" size={24} />
+            <h3 className="font-bold mb-1 text-amber-900">Clienti</h3>
+            <p className="text-sm text-amber-700">Costi, scadenze, preventivi</p>
+          </Link>
+          <Link to="/email" className="p-4 border-2 border-purple-300 rounded-lg hover:shadow-md hover:border-purple-400 transition-all cursor-pointer bg-purple-50">
+            <Mail className="mb-2 text-purple-600" size={24} />
+            <h3 className="font-bold mb-1 text-purple-900">Email & WhatsApp</h3>
+            <p className="text-sm text-purple-700">Messaggi AI</p>
           </Link>
         </div>
       </Card>

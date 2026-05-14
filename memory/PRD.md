@@ -1,6 +1,11 @@
 # WebFinder Studio - Product Requirements Document
 
 ## CHANGELOG
+- **14/05/2026** - UX rifinita su Cerca Aziende & Editor:
+  - 🛡️ **"Già Salvato" su Cerca Aziende**: i risultati di Google Places che corrispondono a un lead già nel DB vengono evidenziati con bordo verde + badge verde "Già Salvato" + bottone "Vai al Lead" (al posto di "Salva") che porta direttamente in `/leads`. Toast riepilogativo: "Trovati N potenziali clienti (M già nei tuoi lead)". Anche il modal dettagli mostra il bottone "Già nei tuoi lead — Vai a I Miei Lead".
+  - 🔌 **Nuovo endpoint** `GET /api/leads?action=existing_place_ids` (parità Vercel + FastAPI preview): restituisce solo l'array dei `place_id` salvati per check rapido in frontend.
+  - 🖼️ **Editor Stile → Posizione Immagine ripensata**: due colonne — a sinistra l'immagine intera (object-contain con riquadro blu "Area visibile" che indica esattamente quale porzione finirà nell'hero, cliccando direttamente sull'immagine si imposta la posizione), a destra il "Risultato finale (come apparirà nel sito)" in aspect-video 16/9, sotto la griglia 3×3 "Allineamento rapido" con bottoni 11×11 + icone più grandi e badge "Posizione" sopra. Niente più immagini tagliate alla cieca.
+
 - **13/05/2026 (notte+2)** - Mobile UX migliorato:
   - 📱 **Titoli responsive**: `text-3xl sm:text-4xl lg:text-5xl` invece di `text-5xl` fisso (Dashboard, Lead, Clienti).
   - 📱 **Stats compatte su mobile**: layout orizzontale 3 colonne con icona piccola affianco al valore, font ridotti, padding più stretto.

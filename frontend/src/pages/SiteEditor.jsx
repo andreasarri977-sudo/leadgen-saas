@@ -52,7 +52,18 @@ const COLOR_SCHEMES = [
   { id: 'navy', name: 'Blu Navy', color: '#1e40af', preview: 'bg-blue-800' },
   { id: 'maroon', name: 'Bordeaux', color: '#be123c', preview: 'bg-rose-700' },
   { id: 'forest', name: 'Verde Foresta', color: '#15803d', preview: 'bg-green-700' },
-  { id: 'black', name: 'Nero', color: '#171717', preview: 'bg-neutral-900' }
+  { id: 'black', name: 'Nero', color: '#171717', preview: 'bg-neutral-900' },
+  // === SFUMATURE DOPPIE (gradient backgrounds) ===
+  { id: 'sunset', name: 'Tramonto', color: '#f97316', preview: 'bg-gradient-to-r from-orange-500 to-pink-500', gradient: 'from-orange-500 to-pink-500' },
+  { id: 'ocean', name: 'Oceano', color: '#0ea5e9', preview: 'bg-gradient-to-r from-cyan-500 to-blue-600', gradient: 'from-cyan-500 to-blue-600' },
+  { id: 'aurora', name: 'Aurora', color: '#a855f7', preview: 'bg-gradient-to-r from-purple-500 to-pink-500', gradient: 'from-purple-500 to-pink-500' },
+  { id: 'forest_grad', name: 'Foresta', color: '#10b981', preview: 'bg-gradient-to-r from-emerald-500 to-teal-600', gradient: 'from-emerald-500 to-teal-600' },
+  { id: 'royal', name: 'Reale', color: '#6366f1', preview: 'bg-gradient-to-r from-indigo-600 to-purple-600', gradient: 'from-indigo-600 to-purple-600' },
+  { id: 'fire', name: 'Fuoco', color: '#ef4444', preview: 'bg-gradient-to-r from-red-500 to-yellow-500', gradient: 'from-red-500 to-yellow-500' },
+  { id: 'mint_grad', name: 'Menta Fresca', color: '#10b981', preview: 'bg-gradient-to-r from-green-400 to-cyan-500', gradient: 'from-green-400 to-cyan-500' },
+  { id: 'berry', name: 'Bacca', color: '#d946ef', preview: 'bg-gradient-to-r from-fuchsia-500 to-rose-500', gradient: 'from-fuchsia-500 to-rose-500' },
+  { id: 'gold_grad', name: 'Oro Elegante', color: '#fbbf24', preview: 'bg-gradient-to-r from-amber-400 to-orange-500', gradient: 'from-amber-400 to-orange-500' },
+  { id: 'midnight', name: 'Mezzanotte', color: '#1e293b', preview: 'bg-gradient-to-r from-slate-800 to-blue-900', gradient: 'from-slate-800 to-blue-900' }
 ];
 
 // Color scheme map (mirror of DemoPreview) - used for the LIVE PREVIEW
@@ -235,13 +246,25 @@ const SECTION_LIBRARY = [
 
 const DEFAULT_ORDER_IDS = SECTION_LIBRARY.map((s) => s.id);
 
-function SectionOrderEditor({ sectionOrder, onSave, saving }) {
+function SectionOrderEditor({ sectionOrder, showReviews, showGallery, showWhyus, showFaq, showHours, showMap, showServices, onSave, onSaveVisibility, saving }) {
   const initial = Array.isArray(sectionOrder) && sectionOrder.length > 0
     ? [...sectionOrder.filter((id) => DEFAULT_ORDER_IDS.includes(id)), ...DEFAULT_ORDER_IDS.filter((id) => !sectionOrder.includes(id))]
     : DEFAULT_ORDER_IDS;
   const [order, setOrder] = useState(initial);
   const [dragIndex, setDragIndex] = useState(null);
   const [dirty, setDirty] = useState(false);
+
+  // Mappa visibilità: id sezione → flag corrente (true=visibile, false=nascosta)
+  const visibilityMap = {
+    reviews: showReviews !== false,
+    gallery: showGallery !== false,
+    whyus: showWhyus !== false,
+    faq: showFaq !== false,
+    hours: showHours !== false,
+    location: showMap !== false,
+    services: showServices !== false,
+    // Le sezioni about/booking/contact/social sono sempre visibili (non toggleable)
+  };
 
   const move = (from, to) => {
     if (from === to || from < 0 || to < 0 || from >= order.length || to >= order.length) return;
@@ -256,6 +279,15 @@ function SectionOrderEditor({ sectionOrder, onSave, saving }) {
   const moveDown = (idx) => move(idx, idx + 1);
   const reset = () => { setOrder(DEFAULT_ORDER_IDS); setDirty(true); };
 
+  const toggleVisibility = (sectionId) => {
+    // map UI id → backend field
+    const fieldMap = { reviews: 'show_reviews', gallery: 'show_gallery', whyus: 'show_whyus', faq: 'show_faq', hours: 'show_hours', location: 'show_map', services: 'show_services' };
+    const field = fieldMap[sectionId];
+    if (!field || !onSaveVisibility) return;
+    const currentVisible = visibilityMap[sectionId];
+    onSaveVisibility({ [field]: !currentVisible });
+  };
+
   const handleSave = () => {
     onSave({ section_order: order });
     setDirty(false);
@@ -267,9 +299,7 @@ function SectionOrderEditor({ sectionOrder, onSave, saving }) {
         <div>
           <h3 className="text-lg font-semibold flex items-center gap-2">🧱 Layout delle sezioni</h3>
           <p className="text-sm text-neutral-500 mt-1">
-            Trascina o usa le frecce per riordinare le sezioni del sito.
-            La prima è in alto, l'ultima in basso. <br className="hidden sm:block" />
-            <span className="text-xs">Solo le sezioni visibili (controllate dal tab "Impostazioni") verranno mostrate.</span>
+            Trascina o usa le frecce per riordinare. Tocca <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-bold">−</span> per nascondere, <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-bold">+</span> per riaggiungere.
           </p>
         </div>
         <div className="flex gap-2">
@@ -292,6 +322,8 @@ function SectionOrderEditor({ sectionOrder, onSave, saving }) {
         {order.map((id, idx) => {
           const section = SECTION_LIBRARY.find((s) => s.id === id);
           if (!section) return null;
+          const isToggleable = id in visibilityMap;
+          const isVisible = isToggleable ? visibilityMap[id] : true;
           return (
             <div
               key={id}
@@ -302,13 +334,17 @@ function SectionOrderEditor({ sectionOrder, onSave, saving }) {
               onDragEnd={() => setDragIndex(null)}
               data-testid={`section-row-${id}`}
               className={`flex items-center gap-3 p-3 bg-white border-2 rounded-lg transition-all cursor-grab active:cursor-grabbing ${
-                dragIndex === idx ? 'border-blue-400 opacity-50' : 'border-neutral-200 hover:border-blue-300 hover:shadow-sm'
+                dragIndex === idx ? 'border-blue-400 opacity-50' : isVisible ? 'border-neutral-200 hover:border-blue-300 hover:shadow-sm' : 'border-neutral-200 opacity-50 bg-neutral-50'
               }`}
             >
               <GripVertical size={18} className="text-neutral-400 shrink-0" />
               <div className="text-2xl shrink-0">{section.icon}</div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm">{section.label}</p>
+                <p className="font-semibold text-sm flex items-center gap-2">
+                  {section.label}
+                  {isToggleable && !isVisible && <span className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-700 rounded font-bold">NASCOSTA</span>}
+                  {!isToggleable && <span className="text-[10px] px-1.5 py-0.5 bg-neutral-100 text-neutral-500 rounded">sempre visibile</span>}
+                </p>
                 <p className="text-xs text-neutral-500 truncate">{section.desc}</p>
               </div>
               <div className="flex items-center gap-1">
@@ -337,6 +373,19 @@ function SectionOrderEditor({ sectionOrder, onSave, saving }) {
                 >
                   ▼
                 </Button>
+                {isToggleable && (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className={`h-7 w-7 ml-1 ${isVisible ? 'text-red-500 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'}`}
+                    onClick={() => toggleVisibility(id)}
+                    data-testid={`section-toggle-${id}`}
+                    title={isVisible ? 'Nascondi sezione' : 'Aggiungi sezione'}
+                  >
+                    {isVisible ? <Trash2 size={14} /> : <Plus size={14} />}
+                  </Button>
+                )}
               </div>
             </div>
           );
@@ -345,7 +394,7 @@ function SectionOrderEditor({ sectionOrder, onSave, saving }) {
 
       {dirty && (
         <p className="mt-4 text-xs text-amber-600 flex items-center gap-1">
-          <AlertCircle size={12} /> Modifiche non salvate
+          <AlertCircle size={12} /> Modifiche all'ordine non salvate
         </p>
       )}
     </Card>
@@ -678,57 +727,119 @@ function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme,
         <>
           {/* Position Control */}
           <div className="mb-8">
-            <Label className="text-base font-medium mb-3 block">📍 Posizione Immagine</Label>
-            <p className="text-sm text-neutral-500 mb-4">Regola quale parte dell'immagine mostrare</p>
-            
-            {/* Visual Position Selector */}
-            <div className="flex gap-6 items-start">
-              <div className="grid grid-cols-3 gap-1 bg-neutral-100 p-2 rounded-lg">
-                {['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'].map((pos) => (
-                  <button
-                    key={pos}
-                    onClick={() => handlePositionChange(pos)}
-                    className={`w-10 h-10 rounded flex items-center justify-center text-xs transition-all ${
-                      selectedPosition === pos 
-                        ? 'bg-blue-600 text-white' 
-                        : 'bg-white hover:bg-blue-100 text-neutral-600'
-                    }`}
-                    title={HERO_POSITIONS.find(p => p.id === pos)?.name}
-                  >
-                    {pos === 'center' ? '●' : pos === 'top' ? '↑' : pos === 'bottom' ? '↓' : 
-                     pos === 'left' ? '←' : pos === 'right' ? '→' :
-                     pos === 'top-left' ? '↖' : pos === 'top-right' ? '↗' :
-                     pos === 'bottom-left' ? '↙' : '↘'}
-                  </button>
-                ))}
+            <div className="flex items-start justify-between flex-wrap gap-2 mb-3">
+              <div>
+                <Label className="text-base font-medium block">📍 Posizione Immagine</Label>
+                <p className="text-sm text-neutral-500">Sposta il riquadro per scegliere quale parte dell'immagine restare visibile nell'hero</p>
               </div>
-              
-              {/* Preview */}
-              <div className="flex-1">
-                <p className="text-xs text-neutral-500 mb-2">Anteprima:</p>
-                <div className="relative w-full h-24 rounded-lg overflow-hidden border border-neutral-200">
-                  <img 
-                    src={selectedHero} 
-                    alt="Preview" 
-                    className="w-full h-full object-cover"
-                    style={{ objectPosition: positionValue }}
+              <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-full font-medium">
+                {HERO_POSITIONS.find(p => p.id === selectedPosition)?.name || 'Centro'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-5 items-start">
+              {/* Left side: Full image with draggable crop indicator */}
+              <div>
+                <p className="text-[11px] text-neutral-500 mb-1.5 font-medium uppercase tracking-wide">Immagine intera</p>
+                <div
+                  className="relative rounded-lg overflow-hidden border-2 border-neutral-200 bg-neutral-900/5 select-none"
+                  data-testid="position-fullimage-area"
+                >
+                  <img
+                    src={selectedHero}
+                    alt="Immagine completa"
+                    className="w-full h-auto max-h-48 object-contain bg-[repeating-conic-gradient(#f3f4f6_0%_25%,#ffffff_0%_50%)] bg-[length:16px_16px]"
+                    onClick={(e) => {
+                      // Cliccando sull'immagine, sposta il riquadro automaticamente
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const px = ((e.clientX - rect.left) / rect.width) * 100;
+                      const py = ((e.clientY - rect.top) / rect.height) * 100;
+                      let h = 'center'; let v = 'center';
+                      if (px < 33) h = 'left'; else if (px > 67) h = 'right';
+                      if (py < 33) v = 'top'; else if (py > 67) v = 'bottom';
+                      const id = v === 'center' && h === 'center' ? 'center'
+                        : v === 'center' ? h
+                        : h === 'center' ? v
+                        : `${v}-${h}`;
+                      handlePositionChange(id);
+                    }}
                   />
-                  {selectedOverlay !== 'none' && (
-                    <div 
-                      className="absolute inset-0"
-                      style={{
-                        background: selectedOverlay === 'gradient' 
-                          ? 'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.6) 100%)'
-                          : HERO_OVERLAYS.find(o => o.id === selectedOverlay)?.value
-                      }}
+                  {/* Crop frame indicator (overlay con riquadro che mostra dove è il "focus") */}
+                  {(() => {
+                    const pos = selectedPosition;
+                    // Map to alignment percentages 0=start, 50=center, 100=end
+                    const hx = pos.includes('left') ? 0 : pos.includes('right') ? 100 : 50;
+                    const vy = pos.includes('top') ? 0 : pos.includes('bottom') ? 100 : 50;
+                    return (
+                      <div
+                        className="pointer-events-none absolute border-[3px] border-blue-500 rounded-md shadow-[0_0_0_9999px_rgba(0,0,0,0.35)] transition-all duration-200"
+                        style={{
+                          width: '40%', height: '60%',
+                          left: `calc(${hx}% - ${hx * 0.4}%)`,
+                          top: `calc(${vy}% - ${vy * 0.6}%)`
+                        }}
+                      >
+                        <div className="absolute -top-5 left-0 text-[10px] font-bold text-white bg-blue-600 px-1.5 py-0.5 rounded">
+                          Area visibile
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <p className="text-[11px] text-neutral-500 mt-1.5">
+                  💡 Tocca direttamente l'immagine per spostare il riquadro
+                </p>
+              </div>
+
+              {/* Right side: Position grid + cropped preview */}
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[11px] text-neutral-500 mb-1.5 font-medium uppercase tracking-wide">Risultato finale (come apparirà nel sito)</p>
+                  <div className="relative w-full rounded-lg overflow-hidden border-2 border-blue-200 bg-neutral-100" style={{ aspectRatio: '16/9' }}>
+                    <img
+                      src={selectedHero}
+                      alt="Anteprima ritaglio"
+                      className="w-full h-full object-cover"
+                      style={{ objectPosition: positionValue }}
                     />
-                  )}
+                    {selectedOverlay !== 'none' && (
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          background: selectedOverlay === 'gradient'
+                            ? 'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.6) 100%)'
+                            : HERO_OVERLAYS.find(o => o.id === selectedOverlay)?.value
+                        }}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[11px] text-neutral-500 mb-1.5 font-medium uppercase tracking-wide">Allineamento rapido</p>
+                  <div className="grid grid-cols-3 gap-1 bg-neutral-100 p-1.5 rounded-lg w-fit">
+                    {['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'].map((pos) => (
+                      <button
+                        key={pos}
+                        data-testid={`hero-position-${pos}`}
+                        onClick={() => handlePositionChange(pos)}
+                        className={`w-11 h-11 rounded flex items-center justify-center text-lg font-bold transition-all ${
+                          selectedPosition === pos
+                            ? 'bg-blue-600 text-white shadow-md scale-105'
+                            : 'bg-white hover:bg-blue-100 text-neutral-600 hover:scale-105'
+                        }`}
+                        title={HERO_POSITIONS.find(p => p.id === pos)?.name}
+                      >
+                        {pos === 'center' ? '●' : pos === 'top' ? '↑' : pos === 'bottom' ? '↓'
+                         : pos === 'left' ? '←' : pos === 'right' ? '→'
+                         : pos === 'top-left' ? '↖' : pos === 'top-right' ? '↗'
+                         : pos === 'bottom-left' ? '↙' : '↘'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-            <p className="text-sm text-neutral-500 mt-2">
-              Posizione: <span className="font-medium">{HERO_POSITIONS.find(p => p.id === selectedPosition)?.name || 'Centro'}</span>
-            </p>
           </div>
 
           {/* Overlay Control */}
@@ -1645,8 +1756,16 @@ export default function SiteEditor() {
         <TabsContent value="layout">
           <SectionOrderEditor
             sectionOrder={siteData.section_order}
+            showReviews={siteData.show_reviews}
+            showGallery={siteData.show_gallery}
+            showWhyus={siteData.show_whyus}
+            showFaq={siteData.show_faq}
+            showHours={siteData.show_hours}
+            showMap={siteData.show_map}
+            showServices={siteData.show_services}
             onSave={(d) => saveSection('layout', d)}
-            saving={saving.layout}
+            onSaveVisibility={(d) => saveSection('site_settings', d)}
+            saving={saving.layout || saving.site_settings}
           />
         </TabsContent>
       </Tabs>

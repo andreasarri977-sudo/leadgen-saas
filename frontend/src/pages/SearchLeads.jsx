@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { Search, Loader2, MapPin, Star, Plus, Check, X, Phone, Globe, Clock, Image, MessageCircle, ChevronRight, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,7 +31,7 @@ const CATEGORIES = [
 ];
 
 // Modal per dettagli azienda con caricamento dati da Google
-function LeadDetailModal({ lead, onClose, onSave, isSaving, isSaved, country }) {
+function LeadDetailModal({ lead, onClose, onSave, isSaving, isSaved, country, onGoToLeads }) {
   const [details, setDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -265,13 +266,14 @@ function LeadDetailModal({ lead, onClose, onSave, isSaving, isSaved, country }) 
         {/* Footer con azioni */}
         <div className="p-6 bg-neutral-50 border-t border-neutral-200">
           <Button
-            onClick={() => onSave({ ...lead, ...details })}
-            disabled={isSaving || isSaved || loading}
+            onClick={() => isSaved ? onGoToLeads?.() : onSave({ ...lead, ...details })}
+            disabled={isSaving || loading}
             className={`w-full h-12 text-lg ${
               isSaved 
-                ? 'bg-green-100 text-green-700 hover:bg-green-100' 
+                ? 'bg-green-600 hover:bg-green-700 text-white' 
                 : 'bg-green-600 hover:bg-green-700 text-white'
             }`}
+            data-testid="modal-save-or-goto-lead-btn"
           >
             {isSaving ? (
               <>
@@ -280,8 +282,8 @@ function LeadDetailModal({ lead, onClose, onSave, isSaving, isSaved, country }) 
               </>
             ) : isSaved ? (
               <>
-                <Check size={20} className="mr-2" />
-                Lead Salvato! Vai a "I Miei Lead"
+                <ExternalLink size={20} className="mr-2" />
+                Già nei tuoi lead — Vai a "I Miei Lead"
               </>
             ) : (
               <>
@@ -291,7 +293,7 @@ function LeadDetailModal({ lead, onClose, onSave, isSaving, isSaved, country }) 
             )}
           </Button>
           <p className="text-center text-sm text-neutral-500 mt-3">
-            Dopo il salvataggio potrai generare il sito demo
+            {isSaved ? 'Questa attività è già nella tua pipeline.' : 'Dopo il salvataggio potrai generare il sito demo'}
           </p>
         </div>
       </div>
@@ -300,6 +302,7 @@ function LeadDetailModal({ lead, onClose, onSave, isSaving, isSaved, country }) 
 }
 
 export default function SearchLeads() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     city: '',
     country: 'IT',
@@ -313,7 +316,23 @@ export default function SearchLeads() {
   const [error, setError] = useState(null);
   const [savingLeads, setSavingLeads] = useState({});
   const [savedLeads, setSavedLeads] = useState({});
+  const [existingPlaceIds, setExistingPlaceIds] = useState(new Set());
   const [selectedLead, setSelectedLead] = useState(null);
+
+  // Carica i place_id già salvati nel DB per evidenziare i duplicati
+  const loadExistingPlaceIds = async () => {
+    try {
+      const res = await axios.get(`${API}/leads?action=existing_place_ids`);
+      const ids = new Set(res.data?.place_ids || []);
+      setExistingPlaceIds(ids);
+      return ids;
+    } catch (e) {
+      console.warn('[LeadHunter] impossibile caricare place_ids esistenti', e);
+      return new Set();
+    }
+  };
+
+  useEffect(() => { loadExistingPlaceIds(); }, []);
 
   const getCountryName = (code) => {
     const country = COUNTRIES.find(c => c.code === code);
@@ -337,6 +356,14 @@ export default function SearchLeads() {
       }
       
       setSavedLeads(prev => ({ ...prev, [leadKey]: true }));
+      // Aggiorna anche il set globale per coerenza in caso di nuova ricerca
+      if (lead.place_id) {
+        setExistingPlaceIds(prev => {
+          const next = new Set(prev);
+          next.add(lead.place_id);
+          return next;
+        });
+      }
     } catch (error) {
       console.error('Errore salvataggio lead:', error);
       toast.error(`Errore nel salvataggio di "${lead.name}"`);
@@ -377,16 +404,37 @@ export default function SearchLeads() {
     setSavedLeads({});
     
     try {
+      // Rinfresca i place_id esistenti per essere sicuri di avere lo stato aggiornato
+      const knownIds = await loadExistingPlaceIds();
+
       const response = await axios.post(`${API}/search/companies`, {
         ...formData,
         country: getCountryName(formData.country)
       });
-      setResults(response.data);
+      const list = response.data || [];
+      setResults(list);
+
+      // Pre-popola la mappa savedLeads per i risultati già presenti nel DB
+      const preSaved = {};
+      list.forEach((lead) => {
+        if (lead.place_id && knownIds.has(lead.place_id)) {
+          const key = lead.place_id || lead.name;
+          preSaved[key] = true;
+        }
+      });
+      if (Object.keys(preSaved).length > 0) {
+        setSavedLeads(preSaved);
+      }
       
-      if (response.data.length === 0) {
+      if (list.length === 0) {
         toast.info('Nessuna azienda trovata. Prova a ridurre i filtri.');
       } else {
-        toast.success(`Trovati ${response.data.length} potenziali clienti!`);
+        const alreadyCount = Object.keys(preSaved).length;
+        if (alreadyCount > 0) {
+          toast.success(`Trovati ${list.length} potenziali clienti (${alreadyCount} già nei tuoi lead)`);
+        } else {
+          toast.success(`Trovati ${list.length} potenziali clienti!`);
+        }
       }
     } catch (error) {
       console.error('Errore ricerca:', error);
@@ -581,15 +629,32 @@ export default function SearchLeads() {
                     console.log('[LeadHunter] Lead clicked:', lead);
                     setSelectedLead(lead);
                   }}
-                  className="p-4 border-2 border-neutral-200 rounded-xl hover:shadow-lg hover:border-blue-400 transition-all cursor-pointer group bg-white"
+                  className={`p-4 border-2 rounded-xl hover:shadow-lg transition-all cursor-pointer group ${
+                    isSaved
+                      ? 'border-green-300 bg-green-50/40 hover:border-green-400'
+                      : 'border-neutral-200 bg-white hover:border-blue-400'
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-bold text-lg truncate group-hover:text-blue-600 transition-colors">
+                        <h3 className={`font-bold text-lg truncate transition-colors ${
+                          isSaved ? 'text-green-800' : 'group-hover:text-blue-600'
+                        }`}>
                           {lead.name}
                         </h3>
-                        <ChevronRight size={20} className="text-neutral-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all flex-shrink-0" />
+                        {isSaved && (
+                          <Badge
+                            data-testid={`badge-already-saved-${leadKey}`}
+                            className="bg-green-600 hover:bg-green-600 text-white border-0 shrink-0 flex items-center gap-1"
+                          >
+                            <Check size={12} />
+                            Già Salvato
+                          </Badge>
+                        )}
+                        <ChevronRight size={20} className={`shrink-0 transition-all ${
+                          isSaved ? 'text-green-400' : 'text-neutral-300 group-hover:text-blue-500 group-hover:translate-x-1'
+                        }`} />
                       </div>
                       <p className="text-sm text-neutral-500 mb-2">{lead.category}</p>
                       <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-600">
@@ -607,18 +672,24 @@ export default function SearchLeads() {
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                      <Badge className="bg-green-100 text-green-700 border border-green-300">
-                        Senza Sito
-                      </Badge>
+                      {!isSaved && (
+                        <Badge className="bg-green-100 text-green-700 border border-green-300">
+                          Senza Sito
+                        </Badge>
+                      )}
                       <Button
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleSaveLead(lead);
+                          if (isSaved) {
+                            navigate('/leads');
+                          } else {
+                            handleSaveLead(lead);
+                          }
                         }}
-                        disabled={isSaving || isSaved}
+                        disabled={isSaving}
                         className={isSaved 
-                          ? "bg-green-100 text-green-700 hover:bg-green-100 border border-green-300" 
+                          ? "bg-green-600 hover:bg-green-700 text-white border-0" 
                           : "bg-blue-600 hover:bg-blue-700 text-white"
                         }
                         data-testid={`save-lead-${leadKey}`}
@@ -627,8 +698,8 @@ export default function SearchLeads() {
                           <Loader2 size={14} className="animate-spin" />
                         ) : isSaved ? (
                           <>
-                            <Check size={14} className="mr-1" />
-                            Salvato
+                            <ExternalLink size={14} className="mr-1" />
+                            Vai al Lead
                           </>
                         ) : (
                           <>
@@ -639,8 +710,12 @@ export default function SearchLeads() {
                       </Button>
                     </div>
                   </div>
-                  <p className="text-xs text-blue-500 mt-3 font-medium group-hover:underline">
-                    👆 Tocca per vedere foto, recensioni e tutti i dettagli
+                  <p className={`text-xs mt-3 font-medium ${
+                    isSaved ? 'text-green-600' : 'text-blue-500 group-hover:underline'
+                  }`}>
+                    {isSaved
+                      ? '✓ Questo lead è già nella tua lista — tocca per rivederlo'
+                      : '👆 Tocca per vedere foto, recensioni e tutti i dettagli'}
                   </p>
                 </div>
               );
@@ -658,6 +733,7 @@ export default function SearchLeads() {
           onSave={handleSaveLead}
           isSaving={savingLeads[selectedLead.place_id || selectedLead.name]}
           isSaved={savedLeads[selectedLead.place_id || selectedLead.name]}
+          onGoToLeads={() => { setSelectedLead(null); navigate('/leads'); }}
         />
       )}
     </div>

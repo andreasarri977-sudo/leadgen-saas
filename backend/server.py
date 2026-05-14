@@ -795,6 +795,19 @@ async def search_companies(request: SearchRequest):
 @api_router.get("/leads", response_model=None)
 async def get_leads(status: Optional[str] = None, action: Optional[str] = None, days: int = 30):
     # Action dispatch: ?action=upcoming_renewals (parity con Vercel)
+    if action == "existing_place_ids":
+        # Lista place_id già salvati nei lead (per evidenziare duplicati in SearchLeads)
+        cursor = db.leads.find(
+            {"place_id": {"$exists": True, "$nin": [None, ""]}},
+            {"_id": 0, "place_id": 1}
+        )
+        pids = []
+        async for d in cursor:
+            pid = d.get('place_id')
+            if pid:
+                pids.append(pid)
+        return {"place_ids": pids, "count": len(pids)}
+
     if action == "upcoming_renewals":
         from datetime import timedelta
         today = datetime.now(timezone.utc).date()
