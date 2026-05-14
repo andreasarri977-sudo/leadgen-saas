@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import API from '@/lib/api';
+import { DESIGN_TEMPLATES } from '@/lib/designTemplates';
 
 // Color schemes
 const COLOR_SCHEMES = [
@@ -579,11 +580,12 @@ function SiteSettingsEditor({ siteLanguage, translations, bookingMode, externalB
 }
 
 // Style Editor Component
-function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, gallery, businessName, demoId, productionUrl, hideWatermark, onUpdate, onSave, saving }) {
+function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, designTemplate, gallery, businessName, businessCategory, demoId, productionUrl, hideWatermark, onUpdate, onSave, saving }) {
   const [selectedColor, setSelectedColor] = useState(colorScheme || 'blue');
   const [selectedHero, setSelectedHero] = useState(heroImage || '');
   const [selectedPosition, setSelectedPosition] = useState(heroPosition || 'center');
   const [selectedOverlay, setSelectedOverlay] = useState(heroOverlay || 'medium');
+  const [selectedTemplate, setSelectedTemplate] = useState(designTemplate || 'classic');
   const [hideMark, setHideMark] = useState(Boolean(hideWatermark));
   
   // Find initial index based on heroImage
@@ -644,6 +646,67 @@ function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme,
       {/* Live Preview - sticky on desktop */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 mb-8">
         <div className="space-y-8 min-w-0">
+
+          {/* === DESIGN TEMPLATE (9 stili) === */}
+          <div className="p-4 rounded-2xl border-2 border-blue-100 bg-gradient-to-br from-blue-50 to-purple-50">
+            <div className="flex items-start justify-between flex-wrap gap-2 mb-3">
+              <div>
+                <Label className="text-base font-medium block flex items-center gap-2">🎨 Template Design</Label>
+                <p className="text-sm text-neutral-500">Cambia lo stile complessivo del sito (colori, font, layout)</p>
+              </div>
+              <span className="text-xs px-2 py-1 bg-blue-600 text-white rounded-full font-semibold">
+                {DESIGN_TEMPLATES.find((t) => t.id === selectedTemplate)?.emoji}{' '}
+                {DESIGN_TEMPLATES.find((t) => t.id === selectedTemplate)?.name}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 sm:grid-cols-3 gap-2">
+              {DESIGN_TEMPLATES.map((tpl) => {
+                const isActive = selectedTemplate === tpl.id;
+                return (
+                  <button
+                    key={tpl.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedTemplate(tpl.id);
+                      // Applica anche il color_scheme del template per coerenza visiva
+                      const newColor = tpl.color_scheme || selectedColor;
+                      setSelectedColor(newColor);
+                      onUpdate({
+                        design_template: tpl.id,
+                        hero_image: selectedHero,
+                        color_scheme: newColor,
+                        hero_position: selectedPosition,
+                        hero_overlay: selectedOverlay,
+                        theme,
+                      });
+                    }}
+                    data-testid={`editor-template-${tpl.id}`}
+                    className={`relative text-left rounded-lg overflow-hidden border-2 transition-all hover:shadow-md ${
+                      isActive ? 'border-blue-600 ring-2 ring-blue-200 scale-[1.02]' : 'border-neutral-200 hover:border-blue-300'
+                    }`}
+                  >
+                    <div className={`h-12 bg-gradient-to-br ${tpl.preview.primary} flex items-end px-1.5 pb-0.5`}>
+                      {tpl.vivid_mode && <span className="w-2 h-2 rounded-full bg-white/70 mr-1 animate-pulse" />}
+                      <span className="text-white text-[10px] font-bold drop-shadow">{tpl.emoji}</span>
+                    </div>
+                    <div className="px-1.5 py-1 bg-white">
+                      <p className="text-[10px] font-bold text-neutral-900 truncate">{tpl.name}</p>
+                    </div>
+                    {isActive && (
+                      <span className="absolute top-1 right-1 bg-blue-600 text-white rounded-full w-4 h-4 flex items-center justify-center">
+                        <CheckCircle size={10} strokeWidth={3} />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-neutral-500 italic mt-2">
+              💡 {DESIGN_TEMPLATES.find((t) => t.id === selectedTemplate)?.tagline} — {DESIGN_TEMPLATES.find((t) => t.id === selectedTemplate)?.description}
+            </p>
+          </div>
+
           {/* Color Scheme */}
           <div>
             <Label className="text-base font-medium mb-3 block">🎨 Colore Principale</Label>
@@ -1622,8 +1685,10 @@ export default function SiteEditor() {
             heroOverlay={siteData.hero_overlay || 'medium'}
             colorScheme={siteData.color_scheme || 'blue'}
             theme={siteData.theme || 'modern'}
+            designTemplate={siteData.design_template || 'classic'}
             gallery={siteData.gallery || []}
             businessName={siteData.business_name}
+            businessCategory={siteData.business_data?.category || siteData.category}
             demoId={demoId}
             productionUrl={siteData.production_url}
             hideWatermark={siteData.hide_watermark}
@@ -1634,7 +1699,8 @@ export default function SiteEditor() {
                 hero_position: data.hero_position !== undefined ? data.hero_position : prev.hero_position,
                 hero_overlay: data.hero_overlay !== undefined ? data.hero_overlay : prev.hero_overlay,
                 color_scheme: data.color_scheme !== undefined ? data.color_scheme : prev.color_scheme,
-                theme: data.theme !== undefined ? data.theme : prev.theme
+                theme: data.theme !== undefined ? data.theme : prev.theme,
+                design_template: data.design_template !== undefined ? data.design_template : prev.design_template,
               }));
               setHasChanges(prev => ({ ...prev, style: true }));
             }}

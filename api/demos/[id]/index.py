@@ -467,6 +467,9 @@ class handler(BaseHTTPRequestHandler):
                         content_updates['content.hero_overlay'] = section_data['hero_overlay']
                     if section_data.get('theme'):
                         content_updates['content.theme'] = section_data['theme']
+                    if section_data.get('design_template'):
+                        # Salvato a top-level (per coerenza con il campo del modello DemoSite)
+                        content_updates['design_template'] = section_data['design_template']
                     if 'hide_watermark' in section_data:
                         content_updates['content.hide_watermark'] = bool(section_data['hide_watermark'])
                     

@@ -2547,6 +2547,31 @@ async def update_site_content(demo_id: str, update: SiteEditorUpdate):
             )
             return {"success": True, "message": "Ordine sezioni salvato", "section_order": cleaned}
 
+    elif update.section == "style":
+        # Stile del sito: colore, hero, posizione, overlay, theme, design_template
+        sd = update.data if isinstance(update.data, dict) else {}
+        set_updates = {}
+        if sd.get('color_scheme'):
+            set_updates['content.color_scheme'] = sd['color_scheme']
+        if sd.get('hero_image') is not None:
+            set_updates['content.hero_image'] = sd['hero_image']
+        if sd.get('hero_position'):
+            set_updates['content.hero_position'] = sd['hero_position']
+        if sd.get('hero_overlay'):
+            set_updates['content.hero_overlay'] = sd['hero_overlay']
+        if sd.get('theme'):
+            set_updates['content.theme'] = sd['theme']
+        if 'hide_watermark' in sd:
+            set_updates['content.hide_watermark'] = bool(sd['hide_watermark'])
+        if sd.get('design_template'):
+            # Salvato a top-level per coerenza col modello DemoSite
+            set_updates['design_template'] = sd['design_template']
+
+        if set_updates:
+            set_updates['updated_at'] = datetime.now(timezone.utc).isoformat()
+            await db.demo_sites.update_one({"demo_id": demo_id}, {"$set": set_updates})
+        return {"success": True, "message": "Stile aggiornato"}
+
     else:
         errors.append(f"Sezione non valida: {update.section}")
     

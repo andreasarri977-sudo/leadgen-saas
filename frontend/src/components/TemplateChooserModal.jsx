@@ -1,7 +1,34 @@
 import React, { useState } from 'react';
-import { X, Check, Star } from 'lucide-react';
+import { X, Check, Star, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DESIGN_TEMPLATES, DEFAULT_DESIGN_TEMPLATE_ID } from '@/lib/designTemplates';
+
+/**
+ * AI heuristic: suggerisce il template migliore in base a categoria + nome attività.
+ * Algoritmo deterministico (zero costo) basato su keyword matching nelle categorie.
+ */
+function suggestTemplateByCategory(category) {
+  const c = (category || '').toLowerCase();
+  if (!c) return 'classic';
+  const matchers = [
+    { keys: ['parrucchier', 'estetist', 'barbier', 'centro estetico', 'tatuator', 'nail', 'spa', 'salone'], tpl: 'luxury' },
+    { keys: ['gioieller', 'abbigliament', 'boutique'], tpl: 'luxury' },
+    { keys: ['fotograf', 'ristorante gourmet', 'fine dining', 'creativo', 'studio creativo', 'design'], tpl: 'magazine' },
+    { keys: ['ristorant', 'pizzer', 'bar', 'caffetter', 'caff', 'gelater', 'pasticcer', 'hamburg', 'fast food', 'kebab', 'food', 'osteri', 'trattor'], tpl: 'vibrant' },
+    { keys: ['pasticcer', 'wedding', 'matrimonio', 'bambini', 'infanzia', 'nail'], tpl: 'pastel' },
+    { keys: ['dentist', 'fisioterap', 'veterinar', 'farmac', 'ottic', 'medic', 'clinic', 'studio medic'], tpl: 'minimal' },
+    { keys: ['avvocat', 'notaio', 'commercialist', 'consulent', 'studio leg'], tpl: 'minimal' },
+    { keys: ['immobilia', 'assicurazion'], tpl: 'minimal' },
+    { keys: ['palestr', 'crossfit', 'sport', 'fitness'], tpl: 'bold' },
+    { keys: ['yoga', 'pilates', 'meditaz', 'bio', 'fiorist', 'artigian'], tpl: 'earthy' },
+    { keys: ['tech', 'gaming', 'startup', 'software', 'digital agency'], tpl: 'neon' },
+    { keys: ['meccanic', 'autolavagg', 'gommist', 'carrozzer', 'idraulic', 'elettricist', 'fabbr', 'falegnam', 'imbianch', 'ferrament'], tpl: 'classic' },
+  ];
+  for (const m of matchers) {
+    if (m.keys.some((k) => c.includes(k))) return m.tpl;
+  }
+  return 'classic';
+}
 
 /**
  * Modale di scelta template visivo per generazione siti demo.
@@ -26,7 +53,9 @@ export default function TemplateChooserModal({
   confirmLabel = 'Genera con questo stile',
   businessCategory,
 }) {
-  const [selected, setSelected] = useState(defaultId);
+  // Pre-suggest AI: se hai una categoria, parti già col template suggerito
+  const aiSuggested = businessCategory ? suggestTemplateByCategory(businessCategory) : defaultId;
+  const [selected, setSelected] = useState(aiSuggested || defaultId);
 
   if (!open) return null;
 
@@ -62,6 +91,39 @@ export default function TemplateChooserModal({
             <X size={20} />
           </button>
         </div>
+
+        {/* AI Suggest banner */}
+        {businessCategory && (
+          <div className="px-5 sm:px-7 pt-3">
+            <button
+              type="button"
+              onClick={() => {
+                const suggested = suggestTemplateByCategory(businessCategory);
+                setSelected(suggested);
+                // Auto-conferma immediatamente
+                setTimeout(() => onConfirm(suggested), 250);
+              }}
+              data-testid="template-ai-suggest-btn"
+              className="w-full group flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-blue-600 text-white shadow-md hover:shadow-lg hover:scale-[1.01] transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <span className="w-9 h-9 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                  <Sparkles size={18} className="animate-pulse" />
+                </span>
+                <div className="text-left">
+                  <p className="font-bold text-sm">✨ Lascia scegliere all'AI</p>
+                  <p className="text-[11px] text-white/80">
+                    In base alla categoria "{businessCategory}" → ti suggerisco{' '}
+                    <strong>{DESIGN_TEMPLATES.find((t) => t.id === suggestTemplateByCategory(businessCategory))?.name}</strong>
+                  </p>
+                </div>
+              </div>
+              <span className="text-[11px] bg-white/15 px-2 py-1 rounded-full font-semibold group-hover:bg-white/25">
+                Genera ora →
+              </span>
+            </button>
+          </div>
+        )}
 
         {/* Grid templates */}
         <div className="overflow-y-auto p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

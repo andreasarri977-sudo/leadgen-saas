@@ -1,6 +1,21 @@
 # WebFinder Studio - Product Requirements Document
 
 ## CHANGELOG
+- **14/05/2026 (notte+2)** - ✨ **AI Auto-suggest + Template selector nell'Editor**:
+  - **🤖 "Lascia scegliere all'AI"**: nel `TemplateChooserModal.jsx` aggiunta funzione `suggestTemplateByCategory(category)` con keyword matching deterministico (zero costo API). Banner viola in cima al modale → 1 click suggerisce e auto-conferma il template più adatto:
+    - Pizzeria/Bar/Food → Vibrant
+    - Estetica/Parrucchieri/Gioiellerie → Luxury
+    - Pasticcerie/Nail/Wedding → Pastel Dream
+    - Studi medici/Avvocati → Minimal
+    - Palestre/Sport → Bold
+    - Fiorai/Bio/Yoga → Earthy
+    - Tech/Gaming/Startup → Neon Cyber
+    - Ristoranti gourmet/Fotografi → Magazine
+    - Default → Classic
+  - **🎨 Template selector dentro l'Editor Stile**: nuovo blocco "Template Design" in cima al tab Stile mostra i 9 stili (grid 3×3) con mini-preview gradient. Click → applica anche il `color_scheme` del template per coerenza visiva immediata. Live save via `/api/demos/{id}?action=update` con `design_template` propagato.
+  - Backend Vercel `/app/api/demos/[id]/index.py`: la handler `section=='style'` ora riconosce e salva `design_template` a top-level del documento.
+  - Backend FastAPI preview `/app/backend/server.py`: aggiunto branch `update.section == "style"` (prima mancava — i demo in preview non potevano salvare style/template).
+
 - **14/05/2026 (notte+1)** - 🔧 Fix leggibilità Vivid Mode:
   - Le sezioni colorate ora **mantengono il gradient di sfondo** ma le card interne sono **bianche piene con testo NERO** invece che translucide. In questo modo orari/menu/dettagli sono sempre leggibili.
   - Titoli di sezione (h2/h3) restano bianchi con `text-shadow` per stagliarsi sul gradient.
