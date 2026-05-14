@@ -6,7 +6,7 @@ import sys
 from datetime import datetime, timezone
 
 # Version markers - aggiornati a ogni nuova feature
-BUILD_VERSION = "2026.05.14-mobile-ux"
+BUILD_VERSION = "2026.05.14-layout-cache-fix"
 BUILD_FEATURES = [
     "clients-page",
     "section-order-editor",

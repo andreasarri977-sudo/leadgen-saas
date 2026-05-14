@@ -533,7 +533,7 @@ async def health_check():
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "db": db_status,
         "version": "1.0.0",
-        "build_version": "2026.05.14-mobile-ux",
+        "build_version": "2026.05.14-layout-cache-fix",
         "build_features": [
             "clients-page",
             "section-order-editor",

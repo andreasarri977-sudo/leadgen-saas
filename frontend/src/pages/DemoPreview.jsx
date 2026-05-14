@@ -521,7 +521,11 @@ export default function DemoPreview() {
 
   const loadDemo = async () => {
     try {
-      const response = await axios.get(`${API}/demos/${demoId}`);
+      // Cache-busting: aggiunge timestamp per evitare versione cached dopo modifiche layout/settings
+      const cacheBuster = Date.now();
+      const response = await axios.get(`${API}/demos/${demoId}?_t=${cacheBuster}`, {
+        headers: { 'Cache-Control': 'no-cache' }
+      });
       setDemo(response.data);
       // Set initial language from business data
       const bd = response.data.business_data || {};
@@ -922,7 +926,7 @@ export default function DemoPreview() {
 
           {/* Reviews */}
           {content.show_reviews !== false && reviews.length > 0 && (
-            <section id="reviews">
+            <section id="reviews" style={{ order: sectionOrderMap.reviews }}>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">{t('sections.reviewsTitle', lang)}</h2>
                 {business.google_maps_link && (
@@ -953,7 +957,7 @@ export default function DemoPreview() {
 
           {/* Hours */}
           {content.show_hours !== false && localizedHours.length > 0 && (
-            <section id="hours">
+            <section id="hours" style={{ order: sectionOrderMap.hours }}>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">{t('sections.hoursTitle', lang)}</h2>
               <div className={`${style.cardBg} p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl border-2 border-neutral-100`}>
                 <div className="flex items-start gap-3 sm:gap-4">
