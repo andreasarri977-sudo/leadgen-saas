@@ -580,12 +580,13 @@ function SiteSettingsEditor({ siteLanguage, translations, bookingMode, externalB
 }
 
 // Style Editor Component
-function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, designTemplate, gallery, businessName, businessCategory, demoId, productionUrl, hideWatermark, onUpdate, onSave, saving }) {
+function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, designTemplate, textColor, gallery, businessName, businessCategory, demoId, productionUrl, hideWatermark, onUpdate, onSave, saving }) {
   const [selectedColor, setSelectedColor] = useState(colorScheme || 'blue');
   const [selectedHero, setSelectedHero] = useState(heroImage || '');
   const [selectedPosition, setSelectedPosition] = useState(heroPosition || 'center');
   const [selectedOverlay, setSelectedOverlay] = useState(heroOverlay || 'medium');
   const [selectedTemplate, setSelectedTemplate] = useState(designTemplate || 'classic');
+  const [selectedTextColor, setSelectedTextColor] = useState(textColor || 'black');
   const [hideMark, setHideMark] = useState(Boolean(hideWatermark));
   
   // Find initial index based on heroImage
@@ -705,6 +706,52 @@ function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme,
             <p className="text-[11px] text-neutral-500 italic mt-2">
               💡 {DESIGN_TEMPLATES.find((t) => t.id === selectedTemplate)?.tagline} — {DESIGN_TEMPLATES.find((t) => t.id === selectedTemplate)?.description}
             </p>
+          </div>
+
+          {/* === COLORE TESTI === */}
+          <div className="p-4 rounded-2xl border-2 border-neutral-200 bg-white">
+            <Label className="text-base font-medium block mb-1 flex items-center gap-2">🅰️ Colore Testi</Label>
+            <p className="text-sm text-neutral-500 mb-3">Scegli se i titoli e i testi nelle sezioni colorate sono in nero o in bianco</p>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { id: 'black', label: 'Nero', desc: 'Consigliato — leggibilità massima', swatch: '#0f172a' },
+                { id: 'white', label: 'Bianco', desc: 'Su gradienti molto scuri', swatch: '#ffffff' },
+              ].map((opt) => {
+                const active = selectedTextColor === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedTextColor(opt.id);
+                      onUpdate({
+                        text_color: opt.id,
+                        hero_image: selectedHero,
+                        color_scheme: selectedColor,
+                        hero_position: selectedPosition,
+                        hero_overlay: selectedOverlay,
+                        design_template: selectedTemplate,
+                        theme,
+                      });
+                    }}
+                    data-testid={`editor-text-color-${opt.id}`}
+                    className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                      active ? 'border-blue-600 ring-2 ring-blue-200 bg-blue-50' : 'border-neutral-200 hover:border-blue-300'
+                    }`}
+                  >
+                    <span className="w-9 h-9 rounded-lg border border-neutral-300 flex items-center justify-center text-lg font-bold shrink-0"
+                          style={{ background: opt.swatch, color: opt.id === 'white' ? '#0f172a' : '#ffffff' }}>
+                      A
+                    </span>
+                    <div className="text-left flex-1 min-w-0">
+                      <p className="font-bold text-sm text-neutral-900">{opt.label}</p>
+                      <p className="text-[11px] text-neutral-500 truncate">{opt.desc}</p>
+                    </div>
+                    {active && <CheckCircle size={18} className="text-blue-600 shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Color Scheme */}
@@ -1686,6 +1733,7 @@ export default function SiteEditor() {
             colorScheme={siteData.color_scheme || 'blue'}
             theme={siteData.theme || 'modern'}
             designTemplate={siteData.design_template || 'classic'}
+            textColor={siteData.text_color || 'black'}
             gallery={siteData.gallery || []}
             businessName={siteData.business_name}
             businessCategory={siteData.business_data?.category || siteData.category}
@@ -1701,6 +1749,7 @@ export default function SiteEditor() {
                 color_scheme: data.color_scheme !== undefined ? data.color_scheme : prev.color_scheme,
                 theme: data.theme !== undefined ? data.theme : prev.theme,
                 design_template: data.design_template !== undefined ? data.design_template : prev.design_template,
+                text_color: data.text_color !== undefined ? data.text_color : prev.text_color,
               }));
               setHasChanges(prev => ({ ...prev, style: true }));
             }}

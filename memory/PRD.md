@@ -1,6 +1,13 @@
 # WebFinder Studio - Product Requirements Document
 
 ## CHANGELOG
+- **14/05/2026 (notte+3)** - 🎨 **Uniformità sezioni + Testo NERO + Editor Colore Testi**:
+  - Rimosso `:not(#contact)` dalle CSS rules vivid → ora **TUTTE le sezioni** (incluso Contact) hanno lo stesso gradient di sfondo per uniformità visiva.
+  - **Testo NERO ovunque** (titoli + corpo) `color: #0f172a !important` con override del `text-white` di Tailwind. Le card interne (.bg-white) restano bianche piene per leggibilità extra.
+  - Le classi accent Tailwind (text-blue-600, text-red-500 ecc.) mantengono il loro colore tramite `revert-layer` selettivo.
+  - **🅰️ Colore Testi**: nuovo controllo nell'Editor Stile (tab Stile) → toggle "Nero" (consigliato) / "Bianco" (per gradient molto scuri). Salvato in `content.text_color`, applicato runtime via CSS dinamica. Endpoint update aggiornato sia in `/app/api/demos/[id]/index.py` sia in `/app/backend/server.py`.
+  - Backward compat: demo senza `text_color` → default 'black'.
+
 - **14/05/2026 (notte+2)** - ✨ **AI Auto-suggest + Template selector nell'Editor**:
   - **🤖 "Lascia scegliere all'AI"**: nel `TemplateChooserModal.jsx` aggiunta funzione `suggestTemplateByCategory(category)` con keyword matching deterministico (zero costo API). Banner viola in cima al modale → 1 click suggerisce e auto-conferma il template più adatto:
     - Pizzeria/Bar/Food → Vibrant

@@ -2566,6 +2566,8 @@ async def update_site_content(demo_id: str, update: SiteEditorUpdate):
         if sd.get('design_template'):
             # Salvato a top-level per coerenza col modello DemoSite
             set_updates['design_template'] = sd['design_template']
+        if sd.get('text_color') in ('black', 'white'):
+            set_updates['content.text_color'] = sd['text_color']
 
         if set_updates:
             set_updates['updated_at'] = datetime.now(timezone.utc).isoformat()

@@ -669,65 +669,67 @@ export default function DemoPreview() {
 
         /* === Design Template: VIVID MODE — tutte le sezioni colorate === */
         ${designTemplate.vivid_mode ? `
-          .wf-demo-root section[id]:not(#contact) {
+          /* Si applica a TUTTE le sezioni con id (incluso contact, per uniformità) */
+          .wf-demo-root section[id] {
             background: var(--wf-template-gradient);
-            color: #ffffff;
             border-radius: 28px;
             padding: 2.5rem 1.5rem;
             margin-block: 0.5rem;
             box-shadow: 0 10px 30px rgba(0,0,0,0.12);
           }
           @media (min-width: 768px) {
-            .wf-demo-root section[id]:not(#contact) {
+            .wf-demo-root section[id] {
               padding: 3rem 2.5rem;
             }
           }
-          /* Titoli e testo "diretto" della sezione → bianco con buon contrasto */
-          .wf-demo-root section[id]:not(#contact) h2,
-          .wf-demo-root section[id]:not(#contact) h3,
-          .wf-demo-root section[id]:not(#contact) h4 {
-            color: #ffffff !important;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.15);
+          /* === TUTTO IL TESTO IN NERO (override del text-white esistente) === */
+          .wf-demo-root section[id],
+          .wf-demo-root section[id] h1,
+          .wf-demo-root section[id] h2,
+          .wf-demo-root section[id] h3,
+          .wf-demo-root section[id] h4,
+          .wf-demo-root section[id] h5,
+          .wf-demo-root section[id] h6,
+          .wf-demo-root section[id] p,
+          .wf-demo-root section[id] li,
+          .wf-demo-root section[id] span,
+          .wf-demo-root section[id] a,
+          .wf-demo-root section[id] div,
+          .wf-demo-root section[id] .text-white,
+          .wf-demo-root section[id] [class*="text-neutral-"] {
+            color: ${content.text_color === 'white' ? '#ffffff' : '#0f172a'} !important;
+            text-shadow: none !important;
           }
-          .wf-demo-root section[id]:not(#contact) > p,
-          .wf-demo-root section[id]:not(#contact) > div > p:first-of-type {
-            color: rgba(255,255,255,0.95) !important;
-          }
-
-          /* === LE CARD INTERNE: bianche piene, testo NERO → leggibilità perfetta === */
-          .wf-demo-root section[id]:not(#contact) .bg-white,
-          .wf-demo-root section[id]:not(#contact) .bg-neutral-50,
-          .wf-demo-root section[id]:not(#contact) .bg-neutral-100 {
-            background: #ffffff !important;
-            backdrop-filter: none !important;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.18) !important;
-            border: 1px solid rgba(255,255,255,0.4) !important;
-          }
-          /* Testo dentro le card → SEMPRE NERO (override del white globale della sezione) */
-          .wf-demo-root section[id]:not(#contact) .bg-white,
-          .wf-demo-root section[id]:not(#contact) .bg-white *,
-          .wf-demo-root section[id]:not(#contact) .bg-neutral-50,
-          .wf-demo-root section[id]:not(#contact) .bg-neutral-50 *,
-          .wf-demo-root section[id]:not(#contact) .bg-neutral-100,
-          .wf-demo-root section[id]:not(#contact) .bg-neutral-100 * {
-            color: #1f2937 !important;
-          }
-          /* Eccezione: classi accent text-X-NUM colorate restano colorate */
-          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-blue-"],
-          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-red-"],
-          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-green-"],
-          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-orange-"],
-          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-yellow-"],
-          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-purple-"],
-          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-pink-"],
-          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-emerald-"],
-          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-teal-"],
-          .wf-demo-root section[id]:not(#contact) .bg-white [class*="text-indigo-"] {
+          /* Manteniamo i colori accent (text-X-NUM) come sono per non perdere highlight */
+          .wf-demo-root section[id] [class*="text-blue-6"],
+          .wf-demo-root section[id] [class*="text-blue-7"],
+          .wf-demo-root section[id] [class*="text-red-"],
+          .wf-demo-root section[id] [class*="text-green-"],
+          .wf-demo-root section[id] [class*="text-yellow-"],
+          .wf-demo-root section[id] [class*="text-orange-"],
+          .wf-demo-root section[id] [class*="text-purple-"],
+          .wf-demo-root section[id] [class*="text-pink-"],
+          .wf-demo-root section[id] [class*="text-emerald-"],
+          .wf-demo-root section[id] [class*="text-teal-"],
+          .wf-demo-root section[id] [class*="text-indigo-"] {
             color: revert-layer !important;
           }
+          /* Card interne: bianche piene per leggibilità testi neri */
+          .wf-demo-root section[id] .bg-white,
+          .wf-demo-root section[id] .bg-neutral-50,
+          .wf-demo-root section[id] .bg-neutral-100 {
+            background: #ffffff !important;
+            backdrop-filter: none !important;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
+            border: 1px solid rgba(255,255,255,0.4) !important;
+          }
+          /* Sull'icona buttons accent ecc. il bg gradient va mantenuto */
+          .wf-demo-root section[id] [class*="bg-gradient-to-"] {
+            background: revert-layer !important;
+          }
           /* Bordi grigi → trasparenti chiari */
-          .wf-demo-root section[id]:not(#contact) .border-neutral-100,
-          .wf-demo-root section[id]:not(#contact) .border-neutral-200 {
+          .wf-demo-root section[id] .border-neutral-100,
+          .wf-demo-root section[id] .border-neutral-200 {
             border-color: rgba(255,255,255,0.3) !important;
           }
         ` : ''}

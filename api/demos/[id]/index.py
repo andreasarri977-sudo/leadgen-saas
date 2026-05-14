@@ -470,6 +470,8 @@ class handler(BaseHTTPRequestHandler):
                     if section_data.get('design_template'):
                         # Salvato a top-level (per coerenza con il campo del modello DemoSite)
                         content_updates['design_template'] = section_data['design_template']
+                    if section_data.get('text_color') in ('black', 'white'):
+                        content_updates['content.text_color'] = section_data['text_color']
                     if 'hide_watermark' in section_data:
                         content_updates['content.hide_watermark'] = bool(section_data['hide_watermark'])
                     
