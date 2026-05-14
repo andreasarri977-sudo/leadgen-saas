@@ -472,6 +472,8 @@ class handler(BaseHTTPRequestHandler):
                         content_updates['design_template'] = section_data['design_template']
                     if section_data.get('text_color') in ('black', 'white'):
                         content_updates['content.text_color'] = section_data['text_color']
+                    if section_data.get('color_intensity') in ('soft', 'medium', 'vivid'):
+                        content_updates['content.color_intensity'] = section_data['color_intensity']
                     if 'hide_watermark' in section_data:
                         content_updates['content.hide_watermark'] = bool(section_data['hide_watermark'])
                     

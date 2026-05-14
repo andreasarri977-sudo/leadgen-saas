@@ -2568,6 +2568,8 @@ async def update_site_content(demo_id: str, update: SiteEditorUpdate):
             set_updates['design_template'] = sd['design_template']
         if sd.get('text_color') in ('black', 'white'):
             set_updates['content.text_color'] = sd['text_color']
+        if sd.get('color_intensity') in ('soft', 'medium', 'vivid'):
+            set_updates['content.color_intensity'] = sd['color_intensity']
 
         if set_updates:
             set_updates['updated_at'] = datetime.now(timezone.utc).isoformat()

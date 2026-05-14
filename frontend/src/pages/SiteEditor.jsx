@@ -580,13 +580,14 @@ function SiteSettingsEditor({ siteLanguage, translations, bookingMode, externalB
 }
 
 // Style Editor Component
-function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, designTemplate, textColor, gallery, businessName, businessCategory, demoId, productionUrl, hideWatermark, onUpdate, onSave, saving }) {
+function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, designTemplate, textColor, colorIntensity, gallery, businessName, businessCategory, demoId, productionUrl, hideWatermark, onUpdate, onSave, saving }) {
   const [selectedColor, setSelectedColor] = useState(colorScheme || 'blue');
   const [selectedHero, setSelectedHero] = useState(heroImage || '');
   const [selectedPosition, setSelectedPosition] = useState(heroPosition || 'center');
   const [selectedOverlay, setSelectedOverlay] = useState(heroOverlay || 'medium');
   const [selectedTemplate, setSelectedTemplate] = useState(designTemplate || 'classic');
   const [selectedTextColor, setSelectedTextColor] = useState(textColor || 'black');
+  const [selectedIntensity, setSelectedIntensity] = useState(colorIntensity || 'vivid');
   const [hideMark, setHideMark] = useState(Boolean(hideWatermark));
   
   // Find initial index based on heroImage
@@ -748,6 +749,59 @@ function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme,
                       <p className="text-[11px] text-neutral-500 truncate">{opt.desc}</p>
                     </div>
                     {active && <CheckCircle size={18} className="text-blue-600 shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* === INTENSITÀ COLORI === */}
+          <div className="p-4 rounded-2xl border-2 border-neutral-200 bg-white">
+            <Label className="text-base font-medium block mb-1 flex items-center gap-2">🎚️ Intensità Colori</Label>
+            <p className="text-sm text-neutral-500 mb-3">Quanto saturo deve apparire il gradient nelle sezioni — utile se i clienti trovano il "vivid" troppo carico.</p>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: 'soft',   label: 'Soft',   desc: 'Pastello, delicato', veil: 0.65 },
+                { id: 'medium', label: 'Medio',  desc: 'Equilibrato',         veil: 0.35 },
+                { id: 'vivid',  label: 'Acceso', desc: 'Saturo (default)',    veil: 0 },
+              ].map((opt) => {
+                const active = selectedIntensity === opt.id;
+                const tplGrad = DESIGN_TEMPLATES.find((t) => t.id === selectedTemplate)?.cssGradient || 'linear-gradient(135deg, #2563eb, #1e40af)';
+                const previewBg = opt.veil > 0
+                  ? `linear-gradient(rgba(255,255,255,${opt.veil}), rgba(255,255,255,${opt.veil})), ${tplGrad}`
+                  : tplGrad;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedIntensity(opt.id);
+                      onUpdate({
+                        color_intensity: opt.id,
+                        hero_image: selectedHero,
+                        color_scheme: selectedColor,
+                        hero_position: selectedPosition,
+                        hero_overlay: selectedOverlay,
+                        design_template: selectedTemplate,
+                        text_color: selectedTextColor,
+                        theme,
+                      });
+                    }}
+                    data-testid={`editor-intensity-${opt.id}`}
+                    className={`relative text-left rounded-xl overflow-hidden border-2 transition-all hover:shadow-md ${
+                      active ? 'border-blue-600 ring-2 ring-blue-200 scale-[1.02]' : 'border-neutral-200 hover:border-blue-300'
+                    }`}
+                  >
+                    <div className="h-14 w-full" style={{ background: previewBg }} />
+                    <div className="px-2 py-1.5 bg-white">
+                      <p className="text-sm font-bold text-neutral-900">{opt.label}</p>
+                      <p className="text-[10px] text-neutral-500">{opt.desc}</p>
+                    </div>
+                    {active && (
+                      <span className="absolute top-1.5 right-1.5 bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center shadow">
+                        <CheckCircle size={12} strokeWidth={3} />
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -1734,6 +1788,7 @@ export default function SiteEditor() {
             theme={siteData.theme || 'modern'}
             designTemplate={siteData.design_template || 'classic'}
             textColor={siteData.text_color || 'black'}
+            colorIntensity={siteData.color_intensity || 'vivid'}
             gallery={siteData.gallery || []}
             businessName={siteData.business_name}
             businessCategory={siteData.business_data?.category || siteData.category}
@@ -1750,6 +1805,7 @@ export default function SiteEditor() {
                 theme: data.theme !== undefined ? data.theme : prev.theme,
                 design_template: data.design_template !== undefined ? data.design_template : prev.design_template,
                 text_color: data.text_color !== undefined ? data.text_color : prev.text_color,
+                color_intensity: data.color_intensity !== undefined ? data.color_intensity : prev.color_intensity,
               }));
               setHasChanges(prev => ({ ...prev, style: true }));
             }}

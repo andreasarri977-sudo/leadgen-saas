@@ -677,6 +677,17 @@ export default function DemoPreview() {
             margin-block: 0.5rem;
             box-shadow: 0 10px 30px rgba(0,0,0,0.12);
           }
+          /* Intensità: Soft (forte velo bianco) / Medio (mezzo velo) / Acceso (default, nessun velo) */
+          .wf-demo-root.wf-intensity-soft section[id] {
+            background:
+              linear-gradient(rgba(255,255,255,0.65), rgba(255,255,255,0.65)),
+              var(--wf-template-gradient);
+          }
+          .wf-demo-root.wf-intensity-medium section[id] {
+            background:
+              linear-gradient(rgba(255,255,255,0.35), rgba(255,255,255,0.35)),
+              var(--wf-template-gradient);
+          }
           @media (min-width: 768px) {
             .wf-demo-root section[id] {
               padding: 3rem 2.5rem;
@@ -751,7 +762,7 @@ export default function DemoPreview() {
         ` : ''}
       `}</style>
 
-      <div className={`min-h-screen bg-white font-sans wf-demo-root ${designTemplate.vivid_mode ? 'wf-vivid' : ''} ${designTemplate.dark_bg ? 'wf-dark' : ''}`} data-design-template={designTemplate.id}>
+      <div className={`min-h-screen bg-white font-sans wf-demo-root ${designTemplate.vivid_mode ? 'wf-vivid' : ''} ${designTemplate.dark_bg ? 'wf-dark' : ''} wf-intensity-${content.color_intensity || 'vivid'}`} data-design-template={designTemplate.id}>
         {/* Navigation - WHITE LABEL (no Emergent branding) */}
         <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-neutral-200 shadow-sm">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4">

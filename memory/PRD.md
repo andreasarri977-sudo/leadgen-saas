@@ -1,6 +1,15 @@
 # WebFinder Studio - Product Requirements Document
 
 ## CHANGELOG
+- **14/05/2026 (notte+4)** - 🎚️ **Controllo Intensità Colori**:
+  - Nuovo blocco "Intensità Colori" nell'Editor Stile (tab Stile) sotto "Colore Testi": 3 opzioni con preview reale del gradient:
+    - **Soft** — velo bianco 65% sul gradient → look pastello delicato
+    - **Medio** — velo bianco 35% → bilanciato
+    - **Acceso** — gradient pieno (default) → saturo
+  - Implementato in `DemoPreview.jsx` via CSS dinamica: `wf-intensity-soft` e `wf-intensity-medium` aggiungono un `linear-gradient(rgba(255,255,255,X), ...)` sopra il template gradient.
+  - Persistenza in `content.color_intensity`: endpoint update aggiornato sia su Vercel `/app/api/demos/[id]/index.py` sia su FastAPI preview `/app/backend/server.py`.
+  - Backward compat: demo senza il campo → 'vivid' (look corrente).
+
 - **14/05/2026 (notte+3)** - 🎨 **Uniformità sezioni + Testo NERO + Editor Colore Testi**:
   - Rimosso `:not(#contact)` dalle CSS rules vivid → ora **TUTTE le sezioni** (incluso Contact) hanno lo stesso gradient di sfondo per uniformità visiva.
   - **Testo NERO ovunque** (titoli + corpo) `color: #0f172a !important` con override del `text-white` di Tailwind. Le card interne (.bg-white) restano bianche piene per leggibilità extra.
