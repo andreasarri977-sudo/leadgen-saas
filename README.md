@@ -128,7 +128,7 @@ sudo supervisorctl status
 ```
 
 ### 6. Accedi all'applicazione
-Apri il browser su: `https://demo-builder-pro.preview.emergentagent.com`
+Apri il browser su: `https://template-ai-engine.preview.emergentagent.com`
 
 ---
 
@@ -273,10 +273,10 @@ yarn test
 ### Test API con cURL
 ```bash
 # Test health check
-curl https://demo-builder-pro.preview.emergentagent.com/api/
+curl https://template-ai-engine.preview.emergentagent.com/api/
 
 # Test statistiche
-curl https://demo-builder-pro.preview.emergentagent.com/api/stats/dashboard
+curl https://template-ai-engine.preview.emergentagent.com/api/stats/dashboard
 ```
 
 ---

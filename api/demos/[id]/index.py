@@ -225,6 +225,10 @@ class handler(BaseHTTPRequestHandler):
                     "hero_overlay": content.get('hero_overlay', 'medium'),
                     "hide_watermark": bool(content.get('hide_watermark', False)),
                     "reviews": business.get('reviews', []),
+                    # Design Template (top-level on demo doc) + style personalizzazioni
+                    "design_template": demo.get('design_template', 'classic'),
+                    "text_color": content.get('text_color', 'black'),
+                    "color_intensity": content.get('color_intensity', 'vivid'),
                     # Site settings (languages + section visibility)
                     "site_language": business.get('site_language', 'it'),
                     "translations": business.get('translations', []),
@@ -660,17 +664,24 @@ class handler(BaseHTTPRequestHandler):
                     client.close()
                     return self._error(404, "Template non trovato")
                 tdata = tpl.get('data') or {}
+                # Fields stored at top-level of the demo document (NOT under content.)
+                TOP_LEVEL = {'design_template'}
                 content_updates = {}
+                applied = []
                 for k, v in tdata.items():
                     if v is None:
                         continue
-                    content_updates[f"content.{k}"] = v
+                    if k in TOP_LEVEL:
+                        content_updates[k] = v
+                    else:
+                        content_updates[f"content.{k}"] = v
+                    applied.append(k)
                 content_updates['updated_at'] = datetime.now(timezone.utc).isoformat()
                 db.demo_sites.update_one({"demo_id": demo_id}, {"$set": content_updates})
                 client.close()
                 return self._json_response(200, {
                     "success": True,
-                    "applied": list(tdata.keys()),
+                    "applied": applied,
                     "template_name": tpl.get('name')
                 })
             

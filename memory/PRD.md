@@ -1,6 +1,20 @@
 # WebFinder Studio - Product Requirements Document
 
 ## CHANGELOG
+- **15/05/2026** - 🐛 **Fix Salvataggio/Applicazione Template**:
+  - Il template ora **persiste e riapplica** correttamente: ordine sezioni (`section_order`), stile design (`design_template`), colore testi (`text_color`), intensità colori (`color_intensity`), toggle visibilità sezioni (`show_reviews`, `show_gallery`, `show_whyus`, `show_faq`, `show_hours`, `show_map`, `show_services`).
+  - **Frontend** (`SiteEditor.jsx > saveTemplate`): payload esteso con tutti i nuovi campi che prima non venivano serializzati (limitato solo a hero/color_scheme/contenuti testuali).
+  - **Vercel API** (`/app/api/demos/[id]/index.py > template_apply`): `design_template` ora viene scritto al top-level del demo doc (era erroneamente messo in `content.design_template`), mantenendo coerenza col modello DemoSite. Restituisce `applied` con la lista effettiva dei campi.
+  - **Vercel API** (`/app/api/demos/[id]/index.py > editor-data`): la risposta ora include `design_template`, `text_color`, `color_intensity` così l'editor mostra lo stato corretto al ricaricamento.
+  - **Backend Preview** (`/app/backend/server.py`): aggiunti gli endpoint mancanti per il flusso template (prima esistevano SOLO su Vercel):
+    - `GET /api/demos?action=templates` → lista template
+    - `POST /api/demos?action=template_save` → salva con TEMPLATE_FIELDS estesi
+    - `POST /api/demos?action=template_ai_generate` → genera template via Claude Sonnet
+    - `DELETE /api/demos?action=template_delete&id=...` → elimina
+    - `POST /api/demos/{id}?action=template_apply` → applica con routing `design_template` al top-level
+    - `POST /api/demos/{id}?action=template_apply_inline` → applica preview AI
+  - Testato end-to-end via curl: save+list+apply+verify (design_template top-level, section_order in content, toggle show_*).
+
 - **14/05/2026 (notte+4)** - 🎚️ **Controllo Intensità Colori**:
   - Nuovo blocco "Intensità Colori" nell'Editor Stile (tab Stile) sotto "Colore Testi": 3 opzioni con preview reale del gradient:
     - **Soft** — velo bianco 65% sul gradient → look pastello delicato

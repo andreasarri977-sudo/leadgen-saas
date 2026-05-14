@@ -1309,17 +1309,33 @@ function TemplateModal({ open, onClose, demoId, currentContent, onApplied }) {
     try {
       const payload = {
         name: name.trim(), category: category.trim(),
+        // Classic style
         color_scheme: currentContent.color_scheme,
         hero_position: currentContent.hero_position,
         hero_overlay: currentContent.hero_overlay,
         theme: currentContent.theme,
+        // Content
         why_choose_us: currentContent.why_choose_us,
         faq: currentContent.faq,
         about_text: currentContent.texts?.about_text,
         homepage_subtitle: currentContent.texts?.homepage_subtitle,
         services_intro: currentContent.texts?.services_intro,
         cta_text: currentContent.texts?.cta_text,
-        tagline: currentContent.texts?.tagline
+        tagline: currentContent.texts?.tagline,
+        // Design template + personalizzazioni
+        design_template: currentContent.design_template,
+        text_color: currentContent.text_color,
+        color_intensity: currentContent.color_intensity,
+        // Layout (ordine sezioni)
+        section_order: currentContent.section_order,
+        // Toggle visibilità sezioni
+        show_reviews: currentContent.show_reviews,
+        show_gallery: currentContent.show_gallery,
+        show_whyus: currentContent.show_whyus,
+        show_faq: currentContent.show_faq,
+        show_hours: currentContent.show_hours,
+        show_map: currentContent.show_map,
+        show_services: currentContent.show_services,
       };
       await axios.post(`${API}/demos?action=template_save`, payload);
       toast.success('Template salvato');

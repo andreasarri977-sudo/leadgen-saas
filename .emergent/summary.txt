@@ -1,37 +1,35 @@
-<analysis>**original_problem_statement:**
-L'utente ha richiesto di trasformare la sua applicazione SaaS di lead generation in una piattaforma di produzione stabile per vendere siti demo a prezzo premium (800-1000€). Il sistema deve includere ricerca lead via Google, generazione siti automatizzata (singola, bulk e via AI), gestione contatti tramite pipeline Kanban, tracking delle visite ai demo, generazione automatica di preventivi PDF brandizzati, gestione dei clienti acquisiti e monitoraggio dei rinnovi annuali (hosting/dominio). PRODUCT REQUIREMENTS: Piattaforma React + Serverless Python (Vercel) + MongoDB.
+<analysis>**original_problem_statement**: 
+L'utente ha richiesto di trasformare la sua applicazione SaaS di lead generation in una piattaforma di produzione stabile per vendere siti demo a prezzo premium. Richiede inoltre di rendere i siti più stilosi tramite funzionalità avanzate come design template predefiniti, colori vividi su tutte le sezioni, foto stock professionali, e l'ottimizzazione automatica delle immagini. PRODUCT REQUIREMENTS: Piattaforma React + Serverless Python (Vercel) + MongoDB.
 
 **User's preferred language**: italiano (INSTRUCT next agent to respond in Italian only)
 
 **what currently exists?** 
-Un'app SaaS full-stack su Vercel (React + Python Serverless + MongoDB). Include ricerca lead Google, pipeline Kanban, generatore di preventivi PDF (con logiche IVA/Forfettario/Occasionale), un editor avanzato per siti demo con riordinamento dinamico delle sezioni, e una pagina dedicata ai Clienti per tracciare costi, ricavi e scadenze dei rinnovi (con widget di notifica). Il backend è sdoppiato:  per Vercel in produzione e  per l'ambiente locale/preview.
+Un'app SaaS full-stack su Vercel (React + Python Serverless + MongoDB). Include ricerca lead Google, pipeline Kanban, preventivi PDF, editor avanzato per siti demo. In questa sessione sono stati aggiunti 9 Design Template (Classic, Vibrant, Luxury, etc.), una modale di scelta template con AI auto-suggest, l'integrazione con Pexels e Cloudinary, decorazioni animate CSS/SVG e una gestione Vivid Mode per colorare tutte le sezioni garantendo la leggibilità con card bianche e testo nero. Il backend è sdoppiato:  per Vercel e  per l'ambiente locale/preview.
 
 **Last working item**:
-- **Last item agent was working**: L'agente stava implementando un pacchetto di modifiche UI/UX richieste dall'utente: rimozione di widget inutilizzati dalla Dashboard (Lead Caldi/Followup), aggiunta del bottone Elimina sulle card in Siti Demo, aggiunta del toggle Aggiungi/Rimuovi nel tab Layout dell'Editor, inserimento di nuovi colori a doppia sfumatura, e miglioramenti alla UI.
-- **Status**: IN PROGRESS
-- **Agent Testing Done**: N (L'agente ha modificato i file ma non ha testato l'ultima iterazione prima di terminare).
-- **Which testing method agent to use?**: screenshot tool per frontend, curl per backend.
+- **Last item agent was working**: Fix del salvataggio dei Template. L'utente ha segnalato che salvando un template e riapplicandolo, l'ordine delle sezioni e i nuovi stili (colore testi, intensità, layout) non venivano mantenuti. L'agente ha scoperto che la costante  in  non includeva i nuovi campi (, , , , ) e ha appena eseguito un search_replace per aggiungerli.
+- **Status**: TESTING PENDING
+- **Agent Testing Done**: N (L'agente ha effettuato l'edit finale senza testare).
+- **Which testing method agent to use?**: backend testing agent / manual testing (creare un template e verificare a DB se include le nuove chiavi) e screenshot tool per verificare la corretta applicazione frontend.
 - **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-- **Issue 1**: Completamento modifiche UI/UX dell'ultima richiesta utente.
-  - **Attempted fixes**: L'agente ha nascosto la CTA Contattaci, pulito la Dashboard e aggiunto i colori sfumati, ma si è fermato.
-  - **Next debug checklist**: 
-    1. Migliorare l'UX della posizione immagine in  (LiveSitePreview) per evitare immagini tagliate.
-    2. Modificare  per mostrare un badge Già Salvato sui lead che sono già presenti nel DB, disabilitando il bottone di aggiunta per evitare duplicati.
-  - **Why fix this issue and what will be achieved with the fix?**: Soddisfa pienamente l'ultima richiesta dell'utente migliorando l'usabilità dell'editor e prevenendo l'inserimento di lead duplicati.
-  - **Status**: IN PROGRESS
-  - **Is recurring issue?**: N
-  - **Should Test frontend/backend/both after fix?**: both (Frontend per l'editor, Backend/Frontend per il check dei lead salvati).
-  - **Blocked on other issue**: Nessuno.
+- **Issue 1**: Sincronizzazione fix  in  (PRIORITY P0).
+  - **Attempted fixes**: L'agente ha aggiornato  solo in  (ambiente Vercel), dimenticando di applicare la stessa logica in  (ambiente Preview).
+  - **Next debug checklist**: Cercare come vengono salvati e applicati i template in  e assicurarsi che , , ,  e i toggle  vengano inclusi.
+  - **Why fix this issue and what will be achieved with the fix?**: Se non aggiornato, il fix non funzionerà nell'ambiente di preview Emergent, causando confusione.
+  - **Status**: NOT STARTED
+  - **Is recurring issue?**: Y (Dimenticanza della regola del doppio backend).
+  - **Should Test frontend/backend/both after fix?**: both
+  - **Blocked on other issue**: None
 
 **In progress Task List**:
-- **Task 1**: Testare le modifiche alla Dashboard, Demo Sites e Site Editor.
-  - **Where to resume**: Frontend UI (Dashboard, DemoSites, SiteEditor).
-  - **What will be achieved with this?**: Verifica che le card Demo abbiano il tasto cestino visibile, che la Dashboard non abbia i widget Lead Caldi, e che il tab Layout permetta di accendere/spegnere le sezioni.
+- **Task 1**: Test E2E del flusso Salva Template -> Applica Template.
+  - **Where to resume**: Frontend (SiteEditor.jsx).
+  - **What will be achieved with this?**: Confermare all'utente che il layout (ordine sezioni) e le opzioni grafiche avanzate si trasferiscono correttamente tra siti diversi.
   - **Status**: TESTING PENDING
-  - **Should Test frontend/backend/both after fix?**: frontend
-  - **Blocked on something**: Nessuno.
+  - **Should Test frontend/backend/both after fix?**: both
+  - **Blocked on something**: Issue 1
 
 **Upcoming and Future Tasks**:
 - P1: Traduzione a runtime del parametro  nei nuovi tab settings (rimangono stringhe hardcoded in italiano).
@@ -39,79 +37,78 @@ Un'app SaaS full-stack su Vercel (React + Python Serverless + MongoDB). Include 
 - P2: Integrazione API Vercel per aggiungere i domini custom (custom_domain) automaticamente ai Vercel Projects e configurare i record DNS reali (attualmente mockati).
 
 **Completed work in this session**:
-- Fix crash del modal Generazione Batch (Radix UI Select fallback) (DONE).
-- Messaggio WhatsApp standardizzato (primo click usa template standard, successivi usano AI) (DONE).
-- Nuova pagina  per gestire i clienti paganti, inserire costi di sito/dominio/hosting e visualizzare il fatturato (DONE).
-- Riordinamento dinamico delle sezioni (Drag & Drop nel Site Editor -> CSS  nel DemoPreview) (DONE).
-- Barra di ricerca nella Kanban board e pulsante rapido Sì, è cliente! sulle card (DONE).
-- 3 modalità di preventivo PDF (Forfettario, Prestazione Occasionale, Standard + IVA) con voci dinamiche basate sulle sezioni attive del sito (DONE).
-- Calendario Scadenze Rinnovi con calcolo automatico (+1 anno), widget notifiche e badge animato nella sidebar (DONE).
-- Miglioramento massiccio dell'esperienza Mobile (Tab switcher orizzontale al posto della Kanban verticale, testi ridimensionati) (DONE).
-- Aggiunta indicatore di Build Version (es. ) nella sidebar e header  per bypassare i problemi di caching di Vercel (DONE).
+- Fix bug UX  nel Site Editor e badge Già Salvato su Cerca Aziende (DONE).
+- Fix applicazione colori sfumatura doppia (Sunset, Ocean, ecc.) in  (DONE).
+- Implementazione font dinamici basati su categoria (Google Fonts) (DONE).
+- Implementazione  (microanimazioni SVG nell'hero) (DONE).
+- Integrazione **Cloudinary** per auto-enhance (upscale + sharpen) automatico tramite URL pubblico (DONE).
+- Integrazione **Pexels API** con tab dedicato nel SiteEditor per cercare foto stock (DONE).
+- Sviluppo di 9 Design Templates con modale visuale pre-generazione (sia singola che batch) (DONE).
+- Sistema AI Sceglie per me per l'assegnazione automatica del miglior template alla categoria del cliente (DONE).
+- Vivid Mode: estensione del gradient a tutte le sezioni con uso di card piene bianche e testi rigorosamente NERI per massima leggibilità (DONE).
+- Controlli Intensità Colori (Soft / Medio / Acceso) e Colore Testi nell'editor Stile (DONE).
 
 **Earlier issues found/mentioned but not fixed**:
-Nessuno.
+- Issue 1: L'API di Pexels in locale/preview (IP Cloudflare di Emergent) soffre occasionalmente di Rate Limit (errore 401/502). 
+  - **Debug checklist**: Verificare log backend Pexels.
+  - **Why to solve this issue**: L'agente ha già introdotto un fallback grazioso (Temporaneamente non disponibile), prevedendo che in produzione su Vercel il problema IP non sussista. Non toccare a meno che non fallisca stabilmente.
+  - **Should Test frontend/backend/both after fix**: backend
+  - **Is recurring issue?**: N
 
 **Known issue recurrence from previous fork**:
-- **Issue recurrence in previous fork**: Vercel Caching / Disallineamento tra preview Emergent e produzione Vercel.
-- **Recurrence count**: Multipli.
-- **Status**: RESOLVED (Gestito aggiungendo indicatore visivo di versione in basso a sinistra nella sidebar e header di cache-busting).
+- **Issue recurrence in previous fork**: Disallineamento tra  (Vercel) e  (FastAPI).
+- **Recurrence count**: 2
+- **Status**: IN PROGRESS (L'agente ha appena commesso nuovamente questo errore sul fix di ).
+Note: È fondamentale duplicare sempre ogni modifica di logica tra i due file.
 
 **Code Architecture**
-style={{ order }}
+
 
 **Key Technical Concepts**
-- Frontend: React, react-router-dom, TailwindCSS, Shadcn UI.
-- Backend: Vercel Serverless Functions (Python 3.12) per prod, FastAPI per preview locale.
-- Database: MongoDB Atlas.
-- Generazione PDF:  (con calcoli dinamici IVA/Ritenuta d'acconto).
+- Frontend: React, TailwindCSS, CSS Variables per stili dinamici.
+- Backend: Vercel Serverless (Python) + FastAPI locale.
+- API Esterne fetchate: Pexels API (con header ), Cloudinary (tramite Image Fetch URL, senza SDK).
 
 **key DB schema**
-- : {lead_id, place_id, name, status, client_costs: {site_price, domain_price, hosting_price, paid, payment_date}, renewals: {domain_date, hosting_date}, ...}
-- : {demo_id, content: {section_order: [...]}, site_settings: {...}, ...}
+- : 
 
 **changes in tech stack**
-Nessun cambio.
+- Aggiunta libreria Cloudinary logic (solo URL builder, nessuna libreria esterna npm pesante).
 
 **All files of reference**
--  (Nuova pagina creata per gestire clienti e preventivi).
--  (Tab Layout, Live Preview).
--  (Da modificare per mostrare i lead già salvati).
--  e  (Per la logica di update sito e PDF).
+-  e  (Per allineare il fix dei ).
+-  e  (Nuove logiche vivid mode e intensity).
+-  e  (Proxy Pexels).
 
 **Areas that need refactoring**:
--  e  rimangono estremamente grandi. In futuro i tab dell'editor dovrebbero essere estratti in componenti standalone.
-- Sincronizzazione manuale tra  e  è prona a errori (ricordarsi sempre di aggiornare entrambi).
+-  sta diventando gigantesco (2600+ righe) a causa del mirroring di Vercel. 
 
 **key api endpoints**
--  (POST): Salva l'ordine sezioni e le modifiche del sito.
--  (POST): Genera PDF con parametro .
--  (GET): Recupera scadenze dominio/hosting imminenti.
--  (POST): Aggiorna date di pagamento e calcola rinnovi +1 anno.
+-  (GET): Proxy per chiamare Pexels aggirando le policy CORS.
+-  (POST): Salva la configurazione attuale dell'editor come template utente.
+-  e  (POST): Generazione che ora accetta il .
 
 **Critical Info for New Agent**
-1. **DOPPIO BACKEND:** Tutto ciò che modifichi dentro  (ambiente Vercel) **DEVE** essere replicato identico dentro  (ambiente Preview FastAPI). Se non lo fai, la funzionalità andrà in produzione ma non funzionerà nella preview locale, causando confusione.
-2. **VERCEL 12 FUNCTIONS LIMIT:** Non creare mai nuovi file  nella root di . Usa sempre file esistenti aggiungendo una rotta tramite query param .
-3. L'utente apprezza molto la proattività per flussi di business (es. gestione costi, rinnovi annuali automatizzati senza pesare sui costi server tramite widget frontend).
+1. **DOPPIO BACKEND:** Ricorda la regola aurea: qualunque logica aggiungi per Vercel in , **devi** implementarla anche in !
+2. Pexels e Cloudinary sono stati implementati. Pexels ha la sua API KEY in , mentre Cloudinary richiede solo il parametro  ed è usato tramite costrutti URL ().
+3. L'utente apprezza le interfacce vivaci e ad alto impatto. Tutti i testi all'interno delle sezioni colorate (vivid mode) devono restare neri su sfondi a carta bianca solida per garantire massima leggibilità.
 
 **documents and test reports created in this job**
-Nessuno (PRD e file log backend).
+-  (Aggiornato costantemente con Changelog).
 
 **Last 10 User Messages and any pending HUMAN messages**
-- **User**: Richiesta di migliorare la UX Mobile (Kanban infinito).
-- **Agent**: (DONE) Cambiato Kanban in un tab switcher orizzontale su schermi piccoli.
-- **User**: Su modifica sito e cambio i layout, l’ordine delle cose me le salva ma non me le applica nei siti.
-- **Agent**: (DONE) Fixato aggiungendo le proprietà CSS  mancanti e il Cache-Control.
-- **User**: Ora nei siti appare sotto Chi Siamo ce la casella contattaci oggi, togliamola... e nel modifica sito vorrei poter scegliere se togliere qualche sezione dal layout... pagina siti demo un modo più veloce per cancellare... Dashboard via sezioni lead caldi/mail e aggiungi clienti... aggiungere altri colori doppi sfumati... e sezione posizione immagine fatta meglio... su cerca aziende quando salvo un cliente voglio che si veda che è salvato.
-- **Agent**: (IN PROGRESS) L'agente ha iniziato a implementare i fix visivi (rimozione widget dashboard, colori sfumati, bottoni nel layout editor, tasto cestino), ma si è interrotto prima di migliorare il posizionamento dell'immagine e l'evidenziazione dei lead salvati nella pagina di ricerca.
+- **User**: Perché quando salvo il tampate che mi piace e quando lo uso su un altro non usa lo stesso schema di layout spostati? *(L'utente ha sollevato il bug sull'assenza del salvataggio del layout e del nuovo stile nei template).*
+- **Agent**: (IN PROGRESS) L'agente ha trovato il bug su  e modificato . Non ha allineato  e non ha testato.
+- **PENDING**: Il fix completo su  e la comunicazione all'utente del corretto funzionamento tramite test.
 
 **Project Health Check:**
-- Broken: N/A.
-- Mocked: Aggiunta domini custom (il backend API salva il record ma non chiama realmente l'API di Vercel per aggiornare i DNS).
+- Broken: Pexels (Possibili rate-limits su IP preview Cloudflare).
+- Mocked: Domain mapping (Vercel DNS).
 
 **3rd Party Integrations**
-- Google Places API (Search) - User API Key
-- MongoDB Atlas (Database) - User Config
+- Google Places API - User API Key
+- Pexels API (Images) - User API Key
+- Cloudinary (Image Optimization) - User Config (Cloud Name)
 - Resend (Emails) - User API Key
 - Emergent LLM Key (Claude Sonnet AI) - Emergent Universal Key
 
@@ -122,9 +119,14 @@ Nessuno (PRD e file log backend).
 - Known regressions: Nessuna.
 
 **Credentials to test flow:**
-Non necessarie (MongoDB e URL configurati localmente tramite preview link).
+Non necessarie (MongoDB e URL configurati localmente).
 
 **What agent forgot to execute**
-L'agente non ha completato l'ultima richiesta dell'utente:
-1. Migliorare l'UX di  (immagine hero) per fare in modo che non si veda tagliata nel Site Editor.
-2. Nella pagina , controllare se un'azienda trovata da Google Places esiste già nel database e mostrare uno stato visivo Già Salvato (per evitare doppioni).</analysis>
+L'agente ha applicato la patch per il bug dei template in  ma ha dimenticato di applicarla al mock . Inoltre, ha usato il tool  senza aver testato il fix.
+
+**Debugging checklist for current issue**
+    Issue: Template saved by user doesn't persist layout/new stylistic options.
+
+    Backend files to check: 
+    - : Cercare dove vengono estratti i campi per salvare un template (es. list comprehension su un array tipo  o simili chiavi hardcoded) e assicurarsi di aggiungere , , , , , , , , , .
+    - : Verificare se il search_replace dell'agente precedente ha incluso tutti i toggle ().</analysis>

@@ -20,9 +20,18 @@ DB_NAME = os.environ.get("DB_NAME", "leadhunter")
 
 # Fields a template can store/apply
 TEMPLATE_FIELDS = [
+    # Stile classico
     'color_scheme', 'hero_position', 'hero_overlay', 'theme',
+    # Contenuti generati
     'about_text', 'homepage_subtitle', 'services_intro', 'cta_text',
-    'tagline', 'why_choose_us', 'faq'
+    'tagline', 'why_choose_us', 'faq',
+    # Design template e personalizzazioni (NEW)
+    'design_template', 'text_color', 'color_intensity',
+    # Ordine sezioni personalizzato
+    'section_order',
+    # Toggle sezioni
+    'show_reviews', 'show_gallery', 'show_whyus', 'show_faq',
+    'show_hours', 'show_map', 'show_services',
 ]
 
 class handler(BaseHTTPRequestHandler):

@@ -1394,15 +1394,210 @@ async def get_demo_by_id(demo_id: str):
     
     return demo
 
-@api_router.get("/demos", response_model=List[DemoSite])
-async def get_demos():
+TEMPLATE_FIELDS = [
+    # Stile classico
+    'color_scheme', 'hero_position', 'hero_overlay', 'theme',
+    # Contenuti generati
+    'about_text', 'homepage_subtitle', 'services_intro', 'cta_text',
+    'tagline', 'why_choose_us', 'faq',
+    # Design template e personalizzazioni
+    'design_template', 'text_color', 'color_intensity',
+    # Ordine sezioni personalizzato
+    'section_order',
+    # Toggle sezioni
+    'show_reviews', 'show_gallery', 'show_whyus', 'show_faq',
+    'show_hours', 'show_map', 'show_services',
+]
+TEMPLATE_TOP_LEVEL_FIELDS = {'design_template'}  # campi salvati al top-level del documento demo
+
+@api_router.get("/demos")
+async def get_demos(action: Optional[str] = None):
+    if action == "templates":
+        templates = await db.templates.find({}, {"_id": 0}).sort("created_at", -1).to_list(50)
+        for t in templates:
+            if isinstance(t.get('created_at'), datetime):
+                t['created_at'] = t['created_at'].isoformat()
+        return templates
+
     demos = await db.demo_sites.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
-    
+
     for demo in demos:
         if isinstance(demo.get('created_at'), str):
-            demo['created_at'] = datetime.fromisoformat(demo['created_at'])
-    
+            try:
+                demo['created_at'] = datetime.fromisoformat(demo['created_at'])
+            except Exception:
+                pass
+
     return demos
+
+@api_router.post("/demos")
+async def post_demos(request: Request, action: Optional[str] = None):
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+
+    if action == "template_save":
+        name = (data.get('name') or '').strip() or f"Template {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+        payload = {k: data.get(k) for k in TEMPLATE_FIELDS if k in data}
+        template = {
+            "template_id": str(uuid.uuid4())[:8],
+            "name": name,
+            "description": (data.get('description') or '').strip(),
+            "category": (data.get('category') or '').strip(),
+            "data": payload,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.templates.insert_one(dict(template))
+        return {"success": True, "template": template}
+
+    if action == "template_ai_generate":
+        category = (data.get('category') or 'attività locale').strip()[:80]
+        style = (data.get('style') or 'moderno e professionale').strip()[:60]
+        business_name = (data.get('business_name') or '').strip()[:80]
+        city = (data.get('city') or '').strip()[:60]
+        save = bool(data.get('save', True))
+        if not EMERGENT_LLM_KEY:
+            raise HTTPException(status_code=500, detail="EMERGENT_LLM_KEY mancante")
+
+        context_lines = [f"Categoria: {category}", f"Stile richiesto: {style}"]
+        if business_name:
+            context_lines.append(f"Nome attività: {business_name}")
+        if city:
+            context_lines.append(f"Città: {city}")
+        context_block = "\n".join(context_lines)
+        prompt = (
+            "Devi generare contenuti per un sito web in italiano. Dati dell'attività:\n"
+            f"{context_block}\n\n"
+            "Rispondi SOLO con JSON valido, niente altro, senza markdown, senza ``` né testo extra.\n"
+            "Schema esatto da rispettare:\n"
+            "{\n"
+            '  "color_scheme": uno tra ["blue","sky","cyan","indigo","purple","violet","fuchsia","pink","rose","red","orange","amber","yellow","lime","green","emerald","teal","gold","coral","mint","lavender","peach","slate","navy","maroon","forest","black"],\n'
+            '  "hero_position": "center",\n'
+            '  "hero_overlay": "medium",\n'
+            '  "theme": "modern",\n'
+            '  "tagline": "max 8 parole, accattivante, usa il nome attività se fornito",\n'
+            '  "homepage_subtitle": "1 frase di max 18 parole, contestualizzata alla città/categoria",\n'
+            '  "about_text": "2-3 frasi che descrivono l\'attività, usando nome e città se forniti",\n'
+            '  "services_intro": "1 frase introduttiva ai servizi",\n'
+            '  "cta_text": "max 5 parole, invito all azione",\n'
+            '  "why_choose_us": [\n'
+            '    {"icon":"⭐","title":"max 4 parole","description":"max 15 parole, specifica per la categoria"}\n'
+            '    (4 elementi totali, icone emoji diverse e adatte alla categoria)\n'
+            "  ],\n"
+            '  "faq": [\n'
+            '    {"question":"domanda completa", "answer":"risposta di 1-2 frasi"}\n'
+            '    (5 elementi totali, FAQ tipiche e specifiche per questa categoria)\n'
+            "  ]\n"
+            "}\n"
+            "Adatta colore e tono alla categoria."
+        )
+        try:
+            chat = LlmChat(
+                api_key=EMERGENT_LLM_KEY,
+                session_id=f"tpl-{uuid.uuid4().hex[:8]}",
+                system_message="Sei un esperto di web design e copy in italiano. Rispondi SEMPRE solo con JSON valido."
+            ).with_model("anthropic", "claude-sonnet-4-5-20250929").with_max_tokens(2000)
+            llm_text = await chat.send_message(UserMessage(text=prompt))
+            cleaned = (llm_text or '').strip()
+            if cleaned.startswith('```'):
+                lines = cleaned.split('\n')
+                if lines and lines[0].startswith('```'):
+                    lines = lines[1:]
+                if lines and lines[-1].startswith('```'):
+                    lines = lines[:-1]
+                cleaned = '\n'.join(lines)
+            parsed = json.loads(cleaned)
+        except Exception as e:
+            logger.exception("AI template error")
+            raise HTTPException(status_code=500, detail=f"Errore generazione AI: {str(e)[:200]}")
+
+        tpl_data = {k: parsed[k] for k in TEMPLATE_FIELDS if k in parsed}
+        name_parts = ['AI']
+        if business_name:
+            name_parts.append(business_name)
+        elif category:
+            name_parts.append(category.title())
+        name_parts.append(f"({style.title()})")
+        name = ' · '.join(name_parts)
+
+        if save:
+            template = {
+                "template_id": str(uuid.uuid4())[:8],
+                "name": name,
+                "description": f"Generato da AI per {business_name or category}",
+                "category": category,
+                "data": tpl_data,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "ai_generated": True
+            }
+            await db.templates.insert_one(dict(template))
+            return {"success": True, "template": template, "preview": tpl_data}
+        return {"success": True, "preview": tpl_data, "name": name}
+
+    raise HTTPException(status_code=400, detail=f"Azione non riconosciuta: {action}")
+
+@api_router.delete("/demos")
+async def delete_demos_action(action: Optional[str] = None, id: Optional[str] = None):
+    if action != "template_delete":
+        raise HTTPException(status_code=400, detail=f"Azione non riconosciuta: {action}")
+    if not id:
+        raise HTTPException(status_code=400, detail="template id mancante")
+    result = await db.templates.delete_one({"template_id": id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Template non trovato")
+    return {"success": True}
+
+@api_router.post("/demos/{demo_id}")
+async def post_demo_action(demo_id: str, request: Request, action: Optional[str] = None):
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+
+    demo = await db.demo_sites.find_one({"demo_id": demo_id})
+    if not demo:
+        raise HTTPException(status_code=404, detail="Demo non trovato")
+
+    if action == "template_apply":
+        template_id = data.get('template_id')
+        if not template_id:
+            raise HTTPException(status_code=400, detail="template_id richiesto")
+        tpl = await db.templates.find_one({"template_id": template_id}, {"_id": 0})
+        if not tpl:
+            raise HTTPException(status_code=404, detail="Template non trovato")
+        tdata = tpl.get('data') or {}
+        updates = {}
+        applied = []
+        for k, v in tdata.items():
+            if v is None:
+                continue
+            if k in TEMPLATE_TOP_LEVEL_FIELDS:
+                updates[k] = v
+            else:
+                updates[f"content.{k}"] = v
+            applied.append(k)
+        updates['updated_at'] = datetime.now(timezone.utc).isoformat()
+        await db.demo_sites.update_one({"demo_id": demo_id}, {"$set": updates})
+        return {"success": True, "applied": applied, "template_name": tpl.get('name')}
+
+    if action == "template_apply_inline":
+        tdata = data.get('data') or {}
+        if not tdata:
+            raise HTTPException(status_code=400, detail="data richiesto")
+        allowed = {'color_scheme', 'hero_position', 'hero_overlay', 'theme',
+                   'tagline', 'homepage_subtitle', 'about_text', 'services_intro',
+                   'cta_text', 'why_choose_us', 'faq'}
+        updates = {}
+        for k, v in tdata.items():
+            if v is None or k not in allowed:
+                continue
+            updates[f"content.{k}"] = v
+        updates['updated_at'] = datetime.now(timezone.utc).isoformat()
+        await db.demo_sites.update_one({"demo_id": demo_id}, {"$set": updates})
+        return {"success": True, "applied": list(tdata.keys())}
+
+    raise HTTPException(status_code=400, detail=f"Azione non riconosciuta: {action}")
 
 @api_router.delete("/demos/{demo_id}")
 async def delete_demo(demo_id: str):
