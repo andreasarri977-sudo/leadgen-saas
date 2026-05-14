@@ -5,7 +5,7 @@ import {
   ArrowLeft, Save, RefreshCw, Clock, UtensilsCrossed, FileText, 
   Phone, Images, Search, Loader2, CheckCircle, AlertCircle, ExternalLink,
   Plus, Trash2, GripVertical, X, ImageIcon, Upload, Palette, Star, HelpCircle,
-  Settings, Mail, Users, FileDown
+  Settings, Mail, Users, FileDown, ChevronRight
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -1714,6 +1714,8 @@ export default function SiteEditor() {
         <TabsContent value="gallery">
           <GalleryEditor
             gallery={siteData.gallery}
+            category={siteData.business_data?.category || siteData.category}
+            businessName={siteData.business_name}
             onUpdate={(data) => updateSection('gallery', data)}
             onSave={() => saveSection('gallery', { images: siteData.gallery })}
             saving={saving.gallery}
@@ -2412,9 +2414,53 @@ function ContactsEditor({ contacts, onUpdate, onSave, saving, hasChanges }) {
 }
 
 // GALLERY EDITOR
-function GalleryEditor({ gallery, onUpdate, onSave, saving, hasChanges }) {
+function GalleryEditor({ gallery, category, businessName, onUpdate, onSave, saving, hasChanges }) {
   const [newUrl, setNewUrl] = useState('');
   const [uploading, setUploading] = useState(false);
+  // === Pexels search ===
+  const [pexelsQuery, setPexelsQuery] = useState('');
+  const [pexelsResults, setPexelsResults] = useState([]);
+  const [pexelsLoading, setPexelsLoading] = useState(false);
+  const [pexelsOpen, setPexelsOpen] = useState(false);
+
+  useEffect(() => {
+    // Prefill query: categoria + nome attività
+    if (category && !pexelsQuery) {
+      setPexelsQuery(category);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category]);
+
+  const searchPexels = async () => {
+    const q = pexelsQuery.trim();
+    if (!q) { toast.error('Inserisci una parola chiave'); return; }
+    setPexelsLoading(true);
+    try {
+      const r = await axios.get(`${API}/leads?action=pexels_search&query=${encodeURIComponent(q)}&per_page=15&orientation=landscape`);
+      const photos = r.data?.photos || [];
+      setPexelsResults(photos);
+      if (photos.length === 0) toast.info('Nessuna foto trovata, prova un\'altra parola chiave');
+    } catch (e) {
+      const msg = e.response?.data?.detail || e.response?.data?.error || 'Errore Pexels';
+      // Messaggio amichevole per il caso del throttling temporaneo
+      if (String(msg).includes('401') || String(msg).toLowerCase().includes('unauthor')) {
+        toast.error('Pexels temporaneamente non disponibile (anti-bot). Riprova fra qualche minuto.');
+      } else {
+        toast.error(msg);
+      }
+    } finally {
+      setPexelsLoading(false);
+    }
+  };
+
+  const addPexelsPhoto = (photo) => {
+    const newGallery = [
+      ...(gallery || []),
+      { url: photo.url, caption: `Foto by ${photo.photographer} (Pexels)`, order: (gallery || []).length, source: 'pexels', photographer: photo.photographer, photographer_url: photo.photographer_url }
+    ];
+    onUpdate(newGallery);
+    toast.success(`Foto aggiunta — ricordati di salvare la galleria!`);
+  };
 
   const addImage = () => {
     if (!newUrl || !newUrl.startsWith('http')) {
@@ -2484,7 +2530,80 @@ function GalleryEditor({ gallery, onUpdate, onSave, saving, hasChanges }) {
   return (
     <Card className="p-6" data-testid="gallery-editor">
       <h2 className="text-xl font-semibold mb-4">Galleria Immagini</h2>
-      
+
+      {/* === PEXELS SEARCH (gratis, foto stock professionali) === */}
+      <div className="mb-6 border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setPexelsOpen((v) => !v)}
+          className="w-full flex items-center justify-between px-4 py-3 text-left"
+          data-testid="pexels-toggle"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-lg">📸</span>
+            <div>
+              <p className="font-semibold text-emerald-900">Cerca foto stock professionali su Pexels</p>
+              <p className="text-xs text-emerald-700">Gratis, 100% libere — perfette quando le foto Google sono scarse</p>
+            </div>
+          </div>
+          <ChevronRight size={18} className={`text-emerald-700 transition-transform ${pexelsOpen ? 'rotate-90' : ''}`} />
+        </button>
+
+        {pexelsOpen && (
+          <div className="px-4 pb-4 space-y-3">
+            <div className="flex gap-2">
+              <Input
+                placeholder={`Es: "${category || 'parrucchiere lusso'}", "pizza napoletana", "salone moderno"`}
+                value={pexelsQuery}
+                onChange={(e) => setPexelsQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); searchPexels(); } }}
+                data-testid="pexels-query"
+              />
+              <Button
+                onClick={searchPexels}
+                disabled={pexelsLoading}
+                className="bg-emerald-600 hover:bg-emerald-700"
+                data-testid="pexels-search-btn"
+              >
+                {pexelsLoading ? <Loader2 className="animate-spin" size={16} /> : <Search size={16} />}
+                <span className="ml-2 hidden sm:inline">Cerca</span>
+              </Button>
+            </div>
+
+            {pexelsResults.length > 0 && (
+              <>
+                <p className="text-xs text-emerald-800 font-medium">
+                  {pexelsResults.length} foto trovate — clicca per aggiungerle alla galleria
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 max-h-80 overflow-y-auto">
+                  {pexelsResults.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => addPexelsPhoto(p)}
+                      className="relative aspect-square overflow-hidden rounded-lg border-2 border-transparent hover:border-emerald-500 hover:shadow-md transition-all group"
+                      data-testid={`pexels-photo-${p.id}`}
+                      title={`Aggiungi foto di ${p.photographer}`}
+                    >
+                      <img src={p.thumbnail} alt={p.alt} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      <span className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center text-white opacity-0 group-hover:opacity-100">
+                        <Plus size={28} />
+                      </span>
+                      <span className="absolute bottom-0 left-0 right-0 px-1.5 py-0.5 text-[9px] bg-black/60 text-white truncate">
+                        {p.photographer}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-emerald-700 italic">
+                  Foto Pexels: credito al fotografo viene salvato in caption (non visibile sul sito, libera scelta tua).
+                </p>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Add new image */}
       <div className="space-y-3 mb-6">
         <div className="flex gap-2">

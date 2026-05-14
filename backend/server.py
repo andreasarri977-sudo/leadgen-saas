@@ -793,7 +793,14 @@ async def search_companies(request: SearchRequest):
         })
 
 @api_router.get("/leads", response_model=None)
-async def get_leads(status: Optional[str] = None, action: Optional[str] = None, days: int = 30):
+async def get_leads(
+    status: Optional[str] = None,
+    action: Optional[str] = None,
+    days: int = 30,
+    query: Optional[str] = None,
+    per_page: int = 12,
+    orientation: Optional[str] = None,
+):
     # Action dispatch: ?action=upcoming_renewals (parity con Vercel)
     if action == "existing_place_ids":
         # Lista place_id già salvati nei lead (per evidenziare duplicati in SearchLeads)
@@ -807,6 +814,65 @@ async def get_leads(status: Optional[str] = None, action: Optional[str] = None, 
             if pid:
                 pids.append(pid)
         return {"place_ids": pids, "count": len(pids)}
+
+    if action == "pexels_search":
+        # Proxy Pexels — la API key resta sul server.
+        pexels_key = os.environ.get("PEXELS_API_KEY")
+        if not pexels_key:
+            raise HTTPException(status_code=500, detail="PEXELS_API_KEY non configurata")
+        # Strip eventuali whitespace/quotes accidentali da .env
+        pexels_key = pexels_key.strip().strip('"').strip("'")
+        if not query:
+            raise HTTPException(status_code=400, detail="query richiesta")
+        pp = max(1, min(30, int(per_page or 12)))
+        from urllib.parse import quote as _quote
+        url = f"https://api.pexels.com/v1/search?query={_quote(query)}&per_page={pp}"
+        if orientation in ("landscape", "portrait", "square"):
+            url += f"&orientation={orientation}"
+        try:
+            import httpx as _httpx
+            # NB: Pexels su Cloudflare può flaggare temporaneamente un IP dopo
+            # molti 401 di fila (test/debug). In produzione Vercel ha IP
+            # diversi e non incappa nel problema. Aggiungo retry leggero.
+            ua = "Mozilla/5.0 (compatible; WebFinderStudio/1.0)"
+            headers = {"Authorization": pexels_key, "User-Agent": ua, "Accept": "application/json"}
+            def _pexels_call():
+                with _httpx.Client(timeout=15, trust_env=False, headers=headers) as c:
+                    last = None
+                    for _ in range(2):
+                        last = c.get(url)
+                        if last.status_code == 200:
+                            return last
+                    return last
+            import asyncio as _asyncio
+            r = await _asyncio.to_thread(_pexels_call)
+            pexels_status = r.status_code
+            pexels_text = r.text
+            logger.info(f"[Pexels] status={pexels_status}")
+            if pexels_status != 200:
+                logger.error(f"Pexels HTTP {pexels_status}: {pexels_text[:200]}")
+                raise HTTPException(status_code=502, detail=f"Pexels HTTP {pexels_status}: {pexels_text[:120]}")
+            data = json.loads(pexels_text)
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Pexels error: {e}")
+            raise HTTPException(status_code=502, detail=f"Errore Pexels: {str(e)}")
+        photos = [
+            {
+                "id": p.get("id"),
+                "url": (p.get("src") or {}).get("large"),
+                "thumbnail": (p.get("src") or {}).get("medium"),
+                "original": (p.get("src") or {}).get("original"),
+                "photographer": p.get("photographer"),
+                "photographer_url": p.get("photographer_url"),
+                "pexels_url": p.get("url"),
+                "alt": p.get("alt", query),
+            }
+            for p in data.get("photos", [])
+            if p.get("src")
+        ]
+        return {"photos": photos, "total_results": data.get("total_results", 0), "query": query}
 
     if action == "upcoming_renewals":
         from datetime import timedelta

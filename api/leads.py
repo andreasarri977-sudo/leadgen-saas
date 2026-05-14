@@ -4,7 +4,7 @@ import json
 import os
 import sys
 import traceback
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlparse, quote
 import urllib.request
 
 # Logging
@@ -25,6 +25,7 @@ except ImportError as e:
 MONGO_URL = os.environ.get("MONGO_URL") or os.environ.get("URL_MONGO")
 DB_NAME = os.environ.get("DB_NAME", "leadhunter")
 GOOGLE_PLACES_API_KEY = os.environ.get("GOOGLE_PLACES_API_KEY")
+PEXELS_API_KEY = os.environ.get("PEXELS_API_KEY")
 
 def _load_default_logo():
     """Load the default WebFinder Studio logo as base64 string."""
@@ -642,6 +643,47 @@ class handler(BaseHTTPRequestHandler):
                 ]
                 client.close()
                 return self._json_response(200, {"place_ids": pids, "count": len(pids)})
+
+            if action == "pexels_search":
+                # Proxy verso Pexels API (la chiave resta server-side).
+                # Query params: query (obbligatorio), per_page (default 12, max 30),
+                # orientation (landscape/portrait/square, opzionale)
+                if not PEXELS_API_KEY:
+                    return self._error(500, "PEXELS_API_KEY non configurata")
+                query = params.get("query", [""])[0].strip()
+                if not query:
+                    return self._error(400, "query richiesta")
+                try:
+                    per_page = max(1, min(30, int(params.get("per_page", ["12"])[0])))
+                except (ValueError, TypeError):
+                    per_page = 12
+                orientation = params.get("orientation", [""])[0]
+                url = f"https://api.pexels.com/v1/search?query={quote(query)}&per_page={per_page}"
+                if orientation in ("landscape", "portrait", "square"):
+                    url += f"&orientation={orientation}"
+                try:
+                    req = urllib.request.Request(url, headers={"Authorization": PEXELS_API_KEY, "User-Agent": "WebFinderStudio/1.0"})
+                    with urllib.request.urlopen(req, timeout=10) as resp:
+                        data = json.loads(resp.read().decode('utf-8'))
+                    # Normalizza la risposta in shape minimale per il frontend
+                    photos = [
+                        {
+                            "id": p.get("id"),
+                            "url": p.get("src", {}).get("large"),
+                            "thumbnail": p.get("src", {}).get("medium"),
+                            "original": p.get("src", {}).get("original"),
+                            "photographer": p.get("photographer"),
+                            "photographer_url": p.get("photographer_url"),
+                            "pexels_url": p.get("url"),
+                            "alt": p.get("alt", query),
+                        }
+                        for p in data.get("photos", [])
+                        if p.get("src")
+                    ]
+                    return self._json_response(200, {"photos": photos, "total_results": data.get("total_results", 0), "query": query})
+                except Exception as e:
+                    log(f"Pexels error: {e}")
+                    return self._error(502, f"Errore Pexels: {str(e)}")
 
             if action == "hot_leads":
                 client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)

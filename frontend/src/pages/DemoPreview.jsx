@@ -8,6 +8,9 @@ import 'yet-another-react-lightbox/styles.css';
 import { t, localizeHours, getLanguageFromCountry, getServiceDescription } from '@/lib/translations';
 import { toast } from 'sonner';
 import API from '@/lib/api';
+import { getFontSetForCategory } from '@/lib/categoryFonts';
+import { cloudinaryEnhance, CLOUDINARY_CONFIGURED } from '@/lib/cloudinary';
+import CategoryDecorations from '@/components/CategoryDecorations';
 
 // TikTok Icon (not in lucide-react)
 const TikTokIcon = ({ size = 24, className = '' }) => (
@@ -593,11 +596,19 @@ export default function DemoPreview() {
   
   const style = getStyleFromPlaceId(business.place_id, content.color_scheme);
   
-  // Use hero_image if set, otherwise first photo
-  const heroPhoto = content.hero_image || (photos.length > 0 ? photos[0].url : null);
+  // === FONT PER CATEGORIA (Google Fonts dinamici) ===
+  const fontSet = getFontSetForCategory(business.category);
+  
+  // === Use hero_image if set, otherwise first photo ===
+  const rawHeroPhoto = content.hero_image || (photos.length > 0 ? photos[0].url : null);
+  // Cloudinary auto-enhance per migliorare foto sgranate (sharpen + improve)
+  const heroPhoto = rawHeroPhoto ? cloudinaryEnhance(rawHeroPhoto, { width: 1600 }) : null;
   const galleryPhotos = photos.slice(1, 13);
   
-  const lightboxSlides = galleryPhotos.map(photo => ({ src: photo.url, alt: business.name }));
+  const lightboxSlides = galleryPhotos.map(photo => ({
+    src: cloudinaryEnhance(photo.url, { width: 1600 }),
+    alt: business.name
+  }));
 
   const isFoodBusiness = business.primary_type && ['restaurant', 'bar', 'cafe', 'pizza_restaurant'].includes(business.primary_type);
   const hasMenu = content.menu_categories && content.menu_categories.length > 0;
@@ -618,8 +629,38 @@ export default function DemoPreview() {
     <>
       {/* SEO Meta Tags */}
       <title>{demo.business_name} | {business.category}</title>
-      
-      <div className="min-h-screen bg-white font-sans">
+
+      {/* Font Google dinamici per categoria — preconnect + stylesheet */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link rel="stylesheet" href={fontSet.href} />
+
+      {/* CSS variabili font + applicazione automatica a tutti h1-h6 della pagina */}
+      <style>{`
+        :root {
+          --wf-font-heading: "${fontSet.heading}", system-ui, -apple-system, sans-serif;
+          --wf-font-body: "${fontSet.body}", system-ui, -apple-system, sans-serif;
+        }
+        .wf-demo-root,
+        .wf-demo-root p,
+        .wf-demo-root span,
+        .wf-demo-root a,
+        .wf-demo-root button,
+        .wf-demo-root li,
+        .wf-demo-root input,
+        .wf-demo-root textarea { font-family: var(--wf-font-body); }
+        .wf-demo-root h1,
+        .wf-demo-root h2,
+        .wf-demo-root h3,
+        .wf-demo-root h4,
+        .wf-demo-root h5,
+        .wf-demo-root h6 {
+          font-family: var(--wf-font-heading);
+          letter-spacing: -0.02em;
+        }
+      `}</style>
+
+      <div className="min-h-screen bg-white font-sans wf-demo-root">
         {/* Navigation - WHITE LABEL (no Emergent branding) */}
         <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-neutral-200 shadow-sm">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
@@ -714,6 +755,8 @@ export default function DemoPreview() {
                   className="absolute inset-0"
                   style={{ background: getHeroOverlay(content.hero_overlay) }}
                 ></div>
+                {/* Decorazioni animate per categoria (sopra l'overlay, dietro al testo) */}
+                <CategoryDecorations category={business.category} color="#ffffff" />
               </div>
               {/* Content overlaid at bottom */}
               <div className="absolute bottom-0 left-0 right-0 z-10 py-8 sm:py-12 px-4 sm:px-6">
@@ -926,7 +969,7 @@ export default function DemoPreview() {
                 {galleryPhotos.map((photo, index) => (
                   <button key={index} onClick={() => handleOpenLightbox(index)}
                           className="aspect-square bg-neutral-200 rounded-lg sm:rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all cursor-pointer group">
-                    <img src={photo.url} alt={`${t('sections.galleryTitle', lang)} ${index + 1}`}
+                    <img src={cloudinaryEnhance(photo.url, { width: 600 })} alt={`${t('sections.galleryTitle', lang)} ${index + 1}`}
                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
                   </button>
                 ))}

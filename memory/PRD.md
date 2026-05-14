@@ -1,6 +1,17 @@
 # WebFinder Studio - Product Requirements Document
 
 ## CHANGELOG
+- **14/05/2026 (sera)** - Pacchetto "Siti più stilosi" — 4 feature gratis attivate:
+  - 🔠 **Font per categoria** (Google Fonts dinamici): `getFontSetForCategory()` in `/app/frontend/src/lib/categoryFonts.js` mappa le 7 macro-categorie (luxury/food/wellness/sport/tech/professional/default) a coppie heading+body. In `DemoPreview.jsx` carichiamo il link Google Fonts e impostiamo CSS variables `--wf-font-heading` e `--wf-font-body` su tutti gli h1..h6 e su body. Es: pizzeria → Bricolage Grotesque, parrucchiere → Playfair Display.
+  - 🎬 **CategoryDecorations** (SVG + CSS animations) in `/app/frontend/src/components/CategoryDecorations.jsx`: 3 elementi galleggianti (sparkle/circle/triangle/square/dot) variano per macro-categoria e si animano con keyframes CSS (no Lottie/lib esterne = zero peso). Posizionati `absolute` dentro l'hero, `pointer-events:none`, rispettano `prefers-reduced-motion`.
+  - ☁️ **Cloudinary fetch auto-enhance** in `/app/frontend/src/lib/cloudinary.js`: helper `cloudinaryEnhance(url, {width})` avvolge ogni URL immagine con `f_auto,q_auto,e_improve,e_sharpen:60,dpr_auto`. Applicato a hero, gallery e lightbox. **Solo `cloud_name` richiesto** — niente API secret esposta.
+  - 📸 **Pexels integration** (fallback foto stock professionali):
+    - Backend: nuovo `GET /api/leads?action=pexels_search&query=...&per_page=...&orientation=...` (sia in `/app/api/leads.py` Vercel sia in `/app/backend/server.py` preview). API key resta server-side. Risposta normalizzata `{photos:[{id,url,thumbnail,original,photographer,photographer_url,pexels_url,alt}], total_results, query}`.
+    - Frontend: pannello collassabile nella Galleria editor (`SiteEditor.jsx`) con search bar pre-popolata con la categoria del business + griglia risultati cliccabili. Click su una foto → aggiunta alla galleria con caption che cita il fotografo.
+    - Toast fallback amichevole "Pexels temporaneamente non disponibile (anti-bot). Riprova fra qualche minuto." quando l'API ritorna 401.
+  - ENV: `PEXELS_API_KEY` (backend), `CLOUDINARY_CLOUD_NAME` (sia backend che frontend come `REACT_APP_CLOUDINARY_CLOUD_NAME`).
+  - ⚠️ **Nota preview**: l'IP del preview Emergent è stato temporaneamente flaggato da Cloudflare di Pexels durante i test ripetuti — Pexels in produzione Vercel funzionerà senza problemi (IP diverso).
+
 - **14/05/2026** - UX rifinita su Cerca Aziende & Editor:
   - 🛡️ **"Già Salvato" su Cerca Aziende**: i risultati di Google Places che corrispondono a un lead già nel DB vengono evidenziati con bordo verde + badge verde "Già Salvato" + bottone "Vai al Lead" (al posto di "Salva") che porta direttamente in `/leads`. Toast riepilogativo: "Trovati N potenziali clienti (M già nei tuoi lead)". Anche il modal dettagli mostra il bottone "Già nei tuoi lead — Vai a I Miei Lead".
   - 🔌 **Nuovo endpoint** `GET /api/leads?action=existing_place_ids` (parità Vercel + FastAPI preview): restituisce solo l'array dei `place_id` salvati per check rapido in frontend.
