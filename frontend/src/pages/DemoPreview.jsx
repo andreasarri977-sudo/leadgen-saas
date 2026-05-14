@@ -209,7 +209,18 @@ const COLOR_SCHEME_MAP = {
   'navy':     { primaryColor: 'from-blue-800 to-blue-950',       accentColor: 'bg-blue-800',     buttonColor: 'bg-blue-800 hover:bg-blue-900',      cardBg: 'bg-blue-50',     textAccent: 'text-blue-800' },
   'maroon':   { primaryColor: 'from-rose-700 to-rose-900',       accentColor: 'bg-rose-700',     buttonColor: 'bg-rose-700 hover:bg-rose-800',      cardBg: 'bg-rose-50',     textAccent: 'text-rose-700' },
   'forest':   { primaryColor: 'from-green-700 to-green-900',     accentColor: 'bg-green-700',    buttonColor: 'bg-green-700 hover:bg-green-800',    cardBg: 'bg-green-50',    textAccent: 'text-green-700' },
-  'black':    { primaryColor: 'from-neutral-800 to-neutral-950', accentColor: 'bg-neutral-900',  buttonColor: 'bg-neutral-900 hover:bg-black',      cardBg: 'bg-neutral-100', textAccent: 'text-neutral-900' }
+  'black':    { primaryColor: 'from-neutral-800 to-neutral-950', accentColor: 'bg-neutral-900',  buttonColor: 'bg-neutral-900 hover:bg-black',      cardBg: 'bg-neutral-100', textAccent: 'text-neutral-900' },
+  // === SFUMATURE DOPPIE (gradient) — il primaryColor è già un gradient a 2 colori; accent/button restano solid sul colore dominante ===
+  'sunset':      { primaryColor: 'from-orange-500 to-pink-500',     accentColor: 'bg-orange-500',  buttonColor: 'bg-orange-500 hover:bg-orange-600',  cardBg: 'bg-orange-50',   textAccent: 'text-orange-600' },
+  'ocean':       { primaryColor: 'from-cyan-500 to-blue-600',       accentColor: 'bg-blue-600',    buttonColor: 'bg-blue-600 hover:bg-blue-700',     cardBg: 'bg-cyan-50',     textAccent: 'text-blue-600' },
+  'aurora':      { primaryColor: 'from-purple-500 to-pink-500',     accentColor: 'bg-purple-500',  buttonColor: 'bg-purple-500 hover:bg-purple-600', cardBg: 'bg-purple-50',   textAccent: 'text-purple-600' },
+  'forest_grad': { primaryColor: 'from-emerald-500 to-teal-600',    accentColor: 'bg-teal-600',    buttonColor: 'bg-teal-600 hover:bg-teal-700',     cardBg: 'bg-emerald-50',  textAccent: 'text-teal-600' },
+  'royal':       { primaryColor: 'from-indigo-600 to-purple-600',   accentColor: 'bg-indigo-600',  buttonColor: 'bg-indigo-600 hover:bg-indigo-700', cardBg: 'bg-indigo-50',   textAccent: 'text-indigo-600' },
+  'fire':        { primaryColor: 'from-red-500 to-yellow-500',      accentColor: 'bg-red-500',     buttonColor: 'bg-red-500 hover:bg-red-600',       cardBg: 'bg-red-50',      textAccent: 'text-red-600' },
+  'mint_grad':   { primaryColor: 'from-green-400 to-cyan-500',      accentColor: 'bg-teal-500',    buttonColor: 'bg-teal-500 hover:bg-teal-600',     cardBg: 'bg-teal-50',     textAccent: 'text-teal-600' },
+  'berry':       { primaryColor: 'from-fuchsia-500 to-rose-500',    accentColor: 'bg-fuchsia-500', buttonColor: 'bg-fuchsia-500 hover:bg-fuchsia-600', cardBg: 'bg-fuchsia-50', textAccent: 'text-fuchsia-600' },
+  'gold_grad':   { primaryColor: 'from-amber-400 to-orange-500',    accentColor: 'bg-amber-500',   buttonColor: 'bg-amber-500 hover:bg-amber-600',   cardBg: 'bg-amber-50',    textAccent: 'text-amber-600' },
+  'midnight':    { primaryColor: 'from-slate-800 to-blue-900',      accentColor: 'bg-slate-800',   buttonColor: 'bg-slate-800 hover:bg-slate-900',   cardBg: 'bg-slate-100',   textAccent: 'text-slate-800' }
 };
 
 const getStyleFromPlaceId = (placeId, colorScheme = null) => {
