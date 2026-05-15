@@ -244,6 +244,7 @@ class handler(BaseHTTPRequestHandler):
                     "show_hours": content.get('show_hours', True),
                     "show_map": content.get('show_map', True),
                     "show_services": content.get('show_services', True),
+                    "show_social": content.get('show_social', True),
                     "section_order": content.get('section_order', [])
                 }
                 client.close()
@@ -553,7 +554,7 @@ class handler(BaseHTTPRequestHandler):
                     if 'external_booking_url' in section_data:
                         updates['business_data.external_booking_url'] = section_data['external_booking_url']
                     # Section visibility toggles
-                    for flag in ['show_reviews', 'show_gallery', 'show_whyus', 'show_faq', 'show_hours', 'show_map', 'show_services']:
+                    for flag in ['show_reviews', 'show_gallery', 'show_whyus', 'show_faq', 'show_hours', 'show_map', 'show_services', 'show_social']:
                         if flag in section_data:
                             updates[f'content.{flag}'] = bool(section_data[flag])
                     if updates:

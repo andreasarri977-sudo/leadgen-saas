@@ -258,7 +258,7 @@ const SECTION_LIBRARY = [
 
 const DEFAULT_ORDER_IDS = SECTION_LIBRARY.map((s) => s.id);
 
-function SectionOrderEditor({ sectionOrder, showReviews, showGallery, showWhyus, showFaq, showHours, showMap, showServices, onSave, onSaveVisibility, saving }) {
+function SectionOrderEditor({ sectionOrder, showReviews, showGallery, showWhyus, showFaq, showHours, showMap, showServices, showSocial, onSave, onSaveVisibility, saving }) {
   const initial = Array.isArray(sectionOrder) && sectionOrder.length > 0
     ? [...sectionOrder.filter((id) => DEFAULT_ORDER_IDS.includes(id)), ...DEFAULT_ORDER_IDS.filter((id) => !sectionOrder.includes(id))]
     : DEFAULT_ORDER_IDS;
@@ -275,7 +275,8 @@ function SectionOrderEditor({ sectionOrder, showReviews, showGallery, showWhyus,
     hours: showHours !== false,
     location: showMap !== false,
     services: showServices !== false,
-    // Le sezioni about/booking/contact/social sono sempre visibili (non toggleable)
+    social: showSocial !== false,
+    // Le sezioni about/booking/contact sono sempre visibili (non toggleable)
   };
 
   const move = (from, to) => {
@@ -293,7 +294,7 @@ function SectionOrderEditor({ sectionOrder, showReviews, showGallery, showWhyus,
 
   const toggleVisibility = (sectionId) => {
     // map UI id → backend field
-    const fieldMap = { reviews: 'show_reviews', gallery: 'show_gallery', whyus: 'show_whyus', faq: 'show_faq', hours: 'show_hours', location: 'show_map', services: 'show_services' };
+    const fieldMap = { reviews: 'show_reviews', gallery: 'show_gallery', whyus: 'show_whyus', faq: 'show_faq', hours: 'show_hours', location: 'show_map', services: 'show_services', social: 'show_social' };
     const field = fieldMap[sectionId];
     if (!field || !onSaveVisibility) return;
     const currentVisible = visibilityMap[sectionId];
@@ -320,6 +321,7 @@ function SectionOrderEditor({ sectionOrder, showReviews, showGallery, showWhyus,
         show_hours: showHours !== false,
         show_map: showMap !== false,
         show_services: showServices !== false,
+        show_social: showSocial !== false,
       });
       setDefaultStatus('saved');
       toast.success('🎯 Layout impostato come default per i nuovi siti');
@@ -471,7 +473,7 @@ function SectionOrderEditor({ sectionOrder, showReviews, showGallery, showWhyus,
   );
 }
 
-function SiteSettingsEditor({ siteLanguage, translations, bookingMode, externalBookingUrl, showReviews, showGallery, showWhyus, showFaq, showHours, showMap, showServices, onUpdate, onSave, saving }) {
+function SiteSettingsEditor({ siteLanguage, translations, bookingMode, externalBookingUrl, showReviews, showGallery, showWhyus, showFaq, showHours, showMap, showServices, showSocial, onUpdate, onSave, saving }) {
   const [primaryLang, setPrimaryLang] = useState(siteLanguage || 'it');
   const [trList, setTrList] = useState(translations || []);
   const [booking, setBooking] = useState(bookingMode || 'none');
@@ -483,7 +485,8 @@ function SiteSettingsEditor({ siteLanguage, translations, bookingMode, externalB
     show_faq: showFaq !== false,
     show_hours: showHours !== false,
     show_map: showMap !== false,
-    show_services: showServices !== false
+    show_services: showServices !== false,
+    show_social: showSocial !== false
   });
 
   const toggleTr = (code) => {
@@ -613,7 +616,8 @@ function SiteSettingsEditor({ siteLanguage, translations, bookingMode, externalB
             { id: 'show_reviews', label: 'Recensioni Google', desc: 'Recensioni autentiche da Google' },
             { id: 'show_hours', label: 'Orari di Apertura', desc: 'Tabella settimanale orari' },
             { id: 'show_faq', label: 'Domande Frequenti', desc: 'Sezione FAQ accordion' },
-            { id: 'show_map', label: 'Mappa Google', desc: 'Mappa interattiva indirizzo' }
+            { id: 'show_map', label: 'Mappa Google', desc: 'Mappa interattiva indirizzo' },
+            { id: 'show_social', label: 'Social', desc: 'Instagram, Facebook, TikTok' }
           ].map((s) => (
             <label key={s.id} className="flex items-center justify-between p-3 border border-neutral-200 rounded-lg cursor-pointer hover:bg-neutral-50">
               <div className="flex-1">
@@ -1512,6 +1516,7 @@ function TemplateModal({ open, onClose, demoId, currentContent, onApplied }) {
         show_hours: currentContent.show_hours,
         show_map: currentContent.show_map,
         show_services: currentContent.show_services,
+        show_social: currentContent.show_social,
       };
       await axios.post(`${API}/demos?action=template_save`, payload);
       toast.success('Template salvato');
@@ -2129,6 +2134,7 @@ export default function SiteEditor() {
             showHours={siteData.show_hours}
             showMap={siteData.show_map}
             showServices={siteData.show_services}
+            showSocial={siteData.show_social}
             onUpdate={(d) => updateSection('site_settings', d)}
             onSave={(d) => saveSection('site_settings', d)}
             saving={saving.site_settings}
@@ -2145,6 +2151,7 @@ export default function SiteEditor() {
             showHours={siteData.show_hours}
             showMap={siteData.show_map}
             showServices={siteData.show_services}
+            showSocial={siteData.show_social}
             onSave={(d) => saveSection('layout', d)}
             onSaveVisibility={(d) => saveSection('site_settings', d)}
             saving={saving.layout || saving.site_settings}

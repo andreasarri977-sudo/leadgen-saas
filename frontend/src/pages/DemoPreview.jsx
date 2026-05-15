@@ -1351,7 +1351,8 @@ export default function DemoPreview() {
             </div>
           </section>
 
-          {/* Social Media Section - SEMPRE visibile con Instagram e Facebook come base */}
+          {/* Social Media Section - nascondibile via show_social toggle */}
+          {content.show_social !== false && (
           <section id="social" className="text-center" style={{ order: sectionOrderMap.social }}>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">{t('sections.socialTitle', lang)}</h2>
             <p className="text-neutral-600 mb-6 sm:mb-8 text-base sm:text-lg">
@@ -1401,6 +1402,7 @@ export default function DemoPreview() {
               )}
             </div>
           </section>
+          )}
 
           {/* Final CTA (disattivata di default - può essere riattivata da content.show_final_cta) */}
           {content.show_final_cta && (

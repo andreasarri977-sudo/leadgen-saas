@@ -31,7 +31,7 @@ TEMPLATE_FIELDS = [
     'section_order',
     # Toggle sezioni
     'show_reviews', 'show_gallery', 'show_whyus', 'show_faq',
-    'show_hours', 'show_map', 'show_services',
+    'show_hours', 'show_map', 'show_services', 'show_social',
 ]
 
 # Layout default preset (separato da template — applicato ai NUOVI siti generati)
@@ -40,7 +40,7 @@ LAYOUT_DEFAULT_FIELDS = [
     'design_template', 'text_color', 'color_intensity',
     'title_align',
     'show_reviews', 'show_gallery', 'show_whyus', 'show_faq',
-    'show_hours', 'show_map', 'show_services',
+    'show_hours', 'show_map', 'show_services', 'show_social',
 ]
 
 class handler(BaseHTTPRequestHandler):

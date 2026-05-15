@@ -1287,7 +1287,7 @@ async def generate_demo_site(request: GenerateDemoRequest):
     if layout_default:
         for fld in ['section_order', 'text_color', 'color_intensity', 'title_align',
                     'show_reviews', 'show_gallery', 'show_whyus', 'show_faq',
-                    'show_hours', 'show_map', 'show_services']:
+                    'show_hours', 'show_map', 'show_services', 'show_social']:
             if fld in layout_default and layout_default[fld] is not None:
                 content[fld] = layout_default[fld]
     # Default centrato per tutti i nuovi siti
@@ -1418,7 +1418,7 @@ TEMPLATE_FIELDS = [
     'section_order',
     # Toggle sezioni
     'show_reviews', 'show_gallery', 'show_whyus', 'show_faq',
-    'show_hours', 'show_map', 'show_services',
+    'show_hours', 'show_map', 'show_services', 'show_social',
 ]
 TEMPLATE_TOP_LEVEL_FIELDS = {'design_template'}  # campi salvati al top-level del documento demo
 
@@ -1645,7 +1645,7 @@ LAYOUT_DEFAULT_FIELDS = [
     'design_template', 'text_color', 'color_intensity',
     'title_align',
     'show_reviews', 'show_gallery', 'show_whyus', 'show_faq',
-    'show_hours', 'show_map', 'show_services',
+    'show_hours', 'show_map', 'show_services', 'show_social',
 ]
 
 async def _layout_default_get_impl():

@@ -214,7 +214,7 @@ class handler(BaseHTTPRequestHandler):
             layout_default = db.user_settings.find_one({"setting_id": "layout_default"}, {"_id": 0}) or {}
             for fld in ['section_order', 'text_color', 'color_intensity', 'title_align',
                         'show_reviews', 'show_gallery', 'show_whyus', 'show_faq',
-                        'show_hours', 'show_map', 'show_services']:
+                        'show_hours', 'show_map', 'show_services', 'show_social']:
                 if fld in layout_default and layout_default[fld] is not None:
                     content[fld] = layout_default[fld]
             # Design template: priority param > default > 'classic'

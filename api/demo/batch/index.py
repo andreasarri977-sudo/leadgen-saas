@@ -188,7 +188,7 @@ class handler(BaseHTTPRequestHandler):
                     # Applica layout default sui campi NON gestiti dal template utente
                     for fld in ['section_order', 'text_color', 'color_intensity', 'title_align',
                                 'show_reviews', 'show_gallery', 'show_whyus', 'show_faq',
-                                'show_hours', 'show_map', 'show_services']:
+                                'show_hours', 'show_map', 'show_services', 'show_social']:
                         if fld in layout_default and layout_default[fld] is not None and fld not in content:
                             content[fld] = layout_default[fld]
                     # Default centrato anche per batch (se non gestito da template o default)
