@@ -6,7 +6,7 @@ import sys
 from datetime import datetime, timezone
 
 # Version markers - aggiornati a ogni nuova feature
-BUILD_VERSION = "2026.05.14-layout-cache-fix"
+BUILD_VERSION = "2026.05.16-env-diag"
 BUILD_FEATURES = [
     "clients-page",
     "section-order-editor",
@@ -16,6 +16,9 @@ BUILD_FEATURES = [
     "quote-default-features",
     "quote-dynamic-features",
     "renewals-calendar",
+    "invoices-deposit-balance",
+    "ai-translations",
+    "env-diagnostics",
 ]
 
 class handler(BaseHTTPRequestHandler):
@@ -34,9 +37,25 @@ class handler(BaseHTTPRequestHandler):
         except ImportError:
             modules["dnspython"] = "NOT INSTALLED"
 
-        # Check env
-        mongo_url = os.environ.get("MONGO_URL") or os.environ.get("URL_MONGO")
-        
+        # === Diagnostica completa env vars (mostra SOLO presence + lunghezza, mai i valori) ===
+        def _env_status(name):
+            val = os.environ.get(name)
+            if val is None:
+                return {"present": False, "length": 0}
+            return {"present": True, "length": len(val), "preview": (val[:4] + '...' + val[-2:]) if len(val) > 8 else '***'}
+
+        env_status = {
+            "MONGO_URL": _env_status("MONGO_URL"),
+            "URL_MONGO": _env_status("URL_MONGO"),  # alias fallback
+            "DB_NAME": _env_status("DB_NAME"),
+            "GOOGLE_PLACES_API_KEY": _env_status("GOOGLE_PLACES_API_KEY"),
+            "PEXELS_API_KEY": _env_status("PEXELS_API_KEY"),
+            "EMERGENT_LLM_KEY": _env_status("EMERGENT_LLM_KEY"),
+            "RESEND_API_KEY": _env_status("RESEND_API_KEY"),
+            "VERCEL_TOKEN": _env_status("VERCEL_TOKEN"),
+            "REACT_APP_CLOUDINARY_CLOUD_NAME": _env_status("REACT_APP_CLOUDINARY_CLOUD_NAME"),
+        }
+
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -47,10 +66,11 @@ class handler(BaseHTTPRequestHandler):
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "python": sys.version.split()[0],
             "modules": modules,
-            "mongo_configured": bool(mongo_url),
+            "mongo_configured": bool(os.environ.get("MONGO_URL") or os.environ.get("URL_MONGO")),
+            "env_status": env_status,
             "build_version": BUILD_VERSION,
             "build_features": BUILD_FEATURES
-        }).encode())
+        }, indent=2).encode())
     
     def do_OPTIONS(self):
         self.send_response(200)
