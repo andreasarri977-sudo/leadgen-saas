@@ -1138,19 +1138,60 @@ export default function DemoPreview() {
             <section id="services" style={{ order: sectionOrderMap.services }}>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">{t('sections.menuTitle', lang)}</h2>
               <div className="space-y-6 sm:space-y-8">
-                {content.menu_categories.map((category, idx) => (
+                {content.menu_categories.map((category, idx) => {
+                  // Determina se la categoria usa il formato "rich" (oggetti) o "simple" (stringhe)
+                  const items = category.items || [];
+                  const isRich = items.some((i) => i && typeof i === 'object');
+                  return (
                   <div key={idx} className={`p-5 sm:p-6 md:p-8 ${style.cardBg} rounded-xl sm:rounded-2xl border-2 border-neutral-100`}>
                     <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">{category.name}</h3>
-                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                      {category.items.map((item, itemIdx) => (
-                        <li key={itemIdx} className="flex items-center gap-2 text-neutral-700 text-sm sm:text-base">
-                          <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-neutral-400 rounded-full flex-shrink-0"></span>
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    {isRich ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {items.map((item, itemIdx) => {
+                          const obj = typeof item === 'string' ? { name: item } : (item || {});
+                          if (!obj.name) return null;
+                          return (
+                            <div key={itemIdx} className="bg-white rounded-xl overflow-hidden border border-neutral-200 hover:shadow-lg transition-all">
+                              {obj.image && (
+                                <div className="aspect-[4/3] bg-neutral-100 overflow-hidden">
+                                  <img
+                                    src={cloudinaryEnhance(obj.image, { width: 500 })}
+                                    data-fallback={obj.image}
+                                    onError={cloudinaryFallback}
+                                    alt={obj.name}
+                                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                                    loading="lazy"
+                                  />
+                                </div>
+                              )}
+                              <div className="p-3 sm:p-4">
+                                <div className="flex items-start justify-between gap-2 mb-1">
+                                  <h4 className="font-bold text-neutral-900 text-sm sm:text-base">{obj.name}</h4>
+                                  {obj.price && (
+                                    <span className={`text-sm sm:text-base font-bold whitespace-nowrap ${style.textAccent || 'text-neutral-900'}`}>{obj.price}</span>
+                                  )}
+                                </div>
+                                {obj.description && (
+                                  <p className="text-xs sm:text-sm text-neutral-600 leading-snug">{obj.description}</p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                        {items.map((item, itemIdx) => (
+                          <li key={itemIdx} className="flex items-center gap-2 text-neutral-700 text-sm sm:text-base">
+                            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-neutral-400 rounded-full flex-shrink-0"></span>
+                            <span>{typeof item === 'string' ? item : item?.name}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           )}

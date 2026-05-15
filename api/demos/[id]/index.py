@@ -586,6 +586,27 @@ class handler(BaseHTTPRequestHandler):
                     )
                     client.close()
                     return self._json_response(200, {"success": True, "message": "Ordine sezioni salvato", "section_order": cleaned})
+
+                elif section == 'menu':
+                    # Persiste l'intero oggetto menu (mode + categories + services)
+                    # Items possono essere stringhe (legacy) o oggetti {name, description, price, image}
+                    if not isinstance(section_data, dict):
+                        client.close()
+                        return self._error(400, "menu deve essere un oggetto")
+                    mode = section_data.get('mode') if section_data.get('mode') in ('menu', 'services') else 'services'
+                    categories = section_data.get('categories') or []
+                    services = section_data.get('services') or []
+                    db.demo_sites.update_one(
+                        {"demo_id": demo_id},
+                        {"$set": {
+                            "content.menu": {"mode": mode, "categories": categories, "services": services},
+                            "content.menu_categories": categories,
+                            "content.services": services,
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        }}
+                    )
+                    client.close()
+                    return self._json_response(200, {"success": True, "message": "Menu salvato"})
                 
                 # Standard field updates (backward compatibility)
                 content_fields = ['tagline', 'about_text', 'homepage_subtitle', 'services_intro', 'services', 'cta_text', 'theme', 'color_scheme', 'hero_image', 'why_choose_us', 'faq']
@@ -751,6 +772,133 @@ class handler(BaseHTTPRequestHandler):
                     "target_lang": target_lang,
                     "fields_translated": list(translated.keys()),
                     "fields_with_warning": missing_fields,
+                })
+
+            elif action == "menu_ai":
+                # Genera un menu strutturato per ristoranti/pizzerie/bar usando Claude.
+                # Ogni piatto ha: name, description, price, image (URL Pexels).
+                emergent_key = os.environ.get('EMERGENT_LLM_KEY')
+                if not emergent_key:
+                    client.close()
+                    return self._error(500, "EMERGENT_LLM_KEY non configurata")
+
+                business = demo.get('business_data', {}) or {}
+                business_name = business.get('name', 'Ristorante')
+                primary_type = (business.get('primary_type') or '').lower()
+                category = (business.get('category') or business.get('primary_type') or 'ristorante').lower()
+                city = business.get('city') or business.get('address', '').split(',')[-2].strip() if business.get('address') else ''
+                # Recensioni → estrai cosa dicono i clienti (utile per capire i piatti preferiti)
+                reviews_snippet = ''
+                if business.get('reviews'):
+                    snippets = [r.get('text', '')[:200] for r in business['reviews'][:5] if r.get('text')]
+                    reviews_snippet = ' | '.join(snippets)[:1000]
+
+                # Determina tipo: pizzeria, ristorante, bar, gelateria...
+                is_pizzeria = 'pizza' in primary_type or 'pizza' in business_name.lower() or 'pizzeria' in category
+                is_bar = 'bar' in primary_type or 'cafe' in primary_type
+                is_gelateria = 'gelat' in primary_type or 'ice_cream' in primary_type
+                if is_pizzeria:
+                    menu_hint = "PIZZERIA: includi 1 categoria 'Antipasti' (3-4 voci), 1 'Pizze Classiche' (8-10 pizze tipiche italiane con descrizione ingredienti), 1 'Pizze Speciali' (5-6 pizze gourmet/firma), 1 'Dolci' (3-4 voci), 1 'Bevande' (4-5 voci)"
+                elif is_bar:
+                    menu_hint = "BAR/CAFFETTERIA: includi 'Colazione' (caffe, brioche), 'Aperitivi' (cocktail, spritz, vino), 'Snack' (tramezzini, panini), 'Caffetteria specialty'"
+                elif is_gelateria:
+                    menu_hint = "GELATERIA: includi 'Gusti Classici' (8-10 gusti italiani tipici), 'Gusti Speciali' (5-6 gusti gourmet), 'Coppette e Coni', 'Granite/Sorbetti'"
+                else:
+                    menu_hint = "RISTORANTE: includi 'Antipasti' (4-5 voci), 'Primi' (5-6 voci), 'Secondi' (5-6 voci), 'Dolci' (3-4 voci), 'Bevande' (3-4 voci)"
+
+                prompt = (
+                    f"Sei un esperto di ristorazione italiana. Genera un menu realistico per questa attivita:\n"
+                    f"Nome: {business_name}\nCategoria Google: {primary_type or category}\nCitta: {city}\n"
+                    f"Esempi recensioni clienti (per capire piatti famosi): {reviews_snippet or 'nessuna'}\n\n"
+                    f"REGOLE:\n{menu_hint}\n\n"
+                    f"Per OGNI piatto inserisci:\n"
+                    f"- name: nome in italiano (max 4 parole)\n"
+                    f"- description: ingredienti chiave in 6-12 parole\n"
+                    f"- price: prezzo in formato '\u20ac X,XX' (es. '\u20ac 8,50') realistico per la zona {city}\n"
+                    f"- search_query: 2-3 parole inglesi che descrivono il piatto per cercarne una foto stock (es. 'margherita pizza', 'tiramisu dessert', 'spritz aperol')\n\n"
+                    f"Rispondi SOLO con JSON valido nel formato:\n"
+                    f'{{"categories": [{{"name": "Antipasti", "items": [{{"name": "...", "description": "...", "price": "\u20ac 6,00", "search_query": "..."}}]}}]}}\n'
+                    f"Niente markdown, niente testo extra."
+                )
+
+                try:
+                    import requests as _r
+                    llm_response = _r.post(
+                        "https://integrations.emergentagent.com/llm/chat/completions",
+                        headers={"Authorization": f"Bearer {emergent_key}", "Content-Type": "application/json"},
+                        json={
+                            "model": "claude-sonnet-4-5-20250929",
+                            "messages": [
+                                {"role": "system", "content": "Sei un esperto chef italiano. Rispondi SOLO con JSON valido."},
+                                {"role": "user", "content": prompt}
+                            ],
+                            "max_tokens": 6000
+                        },
+                        timeout=90
+                    )
+                    if llm_response.status_code != 200:
+                        client.close()
+                        return self._error(500, f"LLM error {llm_response.status_code}: {llm_response.text[:200]}")
+                    llm_text = llm_response.json()['choices'][0]['message']['content']
+                    cleaned = (llm_text or '').strip()
+                    if cleaned.startswith('```'):
+                        lines = cleaned.split('\n')
+                        if lines and lines[0].startswith('```'):
+                            lines = lines[1:]
+                        if lines and lines[-1].startswith('```'):
+                            lines = lines[:-1]
+                        cleaned = '\n'.join(lines)
+                    menu_data = json.loads(cleaned)
+                except Exception as _e:
+                    log(f"Menu AI error: {_e}")
+                    client.close()
+                    return self._error(500, f"Errore generazione menu AI: {str(_e)[:200]}")
+
+                # Per ogni piatto, cerca una foto su Pexels (con la search_query)
+                pexels_key = os.environ.get('PEXELS_API_KEY')
+                if pexels_key:
+                    import urllib.request
+                    import urllib.parse
+                    photo_cache = {}
+                    for cat in menu_data.get('categories', []):
+                        for item in cat.get('items', []):
+                            query = (item.get('search_query') or item.get('name', '')).strip()
+                            if not query:
+                                continue
+                            if query in photo_cache:
+                                item['image'] = photo_cache[query]
+                                continue
+                            try:
+                                url = f"https://api.pexels.com/v1/search?query={urllib.parse.quote(query)}&per_page=1&orientation=landscape"
+                                req = urllib.request.Request(url, headers={"Authorization": pexels_key, "User-Agent": "WebFinderStudio/1.0"})
+                                with urllib.request.urlopen(req, timeout=8) as resp:
+                                    pdata = json.loads(resp.read().decode('utf-8'))
+                                    photos = pdata.get('photos', [])
+                                    if photos:
+                                        photo_url = photos[0].get('src', {}).get('large') or photos[0].get('src', {}).get('original')
+                                        if photo_url:
+                                            item['image'] = photo_url
+                                            photo_cache[query] = photo_url
+                            except Exception as _e:
+                                log(f"Pexels search failed for '{query}': {_e}")
+                            # Rimuovi search_query dal menu finale (era solo helper)
+                            item.pop('search_query', None)
+
+                # Salva nel demo
+                db.demo_sites.update_one(
+                    {"demo_id": demo_id},
+                    {"$set": {
+                        "content.menu_categories": menu_data.get('categories', []),
+                        "content.menu": {"mode": "menu", "categories": menu_data.get('categories', [])},
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                client.close()
+                return self._json_response(200, {
+                    "success": True,
+                    "categories_count": len(menu_data.get('categories', [])),
+                    "items_count": sum(len(c.get('items', [])) for c in menu_data.get('categories', [])),
+                    "menu": menu_data.get('categories', [])
                 })
 
             elif action == "template_apply_inline":

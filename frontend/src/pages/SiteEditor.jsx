@@ -2096,6 +2096,7 @@ export default function SiteEditor() {
         <TabsContent value="menu">
           <MenuEditor
             menu={siteData.menu}
+            demoId={demoId}
             onUpdate={(data) => updateSection('menu', data)}
             onSave={() => saveSection('menu', siteData.menu)}
             saving={saving.menu}
@@ -2529,8 +2530,29 @@ function HoursEditor({ hours, onUpdate, onSave, saving, hasChanges }) {
 }
 
 // MENU EDITOR
-function MenuEditor({ menu, onUpdate, onSave, saving, hasChanges }) {
+function MenuEditor({ menu, demoId, onUpdate, onSave, saving, hasChanges }) {
   const isMenuMode = menu?.mode === 'menu';
+  const [generatingAi, setGeneratingAi] = useState(false);
+
+  const handleGenerateMenuAi = async () => {
+    if (!demoId) { toast.error('Demo ID mancante'); return; }
+    if (!window.confirm('🤖 Generare un menu completo con AI?\n\nClaude analizzerà nome attività, categoria, recensioni → 4-5 categorie con piatti + descrizioni + prezzi realistici + foto Pexels.\n\n⚠️ Sovrascrive il menu attuale. Procedere?')) return;
+    setGeneratingAi(true);
+    try {
+      const res = await axios.post(`${API}/demos/${demoId}?action=menu_ai`, {});
+      if (res.data?.success) {
+        toast.success(`✓ Menu generato: ${res.data.categories_count} categorie, ${res.data.items_count} piatti con foto`);
+        // Aggiorna lo stato locale con il nuovo menu
+        onUpdate({ ...menu, mode: 'menu', categories: res.data.menu });
+      } else {
+        toast.error('Generazione fallita');
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Errore generazione menu AI');
+    } finally {
+      setGeneratingAi(false);
+    }
+  };
 
   const addCategory = () => {
     const newCategories = [...(menu.categories || []), { name: '', items: [''] }];
@@ -2585,20 +2607,41 @@ function MenuEditor({ menu, onUpdate, onSave, saving, hasChanges }) {
 
   return (
     <Card className="p-6" data-testid="menu-editor">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h2 className="text-xl font-semibold">
           {isMenuMode ? 'Menu' : 'Servizi'}
         </h2>
-        <div className="flex items-center gap-2 text-sm">
-          <span className={!isMenuMode ? 'font-medium' : 'text-neutral-400'}>Servizi</span>
-          <Switch
-            checked={isMenuMode}
-            onCheckedChange={(checked) => onUpdate({ ...menu, mode: checked ? 'menu' : 'services' })}
-            data-testid="menu-mode-switch"
-          />
-          <span className={isMenuMode ? 'font-medium' : 'text-neutral-400'}>Menu</span>
+        <div className="flex items-center gap-3 flex-wrap">
+          {isMenuMode && (
+            <Button
+              type="button"
+              onClick={handleGenerateMenuAi}
+              disabled={generatingAi}
+              size="sm"
+              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0"
+              data-testid="generate-menu-ai-btn"
+            >
+              {generatingAi ? <Loader2 className="animate-spin mr-2" size={14} /> : <span className="mr-1">🤖</span>}
+              {generatingAi ? 'Generazione in corso (20-30s)…' : 'Genera menu AI + foto'}
+            </Button>
+          )}
+          <div className="flex items-center gap-2 text-sm">
+            <span className={!isMenuMode ? 'font-medium' : 'text-neutral-400'}>Servizi</span>
+            <Switch
+              checked={isMenuMode}
+              onCheckedChange={(checked) => onUpdate({ ...menu, mode: checked ? 'menu' : 'services' })}
+              data-testid="menu-mode-switch"
+            />
+            <span className={isMenuMode ? 'font-medium' : 'text-neutral-400'}>Menu</span>
+          </div>
         </div>
       </div>
+
+      {isMenuMode && (menu.categories || []).some(c => c.items?.some(i => typeof i === 'object')) && (
+        <div className="mb-4 p-3 rounded-lg bg-orange-50 border border-orange-200 text-xs text-orange-900">
+          🤖 <strong>Menu generato da AI</strong> — ogni piatto ha foto Pexels, descrizione e prezzo. L'editor mostra solo i nomi qui sotto, ma sul sito vedrai schede ricche. Clicca "Genera menu AI" di nuovo per rigenerare.
+        </div>
+      )}
 
       {isMenuMode ? (
         // Menu categories
@@ -2624,25 +2667,47 @@ function MenuEditor({ menu, onUpdate, onSave, saving, hasChanges }) {
               </div>
               
               <div className="space-y-2 ml-4">
-                {(category.items || []).map((item, itemIndex) => (
-                  <div key={itemIndex} className="flex items-center gap-2">
-                    <GripVertical size={16} className="text-neutral-300" />
-                    <Input
-                      placeholder="Nome piatto"
-                      value={item || ''}
-                      onChange={(e) => updateItem(catIndex, itemIndex, e.target.value)}
-                      data-testid={`category-${catIndex}-item-${itemIndex}`}
-                    />
+                {(category.items || []).map((item, itemIndex) => {
+                  // Supporta sia stringa (formato legacy) sia oggetto {name, description, price, image}
+                  const isRich = typeof item === 'object' && item !== null;
+                  const displayValue = isRich ? (item.name || '') : (item || '');
+                  return (
+                  <div key={itemIndex} className="flex items-start gap-2">
+                    <GripVertical size={16} className="text-neutral-300 mt-3" />
+                    {isRich && item.image && (
+                      <img src={item.image} alt={item.name} className="w-12 h-12 rounded-lg object-cover border border-neutral-200 flex-shrink-0 mt-1" loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <Input
+                        placeholder="Nome piatto"
+                        value={displayValue}
+                        onChange={(e) => {
+                          if (isRich) {
+                            updateItem(catIndex, itemIndex, { ...item, name: e.target.value });
+                          } else {
+                            updateItem(catIndex, itemIndex, e.target.value);
+                          }
+                        }}
+                        data-testid={`category-${catIndex}-item-${itemIndex}`}
+                      />
+                      {isRich && (item.description || item.price) && (
+                        <p className="text-[11px] text-neutral-500 mt-1 truncate">
+                          {item.price && <span className="font-semibold text-orange-600 mr-2">{item.price}</span>}
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => removeItem(catIndex, itemIndex)}
-                      className="text-neutral-400 hover:text-red-500"
+                      className="text-neutral-400 hover:text-red-500 mt-1"
                     >
                       <X size={16} />
                     </Button>
                   </div>
-                ))}
+                  );
+                })}
                 <Button
                   variant="ghost"
                   size="sm"
