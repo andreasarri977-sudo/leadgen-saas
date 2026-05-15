@@ -774,6 +774,173 @@ class handler(BaseHTTPRequestHandler):
                     "fields_with_warning": missing_fields,
                 })
 
+            elif action == "menu_import_google":
+                # Importa il menu REALE dalle foto Google Places (foto di menu fotografate dai clienti).
+                # Usa Claude Vision via OpenAI-compatible API per fare OCR strutturato.
+                emergent_key = os.environ.get('EMERGENT_LLM_KEY')
+                if not emergent_key:
+                    client.close()
+                    return self._error(500, "EMERGENT_LLM_KEY non configurata")
+
+                business = demo.get('business_data', {}) or {}
+                photos = business.get('photos', []) or []
+                # photos puo essere lista di dict {url} o lista di stringhe
+                photo_urls = []
+                for p in photos:
+                    if isinstance(p, dict):
+                        u = p.get('url') or p.get('src')
+                    else:
+                        u = p
+                    if u and isinstance(u, str):
+                        photo_urls.append(u)
+                if not photo_urls:
+                    client.close()
+                    return self._error(400, "Nessuna foto Google trovata per questo ristorante")
+
+                # Permetti override: l'utente puo passare un subset di foto da analizzare
+                selected = data.get('photo_urls')
+                if isinstance(selected, list) and selected:
+                    photo_urls = [u for u in selected if isinstance(u, str)]
+                # Limita a 6 foto per non saturare token
+                photo_urls = photo_urls[:6]
+
+                business_name = business.get('name', 'Ristorante')
+                primary_type = (business.get('primary_type') or '').lower()
+                is_pizzeria = 'pizza' in primary_type or 'pizza' in business_name.lower()
+
+                # Step 1: identifica le foto che sono effettivamente menu
+                # Step 2: estrai i piatti come JSON strutturato
+                import requests as _r
+                all_items = []
+                analyzed_count = 0
+                menu_photos_count = 0
+
+                for img_url in photo_urls:
+                    try:
+                        # Claude Vision: chiediamo SOLO se è un menu E in caso estrai piatti
+                        vision_payload = {
+                            "model": "claude-sonnet-4-5-20250929",
+                            "messages": [
+                                {
+                                    "role": "user",
+                                    "content": [
+                                        {"type": "text", "text": (
+                                            f"Analizza questa foto del ristorante '{business_name}'.\n\n"
+                                            f"PRIMA: e' la foto di un menu (con piatti e prezzi scritti)? Rispondi 'SI' o 'NO'.\n"
+                                            f"Se SI: estrai TUTTI i piatti leggibili come JSON in italiano. "
+                                            f"Per ognuno: name (nome piatto), description (ingredienti se visibili, altrimenti ''), price (in formato '\u20ac X,XX' se leggibile, altrimenti ''), category (es. 'Pizze', 'Antipasti', 'Bevande' — desumi dal contesto).\n\n"
+                                            f"Rispondi SOLO con JSON in questo formato:\n"
+                                            f'{{"is_menu": true|false, "items": [{{"name":"...", "description":"...", "price":"...", "category":"..."}}]}}\n'
+                                            f"Niente markdown, niente testo extra. Se non e' menu: {{\"is_menu\": false, \"items\": []}}"
+                                        )},
+                                        {"type": "image_url", "image_url": {"url": img_url}}
+                                    ]
+                                }
+                            ],
+                            "max_tokens": 3000
+                        }
+                        resp = _r.post(
+                            "https://integrations.emergentagent.com/llm/chat/completions",
+                            headers={"Authorization": f"Bearer {emergent_key}", "Content-Type": "application/json"},
+                            json=vision_payload,
+                            timeout=60
+                        )
+                        analyzed_count += 1
+                        if resp.status_code != 200:
+                            log(f"Vision OCR error {resp.status_code}: {resp.text[:200]}")
+                            continue
+                        llm_text = resp.json()['choices'][0]['message']['content']
+                        cleaned = (llm_text or '').strip()
+                        if cleaned.startswith('```'):
+                            lines = cleaned.split('\n')
+                            if lines and lines[0].startswith('```'):
+                                lines = lines[1:]
+                            if lines and lines[-1].startswith('```'):
+                                lines = lines[:-1]
+                            cleaned = '\n'.join(lines)
+                        result = json.loads(cleaned)
+                        if result.get('is_menu'):
+                            menu_photos_count += 1
+                            for it in (result.get('items') or []):
+                                if it.get('name'):
+                                    all_items.append({
+                                        'name': it.get('name', '').strip(),
+                                        'description': it.get('description', '').strip(),
+                                        'price': it.get('price', '').strip(),
+                                        'category': it.get('category', 'Menu').strip() or 'Menu',
+                                    })
+                    except Exception as _e:
+                        log(f"Vision OCR exception: {_e}")
+                        continue
+
+                if not all_items:
+                    client.close()
+                    return self._error(404, f"Nessun menu rilevato nelle {analyzed_count} foto analizzate. Le foto Google potrebbero non contenere menu leggibili. Prova 'Genera menu AI' come alternativa.")
+
+                # Raggruppa per categoria (deduplicating)
+                cats_dict = {}
+                for it in all_items:
+                    cat = it.pop('category', 'Menu')
+                    if cat not in cats_dict:
+                        cats_dict[cat] = []
+                    # Dedup per nome
+                    if not any(x.get('name', '').lower() == it['name'].lower() for x in cats_dict[cat]):
+                        cats_dict[cat].append(it)
+                # Ordine categorie tipico
+                CATEGORY_ORDER = ['Antipasti', 'Primi', 'Pizze', 'Pizze Classiche', 'Pizze Speciali', 'Secondi', 'Contorni', 'Dolci', 'Bevande', 'Vini', 'Birre']
+                ordered_cats = sorted(cats_dict.keys(), key=lambda c: (
+                    CATEGORY_ORDER.index(c) if c in CATEGORY_ORDER else 999,
+                    c
+                ))
+                categories = [{'name': c, 'items': cats_dict[c]} for c in ordered_cats]
+
+                # OPZIONALE: cerca foto Pexels per ogni piatto (limita a 30 piatti per non saturare)
+                pexels_key = os.environ.get('PEXELS_API_KEY')
+                photo_cache = {}
+                if pexels_key:
+                    import urllib.request
+                    import urllib.parse
+                    items_processed = 0
+                    for cat in categories:
+                        for item in cat.get('items', []):
+                            if items_processed >= 30:
+                                break
+                            items_processed += 1
+                            query = item['name']
+                            if query in photo_cache:
+                                item['image'] = photo_cache[query]
+                                continue
+                            try:
+                                url = f"https://api.pexels.com/v1/search?query={urllib.parse.quote(query)}&per_page=1&orientation=landscape"
+                                req = urllib.request.Request(url, headers={"Authorization": pexels_key, "User-Agent": "WebFinderStudio/1.0"})
+                                with urllib.request.urlopen(req, timeout=6) as resp2:
+                                    pdata = json.loads(resp2.read().decode('utf-8'))
+                                    if pdata.get('photos'):
+                                        photo_url = pdata['photos'][0].get('src', {}).get('large')
+                                        if photo_url:
+                                            item['image'] = photo_url
+                                            photo_cache[query] = photo_url
+                            except Exception:
+                                pass
+
+                db.demo_sites.update_one(
+                    {"demo_id": demo_id},
+                    {"$set": {
+                        "content.menu_categories": categories,
+                        "content.menu": {"mode": "menu", "categories": categories},
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                client.close()
+                return self._json_response(200, {
+                    "success": True,
+                    "photos_analyzed": analyzed_count,
+                    "menu_photos_found": menu_photos_count,
+                    "categories_count": len(categories),
+                    "items_count": sum(len(c['items']) for c in categories),
+                    "menu": categories
+                })
+
             elif action == "menu_ai":
                 # Genera un menu strutturato per ristoranti/pizzerie/bar usando Claude.
                 # Ogni piatto ha: name, description, price, image (URL Pexels).
@@ -793,16 +960,74 @@ class handler(BaseHTTPRequestHandler):
                     snippets = [r.get('text', '')[:200] for r in business['reviews'][:5] if r.get('text')]
                     reviews_snippet = ' | '.join(snippets)[:1000]
 
-                # Determina tipo: pizzeria, ristorante, bar, gelateria...
+                # Determina tipo: pizzeria, ristorante, bar, gelateria, parrucchiere...
                 is_pizzeria = 'pizza' in primary_type or 'pizza' in business_name.lower() or 'pizzeria' in category
                 is_bar = 'bar' in primary_type or 'cafe' in primary_type
                 is_gelateria = 'gelat' in primary_type or 'ice_cream' in primary_type
+                is_barber = 'barber' in primary_type or 'barbiere' in business_name.lower() or 'barber' in business_name.lower()
+                is_hair = 'hair_salon' in primary_type or 'hair' in primary_type or 'parrucch' in business_name.lower() or 'salone' in business_name.lower()
+                is_beauty = 'beauty_salon' in primary_type or 'beauty' in primary_type or 'estetic' in business_name.lower() or 'estetista' in business_name.lower() or 'centro estetico' in business_name.lower()
+
+                # Detect target clientela (donna/uomo/misto) per parrucchieri/estetica
+                name_lower = business_name.lower()
+                reviews_lower = (reviews_snippet or '').lower()
+                # Indizi espliciti
+                hint_woman_only = any(w in name_lower for w in ['donna', 'donne', 'femminile', 'lady', 'woman', 'women', 'femme']) or 'solo donna' in reviews_lower
+                hint_man_only   = any(w in name_lower for w in ['uomo', 'uomini', 'maschile', 'man', 'men', 'masculin']) or is_barber
+                # Default in base alla primary_type Google
+                if is_barber:
+                    target_clientele = 'uomo'
+                elif hint_woman_only or is_beauty:
+                    target_clientele = 'donna'
+                elif hint_man_only:
+                    target_clientele = 'uomo'
+                else:
+                    target_clientele = 'misto'
+
                 if is_pizzeria:
                     menu_hint = "PIZZERIA: includi 1 categoria 'Antipasti' (3-4 voci), 1 'Pizze Classiche' (8-10 pizze tipiche italiane con descrizione ingredienti), 1 'Pizze Speciali' (5-6 pizze gourmet/firma), 1 'Dolci' (3-4 voci), 1 'Bevande' (4-5 voci)"
                 elif is_bar:
                     menu_hint = "BAR/CAFFETTERIA: includi 'Colazione' (caffe, brioche), 'Aperitivi' (cocktail, spritz, vino), 'Snack' (tramezzini, panini), 'Caffetteria specialty'"
                 elif is_gelateria:
                     menu_hint = "GELATERIA: includi 'Gusti Classici' (8-10 gusti italiani tipici), 'Gusti Speciali' (5-6 gusti gourmet), 'Coppette e Coni', 'Granite/Sorbetti'"
+                elif is_barber or (is_hair and target_clientele == 'uomo'):
+                    menu_hint = (
+                        f"BARBIERE / PARRUCCHIERE UOMO (clientela {target_clientele}): "
+                        f"includi SOLO servizi UOMO. Categorie: 'Taglio Uomo' (4-5 servizi: taglio classico, taglio moderno, fade, sfumatura, taglio bambino), "
+                        f"'Barba' (3-4: rasatura tradizionale panno caldo, modellatura, contorno, trattamento), "
+                        f"'Trattamenti' (3-4: lavaggio, maschera capelli, massaggio cuoio capelluto), "
+                        f"'Servizi Premium' (2-3: trucco/scolpitura, tinta uomo, pacchetti completi). "
+                        f"VIETATO inserire servizi donna come: piega, taglio donna, balayage, colpi di sole, extension lunghe, manicure/pedicure femminili. "
+                        f"Per ogni servizio: name (titolo breve), description (cosa include in 5-10 parole), price (prezzo realistico in '\u20ac X,XX')."
+                    )
+                elif is_hair and target_clientele == 'donna':
+                    menu_hint = (
+                        f"PARRUCCHIERE DONNA (clientela {target_clientele}): "
+                        f"includi SOLO servizi DONNA. Categorie: 'Taglio & Piega' (4-5: taglio scalato, bob, lungo, piega liscia, piega ondulata, brushing), "
+                        f"'Colore' (5-6: tinta totale, colpi di sole, balayage, mèches, shatush, decolorazione), "
+                        f"'Trattamenti' (3-4: ricostruzione, cheratina, maschera, idratazione profonda), "
+                        f"'Acconciature' (2-3: sposa, eventi, raccolto). "
+                        f"VIETATO inserire: barba, rasatura, taglio uomo. "
+                        f"Per ogni servizio: name, description (5-10 parole), price."
+                    )
+                elif is_hair:
+                    menu_hint = (
+                        "PARRUCCHIERE MISTO (uomo + donna): "
+                        "includi entrambe le categorie. 'Donna' (taglio, piega, colore, trattamenti), "
+                        "'Uomo' (taglio, barba se applicabile), 'Bambino' (taglio). "
+                        "Per ogni servizio: name, description, price."
+                    )
+                elif is_beauty:
+                    menu_hint = (
+                        f"CENTRO ESTETICO (clientela {target_clientele}): "
+                        f"categorie 'Viso' (pulizia, trattamenti specifici, anti-eta), "
+                        f"'Corpo' (massaggi, scrub, drenanti, dimagranti), "
+                        f"'Depilazione' (gambe, ascelle, inguine, viso — laser/cera), "
+                        f"'Manicure & Pedicure' (semplice, gel, ricostruzione, nail art), "
+                        f"'Trucco' (giorno, sposa, eventi). "
+                        f"VIETATO: tagli capelli, barba (non sono servizi estetica). "
+                        f"Per ogni servizio: name, description, price."
+                    )
                 else:
                     menu_hint = "RISTORANTE: includi 'Antipasti' (4-5 voci), 'Primi' (5-6 voci), 'Secondi' (5-6 voci), 'Dolci' (3-4 voci), 'Bevande' (3-4 voci)"
 

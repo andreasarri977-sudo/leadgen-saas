@@ -2533,6 +2533,32 @@ function HoursEditor({ hours, onUpdate, onSave, saving, hasChanges }) {
 function MenuEditor({ menu, demoId, onUpdate, onSave, saving, hasChanges }) {
   const isMenuMode = menu?.mode === 'menu';
   const [generatingAi, setGeneratingAi] = useState(false);
+  const [importingGoogle, setImportingGoogle] = useState(false);
+
+  const handleImportGoogle = async () => {
+    if (!demoId) { toast.error('Demo ID mancante'); return; }
+    if (!window.confirm('📷 Importare il menu REALE dalle foto Google del ristorante?\n\nClaude Vision analizzerà le foto pubblicate su Google Maps (compresi i menu fotografati dai clienti) ed estrarrà piatti, descrizioni e prezzi reali.\n\n⚠️ Funziona solo se Google ha foto di menu. Tempo: 30-60 sec. Sovrascrive il menu attuale.')) return;
+    setImportingGoogle(true);
+    try {
+      const res = await axios.post(`${API}/demos/${demoId}?action=menu_import_google`, {});
+      if (res.data?.success) {
+        toast.success(`✓ Menu importato da Google: ${res.data.menu_photos_found} foto menu trovate → ${res.data.items_count} piatti in ${res.data.categories_count} categorie`);
+        onUpdate({ ...menu, mode: 'menu', categories: res.data.menu });
+      } else {
+        toast.error('Importazione fallita');
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.error || 'Errore importazione menu Google';
+      // 404 = nessun menu rilevato → suggerisci AI come fallback
+      if (err?.response?.status === 404) {
+        toast.error(msg, { duration: 6000 });
+      } else {
+        toast.error(msg);
+      }
+    } finally {
+      setImportingGoogle(false);
+    }
+  };
 
   const handleGenerateMenuAi = async () => {
     if (!demoId) { toast.error('Demo ID mancante'); return; }
@@ -2542,7 +2568,6 @@ function MenuEditor({ menu, demoId, onUpdate, onSave, saving, hasChanges }) {
       const res = await axios.post(`${API}/demos/${demoId}?action=menu_ai`, {});
       if (res.data?.success) {
         toast.success(`✓ Menu generato: ${res.data.categories_count} categorie, ${res.data.items_count} piatti con foto`);
-        // Aggiorna lo stato locale con il nuovo menu
         onUpdate({ ...menu, mode: 'menu', categories: res.data.menu });
       } else {
         toast.error('Generazione fallita');
@@ -2613,17 +2638,32 @@ function MenuEditor({ menu, demoId, onUpdate, onSave, saving, hasChanges }) {
         </h2>
         <div className="flex items-center gap-3 flex-wrap">
           {isMenuMode && (
-            <Button
-              type="button"
-              onClick={handleGenerateMenuAi}
-              disabled={generatingAi}
-              size="sm"
-              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0"
-              data-testid="generate-menu-ai-btn"
-            >
-              {generatingAi ? <Loader2 className="animate-spin mr-2" size={14} /> : <span className="mr-1">🤖</span>}
-              {generatingAi ? 'Generazione in corso (20-30s)…' : 'Genera menu AI + foto'}
-            </Button>
+            <>
+              <Button
+                type="button"
+                onClick={handleImportGoogle}
+                disabled={importingGoogle || generatingAi}
+                size="sm"
+                className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white border-0"
+                data-testid="import-menu-google-btn"
+                title="Estrae il menu REALE leggendo le foto del menu pubblicate su Google Maps"
+              >
+                {importingGoogle ? <Loader2 className="animate-spin mr-2" size={14} /> : <span className="mr-1">📷</span>}
+                {importingGoogle ? 'OCR foto Google (30-60s)…' : 'Importa menu da Google'}
+              </Button>
+              <Button
+                type="button"
+                onClick={handleGenerateMenuAi}
+                disabled={generatingAi || importingGoogle}
+                size="sm"
+                className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0"
+                data-testid="generate-menu-ai-btn"
+                title="Genera un menu plausibile da zero con AI basato su nome/categoria/recensioni"
+              >
+                {generatingAi ? <Loader2 className="animate-spin mr-2" size={14} /> : <span className="mr-1">🤖</span>}
+                {generatingAi ? 'Generazione (20-30s)…' : 'Genera menu AI'}
+              </Button>
+            </>
           )}
           <div className="flex items-center gap-2 text-sm">
             <span className={!isMenuMode ? 'font-medium' : 'text-neutral-400'}>Servizi</span>
