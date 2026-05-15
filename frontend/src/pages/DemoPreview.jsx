@@ -793,6 +793,21 @@ export default function DemoPreview() {
           }
         }
 
+        /* === ALLINEAMENTO CENTRATO uniforme — titoli sezioni + introduzioni === */
+        ${(content.title_align || 'center') === 'center' ? `
+          .wf-demo-root section[id] > h2,
+          .wf-demo-root section[id] > h3 {
+            text-align: center;
+          }
+          /* Paragrafo introduttivo subito dopo h2 → centrato + auto margin */
+          .wf-demo-root section[id] > h2 + p,
+          .wf-demo-root section[id] > h3 + p {
+            text-align: center;
+            margin-left: auto;
+            margin-right: auto;
+          }
+        ` : ''}
+
         /* === DECORAZIONI FLOTTANTI tra sezioni === */
         .wf-deco-divider {
           position: relative;
