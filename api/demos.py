@@ -34,6 +34,14 @@ TEMPLATE_FIELDS = [
     'show_hours', 'show_map', 'show_services',
 ]
 
+# Layout default preset (separato da template — applicato ai NUOVI siti generati)
+LAYOUT_DEFAULT_FIELDS = [
+    'section_order',
+    'design_template', 'text_color', 'color_intensity',
+    'show_reviews', 'show_gallery', 'show_whyus', 'show_faq',
+    'show_hours', 'show_map', 'show_services',
+]
+
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
@@ -65,6 +73,16 @@ class handler(BaseHTTPRequestHandler):
                 client.close()
                 return self._json(200, templates)
 
+            if action == "layout_default_get":
+                # Restituisce il preset layout default per i nuovi siti
+                doc = db.user_settings.find_one({"setting_id": "layout_default"}, {"_id": 0})
+                client.close()
+                if not doc:
+                    return self._json(200, {"exists": False})
+                doc.pop('setting_id', None)
+                doc['exists'] = True
+                return self._json(200, doc)
+
             demos = []
             for doc in db.demo_sites.find({}, {"_id": 0}).sort("created_at", -1).limit(100):
                 if "created_at" in doc:
@@ -92,6 +110,23 @@ class handler(BaseHTTPRequestHandler):
         
         if action == "template_ai_generate":
             return self._template_ai_generate(data)
+        if action == "layout_default_set":
+            # Salva il preset layout default per i nuovi siti
+            try:
+                payload = {k: data[k] for k in LAYOUT_DEFAULT_FIELDS if k in data}
+                payload['updated_at'] = datetime.now(timezone.utc).isoformat()
+                client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+                db = client[DB_NAME]
+                db.user_settings.update_one(
+                    {"setting_id": "layout_default"},
+                    {"$set": {"setting_id": "layout_default", **payload}},
+                    upsert=True
+                )
+                client.close()
+                return self._json(200, {"success": True, "saved": list(payload.keys())})
+            except Exception as e:
+                log(f"Layout default set error: {e}")
+                return self._error(500, str(e))
         if action != "template_save":
             return self._error(400, f"Azione non riconosciuta: {action}")
         try:
@@ -230,6 +265,15 @@ class handler(BaseHTTPRequestHandler):
         if not MONGO_URL:
             return self._error(500, "Missing MONGO_URL env var")
         action = self._action()
+        if action == "layout_default_delete":
+            try:
+                client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+                db = client[DB_NAME]
+                db.user_settings.delete_one({"setting_id": "layout_default"})
+                client.close()
+                return self._json(200, {"success": True})
+            except Exception as e:
+                return self._error(500, str(e))
         if action != "template_delete":
             return self._error(400, f"Azione non riconosciuta: {action}")
         tid = parse_qs(urlparse(self.path).query).get("id", [None])[0]

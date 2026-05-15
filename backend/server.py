@@ -1428,6 +1428,9 @@ async def get_demos(action: Optional[str] = None):
                 t['created_at'] = t['created_at'].isoformat()
         return templates
 
+    if action == "layout_default_get":
+        return await _layout_default_get_impl()
+
     demos = await db.demo_sites.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
 
     for demo in demos:
@@ -1445,6 +1448,9 @@ async def post_demos(request: Request, action: Optional[str] = None):
         data = await request.json()
     except Exception:
         data = {}
+
+    if action == "layout_default_set":
+        return await _layout_default_set_impl(data)
 
     if action == "template_save":
         name = (data.get('name') or '').strip() or f"Template {datetime.now().strftime('%d/%m/%Y %H:%M')}"
@@ -1548,6 +1554,8 @@ async def post_demos(request: Request, action: Optional[str] = None):
 
 @api_router.delete("/demos")
 async def delete_demos_action(action: Optional[str] = None, id: Optional[str] = None):
+    if action == "layout_default_delete":
+        return await _layout_default_delete_impl()
     if action != "template_delete":
         raise HTTPException(status_code=400, detail=f"Azione non riconosciuta: {action}")
     if not id:
@@ -1626,6 +1634,9 @@ async def delete_demo(demo_id: str):
     return {"success": True, "message": "Demo eliminata con successo"}
 
 # ====== LAYOUT DEFAULT (preset di sezioni/stile per i NUOVI siti) ======
+# NOTE: in Vercel queste azioni sono gestite tramite /api/demos?action=layout_default_*
+# per stare entro il limite di 12 serverless functions del piano Hobby.
+# Qui (FastAPI preview) le esponiamo anche come endpoint dedicato per comodità.
 LAYOUT_DEFAULT_FIELDS = [
     'section_order',
     'design_template', 'text_color', 'color_intensity',
@@ -1633,8 +1644,7 @@ LAYOUT_DEFAULT_FIELDS = [
     'show_hours', 'show_map', 'show_services',
 ]
 
-@api_router.get("/settings/layout-default")
-async def get_layout_default():
+async def _layout_default_get_impl():
     doc = await db.user_settings.find_one({"setting_id": "layout_default"}, {"_id": 0})
     if not doc:
         return {"exists": False}
@@ -1642,12 +1652,7 @@ async def get_layout_default():
     doc['exists'] = True
     return doc
 
-@api_router.post("/settings/layout-default")
-async def save_layout_default(request: Request):
-    try:
-        data = await request.json()
-    except Exception:
-        data = {}
+async def _layout_default_set_impl(data: dict):
     payload = {k: data[k] for k in LAYOUT_DEFAULT_FIELDS if k in data}
     payload['updated_at'] = datetime.now(timezone.utc).isoformat()
     await db.user_settings.update_one(
@@ -1657,10 +1662,25 @@ async def save_layout_default(request: Request):
     )
     return {"success": True, "saved": list(payload.keys())}
 
-@api_router.delete("/settings/layout-default")
-async def delete_layout_default():
+async def _layout_default_delete_impl():
     await db.user_settings.delete_one({"setting_id": "layout_default"})
     return {"success": True}
+
+@api_router.get("/settings/layout-default")
+async def get_layout_default():
+    return await _layout_default_get_impl()
+
+@api_router.post("/settings/layout-default")
+async def save_layout_default(request: Request):
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    return await _layout_default_set_impl(data)
+
+@api_router.delete("/settings/layout-default")
+async def delete_layout_default():
+    return await _layout_default_delete_impl()
 
 @api_router.post("/email/generate")
 async def generate_email(lead_id: str, demo_url: str):

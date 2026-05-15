@@ -311,7 +311,7 @@ function SectionOrderEditor({ sectionOrder, showReviews, showGallery, showWhyus,
     setSavingDefault(true);
     try {
       // Salva sia ordine sezioni che toggle visibilità correnti come default per i nuovi siti
-      await axios.post(`${API}/settings/layout-default`, {
+      await axios.post(`${API}/demos?action=layout_default_set`, {
         section_order: order,
         show_reviews: showReviews !== false,
         show_gallery: showGallery !== false,
@@ -332,7 +332,7 @@ function SectionOrderEditor({ sectionOrder, showReviews, showGallery, showWhyus,
     if (!window.confirm('Rimuovere il layout default? I nuovi siti useranno l\'ordine di sistema.')) return;
     setSavingDefault(true);
     try {
-      await axios.delete(`${API}/settings/layout-default`);
+      await axios.delete(`${API}/demos?action=layout_default_delete`);
       setDefaultStatus('cleared');
       toast.success('Default rimosso');
     } catch {
