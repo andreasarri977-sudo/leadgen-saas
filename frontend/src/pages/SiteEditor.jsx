@@ -2602,6 +2602,53 @@ function MenuEditor({ menu, demoId, onUpdate, onSave, saving, hasChanges }) {
     onUpdate({ ...menu, categories: newCategories });
   };
 
+  // Helper: aggiorna un singolo campo (es. description, price, image) trasformando
+  // automaticamente l'item da stringa a oggetto ricco se serve
+  const setItemField = (catIndex, itemIndex, field, value) => {
+    const newCategories = [...(menu.categories || [])];
+    const current = newCategories[catIndex].items[itemIndex];
+    const obj = typeof current === 'object' && current !== null ? { ...current } : { name: current || '' };
+    obj[field] = value;
+    newCategories[catIndex].items[itemIndex] = obj;
+    onUpdate({ ...menu, categories: newCategories });
+  };
+
+  // Cerca foto su Pexels per il nome del piatto e la imposta come image dell'item
+  const handlePickPexelsForItem = async (catIndex, itemIndex) => {
+    const current = (menu.categories || [])[catIndex]?.items?.[itemIndex];
+    const itemName = typeof current === 'string' ? current : (current?.name || '');
+    if (!itemName.trim()) { toast.error('Inserisci prima il nome del piatto'); return; }
+    const query = window.prompt(`Cerca foto su Pexels per "${itemName}":\n\nSuggerimento: usa parole inglesi (es. "margherita pizza", "tiramisu dessert").\nLascia vuoto per usare il nome del piatto.`, itemName);
+    if (query === null) return;
+    try {
+      const res = await axios.get(`${API}/leads?action=pexels_search&query=${encodeURIComponent(query.trim() || itemName)}&per_page=6&orientation=landscape`);
+      const photos = res.data?.photos || [];
+      if (!photos.length) { toast.error('Nessuna foto trovata'); return; }
+      // Mostra subito la prima
+      const picked = window.confirm(`Trovate ${photos.length} foto. Imposto la prima?\n\nClicca OK per accettare, Annulla per inserire URL manuale.`);
+      if (picked) {
+        const url = photos[0]?.src?.large || photos[0]?.src?.original;
+        if (url) {
+          setItemField(catIndex, itemIndex, 'image', url);
+          toast.success('📷 Foto Pexels impostata');
+        }
+      } else {
+        const manualUrl = window.prompt('Incolla URL immagine manuale (https://...):');
+        if (manualUrl && manualUrl.startsWith('http')) {
+          setItemField(catIndex, itemIndex, 'image', manualUrl);
+          toast.success('📷 Foto impostata');
+        }
+      }
+    } catch (err) {
+      toast.error('Errore Pexels: ' + (err?.response?.data?.error || err.message));
+    }
+  };
+
+  // Toggle vista "espansa" (oggetto ricco) per un item: aggiunge fields description/price/image vuoti
+  const expandItem = (catIndex, itemIndex) => {
+    setItemField(catIndex, itemIndex, 'description', '');
+  };
+
   const removeItem = (catIndex, itemIndex) => {
     const newCategories = [...(menu.categories || [])];
     newCategories[catIndex].items = newCategories[catIndex].items.filter((_, i) => i !== itemIndex);
@@ -2623,6 +2670,38 @@ function MenuEditor({ menu, demoId, onUpdate, onSave, saving, hasChanges }) {
     const newServices = [...(menu.services || [])];
     newServices[index] = value;
     onUpdate({ ...menu, services: newServices });
+  };
+
+  // Helper rich per services: aggiorna campo singolo, trasforma stringa→oggetto se serve
+  const setServiceField = (index, field, value) => {
+    const newServices = [...(menu.services || [])];
+    const current = newServices[index];
+    const obj = typeof current === 'object' && current !== null ? { ...current } : { name: current || '' };
+    obj[field] = value;
+    newServices[index] = obj;
+    onUpdate({ ...menu, services: newServices });
+  };
+
+  const expandService = (index) => setServiceField(index, 'description', '');
+
+  const handlePickPexelsForService = async (index) => {
+    const current = (menu.services || [])[index];
+    const serviceName = typeof current === 'string' ? current : (current?.name || '');
+    if (!serviceName.trim()) { toast.error('Inserisci prima il nome del servizio'); return; }
+    const query = window.prompt(`Cerca foto su Pexels per "${serviceName}":`, serviceName);
+    if (query === null) return;
+    try {
+      const res = await axios.get(`${API}/leads?action=pexels_search&query=${encodeURIComponent(query.trim() || serviceName)}&per_page=6&orientation=landscape`);
+      const photos = res.data?.photos || [];
+      if (!photos.length) { toast.error('Nessuna foto trovata'); return; }
+      const picked = window.confirm(`Trovate ${photos.length} foto. Imposto la prima?`);
+      if (picked) {
+        const url = photos[0]?.src?.large;
+        if (url) { setServiceField(index, 'image', url); toast.success('📷 Foto Pexels impostata'); }
+      }
+    } catch (err) {
+      toast.error('Errore Pexels');
+    }
   };
 
   const removeService = (index) => {
@@ -2706,45 +2785,74 @@ function MenuEditor({ menu, demoId, onUpdate, onSave, saving, hasChanges }) {
                 </Button>
               </div>
               
-              <div className="space-y-2 ml-4">
+              <div className="space-y-3 ml-2">
                 {(category.items || []).map((item, itemIndex) => {
-                  // Supporta sia stringa (formato legacy) sia oggetto {name, description, price, image}
                   const isRich = typeof item === 'object' && item !== null;
-                  const displayValue = isRich ? (item.name || '') : (item || '');
+                  const obj = isRich ? item : { name: item || '' };
+                  const hasExtras = isRich && (obj.description !== undefined || obj.price !== undefined || obj.image !== undefined);
                   return (
-                  <div key={itemIndex} className="flex items-start gap-2">
-                    <GripVertical size={16} className="text-neutral-300 mt-3" />
-                    {isRich && item.image && (
-                      <img src={item.image} alt={item.name} className="w-12 h-12 rounded-lg object-cover border border-neutral-200 flex-shrink-0 mt-1" loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <Input
-                        placeholder="Nome piatto"
-                        value={displayValue}
-                        onChange={(e) => {
-                          if (isRich) {
-                            updateItem(catIndex, itemIndex, { ...item, name: e.target.value });
-                          } else {
-                            updateItem(catIndex, itemIndex, e.target.value);
-                          }
-                        }}
-                        data-testid={`category-${catIndex}-item-${itemIndex}`}
-                      />
-                      {isRich && (item.description || item.price) && (
-                        <p className="text-[11px] text-neutral-500 mt-1 truncate">
-                          {item.price && <span className="font-semibold text-orange-600 mr-2">{item.price}</span>}
-                          {item.description}
-                        </p>
+                  <div key={itemIndex} className={`border rounded-lg p-2 ${hasExtras ? 'bg-orange-50/50 border-orange-200' : 'bg-white border-neutral-200'}`}>
+                    <div className="flex items-start gap-2">
+                      {obj.image ? (
+                        <div className="relative shrink-0">
+                          <img src={obj.image} alt={obj.name} className="w-16 h-16 rounded-lg object-cover border border-neutral-200" loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />
+                          <button type="button" onClick={() => setItemField(catIndex, itemIndex, 'image', '')} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-xs rounded-full hover:bg-red-600 flex items-center justify-center" title="Rimuovi foto">×</button>
+                        </div>
+                      ) : (
+                        <button type="button" onClick={() => handlePickPexelsForItem(catIndex, itemIndex)} className="w-16 h-16 shrink-0 rounded-lg border-2 border-dashed border-neutral-300 hover:border-orange-400 hover:bg-orange-50 flex flex-col items-center justify-center text-[10px] text-neutral-400 hover:text-orange-600 transition-colors" data-testid={`add-photo-${catIndex}-${itemIndex}`}>
+                          <span className="text-lg">📷</span>
+                          <span>Foto</span>
+                        </button>
                       )}
+                      <div className="flex-1 min-w-0 space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            placeholder="Nome piatto"
+                            value={obj.name || ''}
+                            onChange={(e) => isRich ? setItemField(catIndex, itemIndex, 'name', e.target.value) : updateItem(catIndex, itemIndex, e.target.value)}
+                            className="font-medium"
+                            data-testid={`category-${catIndex}-item-${itemIndex}`}
+                          />
+                          {!hasExtras && (
+                            <Button type="button" variant="ghost" size="sm" onClick={() => expandItem(catIndex, itemIndex)} className="text-orange-600 hover:bg-orange-50 px-2 text-xs whitespace-nowrap" title="Aggiungi descrizione + prezzo">
+                              + Dettagli
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="sm" onClick={() => removeItem(catIndex, itemIndex)} className="text-neutral-400 hover:text-red-500 shrink-0 px-2">
+                            <X size={16} />
+                          </Button>
+                        </div>
+                        {hasExtras && (
+                          <>
+                            <Input
+                              placeholder="Descrizione (es. Pomodoro San Marzano, mozzarella di bufala)"
+                              value={obj.description || ''}
+                              onChange={(e) => setItemField(catIndex, itemIndex, 'description', e.target.value)}
+                              className="text-sm h-8"
+                            />
+                            <div className="flex items-center gap-2">
+                              <Input
+                                placeholder="Prezzo (es. € 8,50)"
+                                value={obj.price || ''}
+                                onChange={(e) => setItemField(catIndex, itemIndex, 'price', e.target.value)}
+                                className="text-sm h-8 max-w-[140px] font-semibold"
+                              />
+                              {!obj.image && (
+                                <Button type="button" variant="outline" size="sm" onClick={() => handlePickPexelsForItem(catIndex, itemIndex)} className="text-xs h-8 border-orange-300 text-orange-700 hover:bg-orange-50">
+                                  📷 Cerca foto Pexels
+                                </Button>
+                              )}
+                              <Button type="button" variant="ghost" size="sm" onClick={() => {
+                                const url = window.prompt('Incolla URL immagine (https://...):');
+                                if (url && url.startsWith('http')) setItemField(catIndex, itemIndex, 'image', url);
+                              }} className="text-xs h-8 px-2 text-neutral-500">
+                                URL
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeItem(catIndex, itemIndex)}
-                      className="text-neutral-400 hover:text-red-500 mt-1"
-                    >
-                      <X size={16} />
-                    </Button>
                   </div>
                   );
                 })}
@@ -2769,26 +2877,64 @@ function MenuEditor({ menu, demoId, onUpdate, onSave, saving, hasChanges }) {
       ) : (
         // Services list
         <div className="space-y-3">
-          {(menu.services || []).map((service, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <GripVertical size={16} className="text-neutral-300" />
-              <Input
-                placeholder="Nome servizio"
-                value={service || ''}
-                onChange={(e) => updateService(index, e.target.value)}
-                data-testid={`service-${index}`}
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => removeService(index)}
-                className="text-neutral-400 hover:text-red-500"
-              >
-                <X size={16} />
-              </Button>
+          {(menu.services || []).map((service, index) => {
+            const isRich = typeof service === 'object' && service !== null;
+            const obj = isRich ? service : { name: service || '' };
+            const hasExtras = isRich && (obj.description !== undefined || obj.price !== undefined || obj.image !== undefined);
+            return (
+            <div key={index} className={`border rounded-lg p-2 ${hasExtras ? 'bg-blue-50/50 border-blue-200' : 'bg-white border-neutral-200'}`}>
+              <div className="flex items-start gap-2">
+                {obj.image ? (
+                  <div className="relative shrink-0">
+                    <img src={obj.image} alt={obj.name} className="w-16 h-16 rounded-lg object-cover border border-neutral-200" loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />
+                    <button type="button" onClick={() => setServiceField(index, 'image', '')} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-xs rounded-full hover:bg-red-600 flex items-center justify-center" title="Rimuovi foto">×</button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => handlePickPexelsForService(index)} className="w-16 h-16 shrink-0 rounded-lg border-2 border-dashed border-neutral-300 hover:border-blue-400 hover:bg-blue-50 flex flex-col items-center justify-center text-[10px] text-neutral-400 hover:text-blue-600 transition-colors" data-testid={`add-photo-service-${index}`}>
+                    <span className="text-lg">📷</span>
+                    <span>Foto</span>
+                  </button>
+                )}
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="Nome servizio"
+                      value={obj.name || ''}
+                      onChange={(e) => isRich ? setServiceField(index, 'name', e.target.value) : updateService(index, e.target.value)}
+                      className="font-medium"
+                      data-testid={`service-${index}`}
+                    />
+                    {!hasExtras && (
+                      <Button type="button" variant="ghost" size="sm" onClick={() => expandService(index)} className="text-blue-600 hover:bg-blue-50 px-2 text-xs whitespace-nowrap">
+                        + Dettagli
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="sm" onClick={() => removeService(index)} className="text-neutral-400 hover:text-red-500 px-2 shrink-0">
+                      <X size={16} />
+                    </Button>
+                  </div>
+                  {hasExtras && (
+                    <>
+                      <Input
+                        placeholder="Descrizione (es. Taglio + piega + shampoo)"
+                        value={obj.description || ''}
+                        onChange={(e) => setServiceField(index, 'description', e.target.value)}
+                        className="text-sm h-8"
+                      />
+                      <Input
+                        placeholder="Prezzo (es. € 25,00)"
+                        value={obj.price || ''}
+                        onChange={(e) => setServiceField(index, 'price', e.target.value)}
+                        className="text-sm h-8 max-w-[160px] font-semibold"
+                      />
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
-          ))}
-          
+            );
+          })}
+
           <Button variant="outline" onClick={addService} data-testid="add-service-btn">
             <Plus size={16} className="mr-2" />
             Aggiungi Servizio

@@ -1137,25 +1137,31 @@ export default function DemoPreview() {
           {hasMenu && content.show_services !== false && (
             <section id="services" style={{ order: sectionOrderMap.services }}>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">{t('sections.menuTitle', lang)}</h2>
-              <div className="space-y-6 sm:space-y-8">
+              {(() => {
+                // Determina modalità compatta: se il menu ha >18 piatti totali, layout più denso
+                const totalItems = (content.menu_categories || []).reduce((sum, c) => sum + (c.items?.length || 0), 0);
+                const compact = totalItems > 18;
+                return (
+              <div className={compact ? "space-y-4 sm:space-y-6" : "space-y-6 sm:space-y-8"}>
                 {content.menu_categories.map((category, idx) => {
-                  // Determina se la categoria usa il formato "rich" (oggetti) o "simple" (stringhe)
                   const items = category.items || [];
                   const isRich = items.some((i) => i && typeof i === 'object');
                   return (
-                  <div key={idx} className={`p-5 sm:p-6 md:p-8 ${style.cardBg} rounded-xl sm:rounded-2xl border-2 border-neutral-100`}>
-                    <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">{category.name}</h3>
+                  <div key={idx} className={`${compact ? 'p-3 sm:p-4 md:p-5' : 'p-5 sm:p-6 md:p-8'} ${style.cardBg} rounded-xl sm:rounded-2xl border-2 border-neutral-100`}>
+                    <h3 className={`${compact ? 'text-lg sm:text-xl mb-2 sm:mb-3' : 'text-xl sm:text-2xl mb-3 sm:mb-4'} font-bold`}>{category.name}</h3>
                     {isRich ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className={`grid gap-${compact ? '2 sm:gap-3' : '4'} ${compact
+                        ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
+                        : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
                         {items.map((item, itemIdx) => {
                           const obj = typeof item === 'string' ? { name: item } : (item || {});
                           if (!obj.name) return null;
                           return (
-                            <div key={itemIdx} className="bg-white rounded-xl overflow-hidden border border-neutral-200 hover:shadow-lg transition-all">
+                            <div key={itemIdx} className={`bg-white rounded-lg overflow-hidden border border-neutral-200 hover:shadow-lg transition-all ${compact ? 'rounded-md' : 'rounded-xl'}`}>
                               {obj.image && (
-                                <div className="aspect-[4/3] bg-neutral-100 overflow-hidden">
+                                <div className={`${compact ? 'aspect-square' : 'aspect-[4/3]'} bg-neutral-100 overflow-hidden`}>
                                   <img
-                                    src={cloudinaryEnhance(obj.image, { width: 500 })}
+                                    src={cloudinaryEnhance(obj.image, { width: compact ? 300 : 500 })}
                                     data-fallback={obj.image}
                                     onError={cloudinaryFallback}
                                     alt={obj.name}
@@ -1164,15 +1170,18 @@ export default function DemoPreview() {
                                   />
                                 </div>
                               )}
-                              <div className="p-3 sm:p-4">
-                                <div className="flex items-start justify-between gap-2 mb-1">
-                                  <h4 className="font-bold text-neutral-900 text-sm sm:text-base">{obj.name}</h4>
+                              <div className={compact ? 'p-2' : 'p-3 sm:p-4'}>
+                                <div className="flex items-start justify-between gap-1.5 mb-0.5">
+                                  <h4 className={`font-bold text-neutral-900 leading-tight ${compact ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'}`}>{obj.name}</h4>
                                   {obj.price && (
-                                    <span className={`text-sm sm:text-base font-bold whitespace-nowrap ${style.textAccent || 'text-neutral-900'}`}>{obj.price}</span>
+                                    <span className={`font-bold whitespace-nowrap ${compact ? 'text-[11px]' : 'text-sm sm:text-base'} ${style.textAccent || 'text-neutral-900'}`}>{obj.price}</span>
                                   )}
                                 </div>
-                                {obj.description && (
+                                {obj.description && !compact && (
                                   <p className="text-xs sm:text-sm text-neutral-600 leading-snug">{obj.description}</p>
+                                )}
+                                {obj.description && compact && (
+                                  <p className="text-[10px] text-neutral-500 leading-tight line-clamp-2">{obj.description}</p>
                                 )}
                               </div>
                             </div>
@@ -1180,9 +1189,11 @@ export default function DemoPreview() {
                         })}
                       </div>
                     ) : (
-                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                      <ul className={compact
+                        ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5"
+                        : "grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3"}>
                         {items.map((item, itemIdx) => (
-                          <li key={itemIdx} className="flex items-center gap-2 text-neutral-700 text-sm sm:text-base">
+                          <li key={itemIdx} className={`flex items-center gap-2 text-neutral-700 ${compact ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'}`}>
                             <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-neutral-400 rounded-full flex-shrink-0"></span>
                             <span>{typeof item === 'string' ? item : item?.name}</span>
                           </li>
@@ -1193,6 +1204,8 @@ export default function DemoPreview() {
                   );
                 })}
               </div>
+                );
+              })()}
             </section>
           )}
 
@@ -1204,24 +1217,54 @@ export default function DemoPreview() {
                 <p className="text-base sm:text-lg text-neutral-700 mb-6 sm:mb-8 max-w-3xl">{content.services_intro}</p>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {content.services.map((service, index) => (
-                  <div key={index} className={`p-5 sm:p-6 ${style.cardBg} rounded-xl sm:rounded-2xl border-2 border-transparent hover:border-neutral-200 hover:shadow-lg transition-all`}>
-                    <div className={`w-10 h-10 sm:w-12 sm:h-12 ${style.accentColor} rounded-lg flex items-center justify-center text-white font-bold text-lg sm:text-xl mb-3 sm:mb-4`}>
-                      {index + 1}
-                    </div>
-                    <h3 className="text-lg sm:text-xl font-bold mb-2">{service}</h3>
-                    <p className="text-neutral-600 text-sm sm:text-base">{getServiceDescription(service, lang)}</p>
-                    
-                    {/* WhatsApp CTA for each service */}
-                    {whatsappLink && (
-                      <a href={whatsappLink} target="_blank" rel="noopener noreferrer"
-                         className={`inline-flex items-center gap-2 mt-4 ${style.textAccent} font-medium text-sm hover:underline`}>
-                        <MessageCircle size={16} />
-                        {t('hero.writeUs', lang)}
-                      </a>
+                {content.services.map((service, index) => {
+                  // Supporta sia stringa (legacy) sia oggetto {name, description, price, image}
+                  const isRich = typeof service === 'object' && service !== null;
+                  const obj = isRich ? service : { name: service };
+                  const serviceName = obj.name || '';
+                  if (!serviceName) return null;
+                  return (
+                  <div key={index} className={`${obj.image ? '' : `p-5 sm:p-6 ${style.cardBg}`} rounded-xl sm:rounded-2xl border-2 border-transparent hover:border-neutral-200 hover:shadow-lg transition-all overflow-hidden ${obj.image ? 'bg-white' : ''}`}>
+                    {obj.image && (
+                      <div className="aspect-[16/10] bg-neutral-100 overflow-hidden -mx-px -mt-px">
+                        <img
+                          src={cloudinaryEnhance(obj.image, { width: 600 })}
+                          data-fallback={obj.image}
+                          onError={cloudinaryFallback}
+                          alt={serviceName}
+                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                          loading="lazy"
+                        />
+                      </div>
                     )}
+                    <div className={obj.image ? 'p-4 sm:p-5' : ''}>
+                      {!obj.image && (
+                        <div className={`w-10 h-10 sm:w-12 sm:h-12 ${style.accentColor} rounded-lg flex items-center justify-center text-white font-bold text-lg sm:text-xl mb-3 sm:mb-4`}>
+                          {index + 1}
+                        </div>
+                      )}
+                      <div className="flex items-start justify-between gap-2 mb-1.5 sm:mb-2">
+                        <h3 className="text-lg sm:text-xl font-bold">{serviceName}</h3>
+                        {obj.price && (
+                          <span className={`text-base sm:text-lg font-bold whitespace-nowrap ${style.textAccent || 'text-neutral-900'}`}>{obj.price}</span>
+                        )}
+                      </div>
+                      <p className="text-neutral-600 text-sm sm:text-base">
+                        {obj.description || getServiceDescription(serviceName, lang)}
+                      </p>
+
+                      {/* WhatsApp CTA for each service */}
+                      {whatsappLink && (
+                        <a href={whatsappLink} target="_blank" rel="noopener noreferrer"
+                           className={`inline-flex items-center gap-2 mt-4 ${style.textAccent} font-medium text-sm hover:underline`}>
+                          <MessageCircle size={16} />
+                          {t('hero.writeUs', lang)}
+                        </a>
+                      )}
+                    </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           )}
