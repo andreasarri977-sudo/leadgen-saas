@@ -194,6 +194,7 @@ class handler(BaseHTTPRequestHandler):
                 "cta_text": "Contattaci Oggi!",
                 "theme": "modern",
                 "color_scheme": "blue",
+                "title_align": "center",  # default centrato per tutti i nuovi siti
                 # Nuove sezioni professionali
                 "why_choose_us": [
                     {"title": "Esperienza", "description": f"Anni di esperienza nel settore {category}"},
@@ -211,7 +212,7 @@ class handler(BaseHTTPRequestHandler):
 
             # Applica layout default (preset salvato dall'utente)
             layout_default = db.user_settings.find_one({"setting_id": "layout_default"}, {"_id": 0}) or {}
-            for fld in ['section_order', 'text_color', 'color_intensity',
+            for fld in ['section_order', 'text_color', 'color_intensity', 'title_align',
                         'show_reviews', 'show_gallery', 'show_whyus', 'show_faq',
                         'show_hours', 'show_map', 'show_services']:
                 if fld in layout_default and layout_default[fld] is not None:

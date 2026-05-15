@@ -186,11 +186,14 @@ class handler(BaseHTTPRequestHandler):
                     content, booking_mode = build_demo_content(lead, template_data)
 
                     # Applica layout default sui campi NON gestiti dal template utente
-                    for fld in ['section_order', 'text_color', 'color_intensity',
+                    for fld in ['section_order', 'text_color', 'color_intensity', 'title_align',
                                 'show_reviews', 'show_gallery', 'show_whyus', 'show_faq',
                                 'show_hours', 'show_map', 'show_services']:
                         if fld in layout_default and layout_default[fld] is not None and fld not in content:
                             content[fld] = layout_default[fld]
+                    # Default centrato anche per batch (se non gestito da template o default)
+                    if 'title_align' not in content:
+                        content['title_align'] = 'center'
 
                     business_data = {
                         "place_id": lead.get('place_id'),

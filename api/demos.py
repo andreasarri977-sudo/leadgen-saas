@@ -38,6 +38,7 @@ TEMPLATE_FIELDS = [
 LAYOUT_DEFAULT_FIELDS = [
     'section_order',
     'design_template', 'text_color', 'color_intensity',
+    'title_align',
     'show_reviews', 'show_gallery', 'show_whyus', 'show_faq',
     'show_hours', 'show_map', 'show_services',
 ]

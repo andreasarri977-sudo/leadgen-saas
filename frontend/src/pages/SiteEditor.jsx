@@ -638,7 +638,7 @@ function SiteSettingsEditor({ siteLanguage, translations, bookingMode, externalB
 }
 
 // Style Editor Component
-function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, designTemplate, textColor, colorIntensity, titleColor, heroBarColor, gallery, businessName, businessCategory, demoId, productionUrl, hideWatermark, onUpdate, onSave, saving }) {
+function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, designTemplate, textColor, colorIntensity, titleColor, heroBarColor, titleAlign, gallery, businessName, businessCategory, demoId, productionUrl, hideWatermark, onUpdate, onSave, saving }) {
   const [selectedColor, setSelectedColor] = useState(colorScheme || 'blue');
   const [selectedHero, setSelectedHero] = useState(heroImage || '');
   const [selectedPosition, setSelectedPosition] = useState(heroPosition || 'center');
@@ -648,6 +648,7 @@ function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme,
   const [selectedIntensity, setSelectedIntensity] = useState(colorIntensity || 'vivid');
   const [selectedTitleColor, setSelectedTitleColor] = useState(titleColor || '');
   const [selectedHeroBarColor, setSelectedHeroBarColor] = useState(heroBarColor || '');
+  const [selectedTitleAlign, setSelectedTitleAlign] = useState(titleAlign || 'center');
   const [hideMark, setHideMark] = useState(Boolean(hideWatermark));
   
   // Find initial index based on heroImage
@@ -697,6 +698,8 @@ function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme,
       // Color picker liberi (HEX)
       title_color: selectedTitleColor || null,
       hero_bar_color: selectedHeroBarColor || null,
+      // Allineamento titolo (center default)
+      title_align: selectedTitleAlign,
     });
   };
 
@@ -877,8 +880,43 @@ function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme,
 
           {/* === COLORE TITOLO + HERO INFO BAR (color picker liberi HEX) === */}
           <div className="p-4 rounded-2xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50">
-            <Label className="text-base font-medium block mb-1 flex items-center gap-2">🎨 Colore Titolo & Hero Info</Label>
-            <p className="text-sm text-neutral-600 mb-3">Personalizza il colore del <strong>nome attività</strong> in homepage e dello sfondo della <strong>barra info</strong> sotto la foto (indirizzo · telefono · rating).</p>
+            <Label className="text-base font-medium block mb-1 flex items-center gap-2">🎨 Colore & Allineamento Titolo</Label>
+            <p className="text-sm text-neutral-600 mb-3">Personalizza il colore del <strong>nome attività</strong> in homepage, l'allineamento e lo sfondo della <strong>barra info</strong> sotto la foto.</p>
+
+            {/* Allineamento titolo */}
+            <div className="mb-4">
+              <Label className="text-xs text-neutral-700 font-semibold uppercase tracking-wide block mb-2">📐 Allineamento Titolo (Hero)</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'center', label: 'Centro', icon: '⬛︎', desc: 'Tutti i siti uniformi (consigliato)' },
+                  { id: 'left',   label: 'Sinistra', icon: '◧',  desc: 'Stile editoriale classico' },
+                ].map((opt) => {
+                  const active = selectedTitleAlign === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedTitleAlign(opt.id);
+                        onUpdate({ title_align: opt.id, hero_image: selectedHero, color_scheme: selectedColor, hero_position: selectedPosition, hero_overlay: selectedOverlay, design_template: selectedTemplate, text_color: selectedTextColor, color_intensity: selectedIntensity, theme });
+                      }}
+                      data-testid={`title-align-${opt.id}`}
+                      className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all bg-white ${
+                        active ? 'border-amber-600 ring-2 ring-amber-200' : 'border-neutral-200 hover:border-amber-300'
+                      }`}
+                    >
+                      <span className="text-2xl">{opt.icon}</span>
+                      <div className="text-left flex-1 min-w-0">
+                        <p className="font-bold text-sm text-neutral-900">{opt.label}</p>
+                        <p className="text-[11px] text-neutral-500 truncate">{opt.desc}</p>
+                      </div>
+                      {active && <CheckCircle size={18} className="text-amber-600 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label className="text-xs text-neutral-700 font-semibold uppercase tracking-wide block mb-2">📝 Colore Titolo Sito</Label>
@@ -1945,6 +1983,7 @@ export default function SiteEditor() {
             colorIntensity={siteData.color_intensity || 'vivid'}
             titleColor={siteData.title_color || ''}
             heroBarColor={siteData.hero_bar_color || ''}
+            titleAlign={siteData.title_align || 'center'}
             gallery={siteData.gallery || []}
             businessName={siteData.business_name}
             businessCategory={siteData.business_data?.category || siteData.category}
@@ -1964,6 +2003,7 @@ export default function SiteEditor() {
                 color_intensity: data.color_intensity !== undefined ? data.color_intensity : prev.color_intensity,
                 title_color: data.title_color !== undefined ? data.title_color : prev.title_color,
                 hero_bar_color: data.hero_bar_color !== undefined ? data.hero_bar_color : prev.hero_bar_color,
+                title_align: data.title_align !== undefined ? data.title_align : prev.title_align,
               }));
               setHasChanges(prev => ({ ...prev, style: true }));
             }}

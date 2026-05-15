@@ -920,7 +920,7 @@ export default function DemoPreview() {
               </div>
               {/* Content overlaid at bottom */}
               <div className="absolute bottom-0 left-0 right-0 z-10 py-8 sm:py-12 px-4 sm:px-6">
-                <div className="max-w-6xl mx-auto text-white">
+                <div className={`max-w-6xl mx-auto text-white ${(content.title_align || 'center') === 'center' ? 'text-center flex flex-col items-center' : ''}`}>
                   {demo.logo_base64 && (
                     <img src={`data:image/png;base64,${demo.logo_base64}`} alt={demo.business_name}
                          className="w-16 h-16 sm:w-20 sm:h-20 mb-4 bg-white rounded-xl p-2 shadow-2xl object-contain" />
@@ -933,7 +933,7 @@ export default function DemoPreview() {
                   </p>
                   
                   {/* CTA Buttons */}
-                  <div className="flex flex-wrap gap-3">
+                  <div className={`flex flex-wrap gap-3 ${(content.title_align || 'center') === 'center' ? 'justify-center' : ''}`}>
                     {/* WhatsApp - only if mobile or whatsapp_number set */}
                     {whatsappLink && (
                       <a href={whatsappLink} target="_blank" rel="noopener noreferrer"
@@ -965,7 +965,7 @@ export default function DemoPreview() {
           ) : (
             /* Fallback gradient hero when no photo */
             <div className={`bg-gradient-to-br ${style.primaryColor} text-white py-16 sm:py-20 md:py-28 px-4 sm:px-6`}>
-              <div className="max-w-6xl mx-auto">
+              <div className={`max-w-6xl mx-auto ${(content.title_align || 'center') === 'center' ? 'text-center flex flex-col items-center' : ''}`}>
                 {demo.logo_base64 && (
                   <img src={`data:image/png;base64,${demo.logo_base64}`} alt={demo.business_name}
                        className="w-20 h-20 sm:w-24 sm:h-24 mb-4 bg-white rounded-xl p-3 shadow-2xl object-contain" />
@@ -977,7 +977,7 @@ export default function DemoPreview() {
                   {content.homepage_subtitle || `${business.category} ${t('misc.trustBusiness', lang)}`}
                 </p>
                 
-                <div className="flex flex-wrap gap-3">
+                <div className={`flex flex-wrap gap-3 ${(content.title_align || 'center') === 'center' ? 'justify-center' : ''}`}>
                   {whatsappLink && (
                     <a href={whatsappLink} target="_blank" rel="noopener noreferrer"
                        className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-5 sm:px-8 py-3 rounded-full font-semibold hover:shadow-2xl transition-all transform hover:scale-105 text-sm sm:text-base">

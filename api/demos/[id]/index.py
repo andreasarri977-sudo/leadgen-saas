@@ -231,6 +231,7 @@ class handler(BaseHTTPRequestHandler):
                     "color_intensity": content.get('color_intensity', 'vivid'),
                     "title_color": content.get('title_color'),
                     "hero_bar_color": content.get('hero_bar_color'),
+                    "title_align": content.get('title_align', 'center'),
                     # Site settings (languages + section visibility)
                     "site_language": business.get('site_language', 'it'),
                     "translations": business.get('translations', []),
@@ -493,6 +494,8 @@ class handler(BaseHTTPRequestHandler):
                             content_updates['content.hero_bar_color'] = None
                         elif isinstance(hbc, str) and hbc.startswith('#') and len(hbc) in (4, 7):
                             content_updates['content.hero_bar_color'] = hbc
+                    if section_data.get('title_align') in ('left', 'center'):
+                        content_updates['content.title_align'] = section_data['title_align']
                     if 'hide_watermark' in section_data:
                         content_updates['content.hide_watermark'] = bool(section_data['hide_watermark'])
                     

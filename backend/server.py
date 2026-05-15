@@ -1285,11 +1285,14 @@ async def generate_demo_site(request: GenerateDemoRequest):
     # Applica layout default (preset salvato dall'utente per i nuovi siti)
     layout_default = await db.user_settings.find_one({"setting_id": "layout_default"}, {"_id": 0})
     if layout_default:
-        for fld in ['section_order', 'text_color', 'color_intensity',
+        for fld in ['section_order', 'text_color', 'color_intensity', 'title_align',
                     'show_reviews', 'show_gallery', 'show_whyus', 'show_faq',
                     'show_hours', 'show_map', 'show_services']:
             if fld in layout_default and layout_default[fld] is not None:
                 content[fld] = layout_default[fld]
+    # Default centrato per tutti i nuovi siti
+    if 'title_align' not in content:
+        content['title_align'] = 'center'
     
     # URL interno (non Vercel)
     demo_id = str(uuid.uuid4())
@@ -1640,6 +1643,7 @@ async def delete_demo(demo_id: str):
 LAYOUT_DEFAULT_FIELDS = [
     'section_order',
     'design_template', 'text_color', 'color_intensity',
+    'title_align',
     'show_reviews', 'show_gallery', 'show_whyus', 'show_faq',
     'show_hours', 'show_map', 'show_services',
 ]
