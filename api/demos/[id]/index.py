@@ -971,6 +971,25 @@ class handler(BaseHTTPRequestHandler):
                 is_hair = 'hair_salon' in primary_type or 'hair' in primary_type or 'parrucch' in business_name.lower() or 'salone' in business_name.lower()
                 is_beauty = 'beauty_salon' in primary_type or 'beauty' in primary_type or 'estetic' in business_name.lower() or 'estetista' in business_name.lower() or 'centro estetico' in business_name.lower()
 
+                # FOOD/BEVERAGE: tutte le categorie alimentari note (default ristorante per altre food)
+                FOOD_KEYWORDS = (
+                    'restaurant', 'cafe', 'bakery', 'meal_takeaway', 'meal_delivery',
+                    'food', 'pizza', 'sushi', 'ramen', 'steak', 'sandwich', 'fast_food',
+                    'pub', 'wine_bar', 'brewery', 'donut', 'coffee', 'tea', 'dessert',
+                    'ristorante', 'trattoria', 'osteria', 'pizzeria', 'paninoteca', 'rosticceria',
+                    'pasticceria', 'panetteria', 'enoteca'
+                )
+                is_food_business = (
+                    is_pizzeria or is_bar or is_gelateria or
+                    any(k in primary_type for k in FOOD_KEYWORDS) or
+                    any(k in category for k in FOOD_KEYWORDS) or
+                    any(k in business_name.lower() for k in ('ristorante', 'trattoria', 'osteria', 'pizzeria', 'pizza', 'pasticceria', 'panetteria'))
+                )
+                # SERVIZI: se l'utente forza mode='services' OPPURE non e' food e non e' parrucchiere/estetica gia' gestiti
+                is_services_generic = (mode == 'services') or (
+                    not is_food_business and not is_barber and not is_hair and not is_beauty
+                )
+
                 # Detect target clientela (donna/uomo/misto) per parrucchieri/estetica
                 name_lower = business_name.lower()
                 reviews_lower = (reviews_snippet or '').lower()
@@ -1031,21 +1050,84 @@ class handler(BaseHTTPRequestHandler):
                         f"VIETATO: tagli capelli, barba (non sono servizi estetica). "
                         f"Per ogni servizio: name, description, price."
                     )
+                elif is_services_generic:
+                    # Mappa categoria -> esempi di servizi tipici (NIENTE CIBO)
+                    pt = primary_type
+                    cat_l = category
+                    bn_l = business_name.lower()
+                    blob = f"{pt} {cat_l} {bn_l}"
+                    if any(k in blob for k in ('tattoo', 'tatuagg', 'piercing')):
+                        services_hint = "TATUATORE/PIERCING: 'Tatuaggi' (mini/small, medio, grande, manica, schiena, cover-up), 'Piercing' (lobo, cartilagine, naso, sopracciglio, labbro), 'Consulenza & Design' (consulto, disegno custom), 'Aftercare' (rimozione, ritocco, prodotti)"
+                    elif any(k in blob for k in ('plumb', 'idraul')):
+                        services_hint = "IDRAULICO: 'Riparazioni Urgenti' (perdite, sturature, rotture), 'Installazioni' (caldaie, sanitari, rubinetterie, scaldabagni), 'Manutenzione' (revisione caldaia, controllo impianto), 'Ristrutturazioni Bagno' (rifacimento impianto, sostituzione vasca/doccia)"
+                    elif any(k in blob for k in ('electric', 'elettric')):
+                        services_hint = "ELETTRICISTA: 'Impianti Civili' (nuovo impianto, rifacimento, messa a norma), 'Riparazioni' (guasti, prese, interruttori, quadro), 'Illuminazione' (LED, punti luce, lampadari, esterni), 'Domotica & Sicurezza' (videocitofono, allarme, smart home)"
+                    elif any(k in blob for k in ('gym', 'fitness', 'palestra', 'crossfit', 'yoga', 'pilates')):
+                        services_hint = "PALESTRA/FITNESS: 'Abbonamenti' (mensile, trimestrale, annuale, open), 'Personal Training' (singola, pacchetto 5/10 lezioni), 'Corsi di Gruppo' (yoga, pilates, spinning, zumba, crossfit), 'Servizi Extra' (valutazione posturale, schede personalizzate, nutrizionista)"
+                    elif any(k in blob for k in ('dentist', 'dentis', 'odontoiatr')):
+                        services_hint = "STUDIO DENTISTICO: 'Igiene & Prevenzione' (pulizia, sbiancamento, fluoro), 'Conservativa' (otturazione, devitalizzazione), 'Protesi & Impianti' (impianto, corona, ponte, protesi mobile), 'Ortodonzia & Estetica' (apparecchio, invisalign, faccette)"
+                    elif any(k in blob for k in ('lawyer', 'avvocat', 'legal', 'notar')):
+                        services_hint = "STUDIO LEGALE: 'Consulenza' (primo consulto, parere legale), 'Diritto Civile' (contratti, locazioni, eredita'), 'Diritto del Lavoro' (licenziamenti, contenzioso, contratti), 'Diritto Penale & Famiglia' (separazioni, divorzi, difesa). Indica 'su preventivo' o tariffa oraria realistica."
+                    elif any(k in blob for k in ('mechanic', 'meccani', 'car_repair', 'auto_repair', 'autofficina', 'gomm', 'tire')):
+                        services_hint = "AUTOFFICINA/GOMMISTA: 'Tagliando & Manutenzione' (tagliando completo, cambio olio, filtri), 'Diagnosi & Riparazioni' (centralina, freni, frizione, sospensioni), 'Pneumatici' (cambio gomme, equilibratura, convergenza), 'Revisione & Aria Condizionata' (revisione, ricarica AC, sanificazione)"
+                    elif any(k in blob for k in ('photograph', 'fotograf', 'photo_studio')):
+                        services_hint = "STUDIO FOTOGRAFICO: 'Servizi Matrimonio' (cerimonia, ricevimento, album), 'Ritratti & Famiglia' (ritratto singolo, famiglia, bambini, gravidanza), 'Eventi & Aziendale' (battesimi, compleanni, cataloghi, headshot), 'Stampe & Album' (stampe fine art, fotolibri, ingrandimenti)"
+                    elif any(k in blob for k in ('cleaning', 'pulizi')):
+                        services_hint = "IMPRESA DI PULIZIE: 'Pulizie Domestiche' (ordinarie, profonde, una tantum), 'Uffici & Aziende' (giornaliera, settimanale), 'Fine Cantiere & Post-Trasloco' (a metro quadro), 'Servizi Specializzati' (vetri, tappeti, sanificazione)"
+                    elif any(k in blob for k in ('real_estate', 'immobil', 'agenz')):
+                        services_hint = "AGENZIA IMMOBILIARE: 'Vendita' (valutazione, pubblicazione, gestione visite), 'Affitto' (ricerca inquilini, contratti, gestione), 'Consulenza' (mutuo, perizia, atti), 'Property Management' (gestione completa immobile in affitto)"
+                    elif any(k in blob for k in ('vet', 'veterin')):
+                        services_hint = "VETERINARIO: 'Visite & Prevenzione' (visita generale, vaccini, microchip), 'Chirurgia' (sterilizzazione, interventi standard), 'Diagnostica' (esami sangue, ecografia, radiografia), 'Toelettatura & Day Hospital'"
+                    elif any(k in blob for k in ('school', 'driving', 'autoscuola', 'scuola_guida')):
+                        services_hint = "AUTOSCUOLA: 'Patente B' (corso completo, guide singole, pacchetti), 'Patente A/AM' (moto, ciclomotore), 'Rinnovi & Conversioni' (rinnovo patente, duplicato, conversione estera), 'CQC & Patenti Speciali'"
+                    elif any(k in blob for k in ('travel', 'agenzia_viaggi', 'tour')):
+                        services_hint = "AGENZIA VIAGGI: 'Vacanze Tutto Incluso' (mare, montagna, citta'), 'Crociere & Tour', 'Voli & Hotel' (biglietteria, prenotazione), 'Viaggi su Misura & Business Travel'"
+                    elif any(k in blob for k in ('spa', 'wellness', 'massage', 'massagg')):
+                        services_hint = "CENTRO BENESSERE/SPA: 'Massaggi' (rilassante, decontratturante, sportivo, hot stone), 'Percorsi SPA' (sauna, bagno turco, idromassaggio), 'Trattamenti Viso & Corpo' (anti-eta, drenanti, scrub), 'Pacchetti Coppia & Regalo'"
+                    elif any(k in blob for k in ('nail', 'manicur')):
+                        services_hint = "NAIL CENTER: 'Manicure' (semplice, gel, semipermanente), 'Pedicure' (estetica, curativa, spa), 'Ricostruzione' (gel, acrilico, refill), 'Nail Art & Decorazioni' (french, decori, strass)"
+                    else:
+                        services_hint = (
+                            f"ATTIVITA' DI SERVIZI ('{primary_type or category or 'professional service'}'): "
+                            f"genera 3-4 categorie pertinenti al settore (NON cibo, NON bevande, NON parrucchiere/estetica). "
+                            f"Per ogni servizio: name (titolo breve), description (cosa include in 6-12 parole), "
+                            f"price (prezzo realistico in '\u20ac X,XX' oppure 'su preventivo' quando non standardizzabile)."
+                        )
+                    menu_hint = (
+                        f"{services_hint}\n"
+                        f"VIETATO ASSOLUTAMENTE: piatti di cibo, pizze, bevande, dolci, antipasti, primi, secondi. "
+                        f"Genera SOLO servizi professionali coerenti con il settore '{primary_type or category}'. "
+                        f"Per ogni servizio: name, description (6-12 parole), price."
+                    )
                 else:
                     menu_hint = "RISTORANTE: includi 'Antipasti' (4-5 voci), 'Primi' (5-6 voci), 'Secondi' (5-6 voci), 'Dolci' (3-4 voci), 'Bevande' (3-4 voci)"
 
+                # Decidi tono in base al business
+                if is_food_business or is_pizzeria or is_bar or is_gelateria:
+                    expert_role = "esperto di ristorazione italiana"
+                    item_label = "piatto"
+                    item_examples = "es. 'margherita pizza', 'tiramisu dessert', 'spritz aperol'"
+                elif is_barber or is_hair or is_beauty:
+                    expert_role = f"esperto consulente per saloni di bellezza e cura della persona ({primary_type or category})"
+                    item_label = "servizio"
+                    item_examples = "es. 'haircut salon', 'beard trimming', 'manicure'"
+                else:
+                    expert_role = f"esperto consulente di marketing per attivita' di servizi del settore '{primary_type or category or 'professionale'}'"
+                    item_label = "servizio"
+                    item_examples = "es. 'tattoo studio', 'plumber tools', 'mechanic garage', 'office cleaning'"
+
                 prompt = (
-                    f"Sei un esperto di ristorazione italiana. Genera un menu realistico per questa attivita:\n"
+                    f"Sei un {expert_role}. Genera un listino realistico per questa attivita:\n"
                     f"Nome: {business_name}\nCategoria Google: {primary_type or category}\nCitta: {city}\n"
-                    f"Esempi recensioni clienti (per capire piatti famosi): {reviews_snippet or 'nessuna'}\n\n"
+                    f"Esempi recensioni clienti (per capire offerta tipica): {reviews_snippet or 'nessuna'}\n\n"
                     f"REGOLE:\n{menu_hint}\n\n"
-                    f"Per OGNI piatto inserisci:\n"
+                    f"Per OGNI {item_label} inserisci:\n"
                     f"- name: nome in italiano (max 4 parole)\n"
-                    f"- description: ingredienti chiave in 6-12 parole\n"
-                    f"- price: prezzo in formato '\u20ac X,XX' (es. '\u20ac 8,50') realistico per la zona {city}\n"
-                    f"- search_query: 2-3 parole inglesi che descrivono il piatto per cercarne una foto stock (es. 'margherita pizza', 'tiramisu dessert', 'spritz aperol')\n\n"
+                    f"- description: descrizione concisa in 6-12 parole\n"
+                    f"- price: prezzo in formato '\u20ac X,XX' (es. '\u20ac 8,50') realistico per la zona {city} (oppure 'su preventivo' quando applicabile)\n"
+                    f"- search_query: 2-3 parole INGLESI che descrivono il {item_label} per cercarne una foto stock ({item_examples})\n\n"
                     f"Rispondi SOLO con JSON valido nel formato:\n"
-                    f'{{"categories": [{{"name": "Antipasti", "items": [{{"name": "...", "description": "...", "price": "\u20ac 6,00", "search_query": "..."}}]}}]}}\n'
+                    f'{{"categories": [{{"name": "Categoria", "items": [{{"name": "...", "description": "...", "price": "\u20ac 6,00", "search_query": "..."}}]}}]}}\n'
                     f"Niente markdown, niente testo extra."
                 )
 
@@ -1057,7 +1139,7 @@ class handler(BaseHTTPRequestHandler):
                         json={
                             "model": "claude-sonnet-4-5-20250929",
                             "messages": [
-                                {"role": "system", "content": "Sei un esperto chef italiano. Rispondi SOLO con JSON valido."},
+                                {"role": "system", "content": "Sei un esperto consulente che genera listini realistici per attivita' locali italiane. Adatta sempre l'output al settore richiesto (cibo SOLO per ristoranti/bar; servizi SOLO per attivita' di servizi). Rispondi SOLO con JSON valido, niente markdown."},
                                 {"role": "user", "content": prompt}
                             ],
                             "max_tokens": 6000
@@ -1112,12 +1194,13 @@ class handler(BaseHTTPRequestHandler):
                             # Rimuovi search_query dal menu finale (era solo helper)
                             item.pop('search_query', None)
 
-                # Salva nel demo
+                # Salva nel demo (mode: 'services' se non food, altrimenti 'menu')
+                saved_mode = 'services' if (is_services_generic or is_barber or is_hair or is_beauty) else 'menu'
                 db.demo_sites.update_one(
                     {"demo_id": demo_id},
                     {"$set": {
                         "content.menu_categories": menu_data.get('categories', []),
-                        "content.menu": {"mode": "menu", "categories": menu_data.get('categories', [])},
+                        "content.menu": {"mode": saved_mode, "categories": menu_data.get('categories', [])},
                         "updated_at": datetime.now(timezone.utc).isoformat()
                     }}
                 )

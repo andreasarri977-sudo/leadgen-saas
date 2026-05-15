@@ -1617,6 +1617,179 @@ async def post_demo_action(demo_id: str, request: Request, action: Optional[str]
         await db.demo_sites.update_one({"demo_id": demo_id}, {"$set": updates})
         return {"success": True, "applied": list(tdata.keys())}
 
+    if action == "menu_ai":
+        # Mirror della logica Vercel /app/api/demos/[id]/index.py action=menu_ai.
+        # Genera menu (per food) o listino servizi (per non-food) usando Claude Sonnet.
+        emergent_key = EMERGENT_LLM_KEY
+        if not emergent_key:
+            raise HTTPException(status_code=500, detail="EMERGENT_LLM_KEY non configurata")
+
+        mode = (data.get('mode') or 'menu').lower()
+        if mode not in ('menu', 'services'):
+            mode = 'menu'
+
+        business = demo.get('business_data', {}) or {}
+        business_name = business.get('name', 'Attivita')
+        primary_type = (business.get('primary_type') or '').lower()
+        category = (business.get('category') or business.get('primary_type') or '').lower()
+        city = business.get('city') or (business.get('address', '').split(',')[-2].strip() if business.get('address') else '')
+        reviews_snippet = ''
+        if business.get('reviews'):
+            snippets = [r.get('text', '')[:200] for r in business['reviews'][:5] if r.get('text')]
+            reviews_snippet = ' | '.join(snippets)[:1000]
+
+        is_pizzeria = 'pizza' in primary_type or 'pizza' in business_name.lower() or 'pizzeria' in category
+        is_bar = 'bar' in primary_type or 'cafe' in primary_type
+        is_gelateria = 'gelat' in primary_type or 'ice_cream' in primary_type
+        is_barber = 'barber' in primary_type or 'barbiere' in business_name.lower() or 'barber' in business_name.lower()
+        is_hair = 'hair_salon' in primary_type or 'hair' in primary_type or 'parrucch' in business_name.lower() or 'salone' in business_name.lower()
+        is_beauty = 'beauty_salon' in primary_type or 'beauty' in primary_type or 'estetic' in business_name.lower() or 'estetista' in business_name.lower()
+
+        FOOD_KEYWORDS = ('restaurant', 'cafe', 'bakery', 'meal_takeaway', 'meal_delivery', 'food', 'pizza',
+                         'sushi', 'ramen', 'steak', 'sandwich', 'fast_food', 'pub', 'wine_bar', 'brewery',
+                         'donut', 'coffee', 'tea', 'dessert', 'ristorante', 'trattoria', 'osteria',
+                         'pizzeria', 'paninoteca', 'rosticceria', 'pasticceria', 'panetteria', 'enoteca')
+        is_food_business = (
+            is_pizzeria or is_bar or is_gelateria or
+            any(k in primary_type for k in FOOD_KEYWORDS) or
+            any(k in category for k in FOOD_KEYWORDS)
+        )
+        is_services_generic = (mode == 'services') or (
+            not is_food_business and not is_barber and not is_hair and not is_beauty
+        )
+
+        if is_services_generic:
+            blob = f"{primary_type} {category} {business_name.lower()}"
+            if any(k in blob for k in ('tattoo', 'tatuagg', 'piercing')):
+                menu_hint = "TATUATORE/PIERCING: 'Tatuaggi' (mini, medio, grande, manica, cover-up), 'Piercing' (lobo, cartilagine, naso, sopracciglio), 'Consulenza & Design', 'Aftercare & Ritocchi'"
+            elif any(k in blob for k in ('plumb', 'idraul')):
+                menu_hint = "IDRAULICO: 'Riparazioni Urgenti', 'Installazioni' (caldaie, sanitari), 'Manutenzione', 'Ristrutturazioni Bagno'"
+            elif any(k in blob for k in ('electric', 'elettric')):
+                menu_hint = "ELETTRICISTA: 'Impianti Civili', 'Riparazioni', 'Illuminazione LED', 'Domotica & Sicurezza'"
+            elif any(k in blob for k in ('gym', 'fitness', 'palestra', 'crossfit', 'yoga', 'pilates')):
+                menu_hint = "PALESTRA/FITNESS: 'Abbonamenti', 'Personal Training', 'Corsi di Gruppo', 'Servizi Extra'"
+            elif any(k in blob for k in ('mechanic', 'meccani', 'car_repair', 'auto_repair', 'autofficina')):
+                menu_hint = "AUTOFFICINA: 'Tagliando & Manutenzione', 'Diagnosi & Riparazioni', 'Pneumatici', 'Revisione & AC'"
+            elif any(k in blob for k in ('photograph', 'fotograf')):
+                menu_hint = "STUDIO FOTOGRAFICO: 'Matrimonio', 'Ritratti & Famiglia', 'Eventi & Aziendale', 'Stampe & Album'"
+            elif any(k in blob for k in ('cleaning', 'pulizi')):
+                menu_hint = "IMPRESA PULIZIE: 'Domestiche', 'Uffici & Aziende', 'Fine Cantiere', 'Servizi Specializzati'"
+            else:
+                menu_hint = (f"ATTIVITA' DI SERVIZI ('{primary_type or category}'): genera 3-4 categorie pertinenti al settore. "
+                             f"NON cibo, NON bevande. Per ogni servizio: name, description (6-12 parole), price (in '\u20ac X,XX' o 'su preventivo').")
+            menu_hint += "\nVIETATO ASSOLUTAMENTE generare piatti, pizze, bevande, antipasti, primi, secondi, dolci."
+            expert_role = f"esperto consulente di marketing per attivita' di servizi del settore '{primary_type or category or 'professionale'}'"
+            item_label = "servizio"
+            item_examples = "es. 'tattoo studio', 'plumber tools', 'mechanic garage'"
+        elif is_pizzeria:
+            menu_hint = "PIZZERIA: 'Antipasti' (3-4), 'Pizze Classiche' (8-10), 'Pizze Speciali' (5-6), 'Dolci' (3-4), 'Bevande' (4-5)"
+            expert_role = "esperto di ristorazione italiana"; item_label = "piatto"; item_examples = "es. 'margherita pizza', 'tiramisu dessert'"
+        elif is_bar:
+            menu_hint = "BAR/CAFFETTERIA: 'Colazione', 'Aperitivi', 'Snack', 'Caffetteria'"
+            expert_role = "esperto di ristorazione italiana"; item_label = "piatto"; item_examples = "es. 'espresso coffee', 'aperol spritz'"
+        elif is_gelateria:
+            menu_hint = "GELATERIA: 'Gusti Classici' (8-10), 'Gusti Speciali' (5-6), 'Coppette e Coni', 'Granite/Sorbetti'"
+            expert_role = "esperto di ristorazione italiana"; item_label = "piatto"; item_examples = "es. 'pistachio gelato', 'lemon sorbet'"
+        elif is_barber:
+            menu_hint = "BARBIERE: 'Taglio Uomo', 'Barba', 'Trattamenti', 'Premium'. VIETATO servizi donna."
+            expert_role = "esperto consulente per saloni"; item_label = "servizio"; item_examples = "es. 'haircut barber', 'beard trim'"
+        elif is_hair:
+            menu_hint = "PARRUCCHIERE: 'Taglio & Piega', 'Colore', 'Trattamenti', 'Acconciature'"
+            expert_role = "esperto consulente per saloni"; item_label = "servizio"; item_examples = "es. 'hair color salon', 'haircut'"
+        elif is_beauty:
+            menu_hint = "CENTRO ESTETICO: 'Viso', 'Corpo', 'Depilazione', 'Manicure & Pedicure', 'Trucco'"
+            expert_role = "esperto consulente per centri estetici"; item_label = "servizio"; item_examples = "es. 'facial treatment', 'manicure'"
+        else:
+            menu_hint = "RISTORANTE: 'Antipasti', 'Primi', 'Secondi', 'Dolci', 'Bevande'"
+            expert_role = "esperto di ristorazione italiana"; item_label = "piatto"; item_examples = "es. 'pasta carbonara', 'tiramisu'"
+
+        prompt = (
+            f"Sei un {expert_role}. Genera un listino realistico per:\n"
+            f"Nome: {business_name}\nCategoria Google: {primary_type or category}\nCitta: {city}\n"
+            f"Recensioni: {reviews_snippet or 'nessuna'}\n\nREGOLE:\n{menu_hint}\n\n"
+            f"Per OGNI {item_label}: name (max 4 parole), description (6-12 parole), "
+            f"price ('\u20ac X,XX' o 'su preventivo'), search_query (2-3 parole inglesi, {item_examples}).\n"
+            f'Rispondi SOLO JSON: {{"categories": [{{"name": "...", "items": [{{"name": "...", "description": "...", "price": "\u20ac 6,00", "search_query": "..."}}]}}]}}'
+        )
+
+        try:
+            import requests as _r
+            llm_response = _r.post(
+                "https://integrations.emergentagent.com/llm/chat/completions",
+                headers={"Authorization": f"Bearer {emergent_key}", "Content-Type": "application/json"},
+                json={
+                    "model": "claude-sonnet-4-5-20250929",
+                    "messages": [
+                        {"role": "system", "content": "Sei un esperto consulente che genera listini realistici per attivita' locali italiane. Adatta sempre l'output al settore richiesto (cibo SOLO per ristoranti/bar; servizi SOLO per attivita' di servizi). Rispondi SOLO con JSON valido, niente markdown."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "max_tokens": 6000
+                },
+                timeout=90
+            )
+            if llm_response.status_code != 200:
+                raise HTTPException(status_code=500, detail=f"LLM error {llm_response.status_code}: {llm_response.text[:200]}")
+            llm_text = llm_response.json()['choices'][0]['message']['content']
+            cleaned = (llm_text or '').strip()
+            if cleaned.startswith('```'):
+                lines = cleaned.split('\n')
+                if lines and lines[0].startswith('```'):
+                    lines = lines[1:]
+                if lines and lines[-1].startswith('```'):
+                    lines = lines[:-1]
+                cleaned = '\n'.join(lines)
+            menu_data = json.loads(cleaned)
+        except HTTPException:
+            raise
+        except Exception as _e:
+            raise HTTPException(status_code=500, detail=f"Errore generazione menu AI: {str(_e)[:200]}")
+
+        # Pexels per foto (best-effort)
+        pexels_key = os.environ.get('PEXELS_API_KEY')
+        if pexels_key:
+            import urllib.request, urllib.parse
+            photo_cache = {}
+            for cat_x in menu_data.get('categories', []):
+                for item in cat_x.get('items', []):
+                    query = (item.get('search_query') or item.get('name', '')).strip()
+                    if not query:
+                        continue
+                    if query in photo_cache:
+                        item['image'] = photo_cache[query]
+                        item.pop('search_query', None)
+                        continue
+                    try:
+                        url = f"https://api.pexels.com/v1/search?query={urllib.parse.quote(query)}&per_page=1&orientation=landscape"
+                        req = urllib.request.Request(url, headers={"Authorization": pexels_key, "User-Agent": "WebFinderStudio/1.0"})
+                        with urllib.request.urlopen(req, timeout=8) as resp:
+                            pdata = json.loads(resp.read().decode('utf-8'))
+                            photos = pdata.get('photos', [])
+                            if photos:
+                                photo_url = photos[0].get('src', {}).get('large') or photos[0].get('src', {}).get('original')
+                                if photo_url:
+                                    item['image'] = photo_url
+                                    photo_cache[query] = photo_url
+                    except Exception as _e:
+                        logging.warning(f"Pexels search failed for '{query}': {_e}")
+                    item.pop('search_query', None)
+
+        saved_mode = 'services' if (is_services_generic or is_barber or is_hair or is_beauty) else 'menu'
+        await db.demo_sites.update_one(
+            {"demo_id": demo_id},
+            {"$set": {
+                "content.menu_categories": menu_data.get('categories', []),
+                "content.menu": {"mode": saved_mode, "categories": menu_data.get('categories', [])},
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        return {
+            "success": True,
+            "categories_count": len(menu_data.get('categories', [])),
+            "items_count": sum(len(c.get('items', [])) for c in menu_data.get('categories', [])),
+            "menu": menu_data.get('categories', []),
+            "mode": saved_mode
+        }
+
     raise HTTPException(status_code=400, detail=f"Azione non riconosciuta: {action}")
 
 @api_router.delete("/demos/{demo_id}")

@@ -1,6 +1,15 @@
 # WebFinder Studio - Product Requirements Document
 
 ## CHANGELOG
+- **01/02/2026** - 🔴 **Fix bug "Menu AI genera pizze per non-ristoranti"** (P0):
+  - Causa: in `/app/api/demos/[id]/index.py > action=menu_ai`, l'`else` di default trattava qualsiasi attività non-pizzeria/bar/gelateria/parrucchiere/estetica come "RISTORANTE", generando antipasti+primi+secondi anche per tatuatori, idraulici, palestre, ecc.
+  - Fix: introdotto `is_food_business` (whitelist `FOOD_KEYWORDS` + nomi tipici) e `is_services_generic` (forced via `mode='services'` oppure attività non-food + non-salone). Per `is_services_generic` viene applicato un `menu_hint` settore-specifico con 13 ramificazioni dedicate (tatuatore/piercing, idraulico, elettricista, palestra/fitness, dentista, avvocato, autofficina/gommista, fotografo, pulizie, immobiliare, veterinario, autoscuola, agenzia viaggi, spa/wellness, nail center) + fallback generico "servizi del settore X". Il prompt vieta esplicitamente cibo, bevande, antipasti/primi/secondi.
+  - Tone neutro: cambiato il system message LLM da "esperto chef italiano" a consulente generico che adatta l'output al settore. Il prompt user usa `expert_role`, `item_label` ("piatto"/"servizio") e `item_examples` parametrizzati.
+  - Persistenza: `content.menu.mode` ora salva `services` se attività non-food (prima sempre `menu`).
+  - **Mirror server.py**: aggiunto handler `action=menu_ai` anche in `/app/backend/server.py > post_demo_action` con la stessa logica (regola aurea handoff).
+  - Verifica: testato via curl su 3 demo (tattoo_parlor → "Tatuaggi/Piercing/Consulenza/Aftercare", restaurant → "Antipasti/Primi/Secondi/Dolci/Bevande" regressione OK, plumber → fallito solo per LLM budget esaurito).
+  - ⚠️ **Budget Universal Key esaurito durante i test** ("Max budget: 2.4€"). L'utente deve ricaricare il Universal Key dal pannello Emergent (Profilo → Universal Key → Add Balance).
+
 - **15/05/2026 (sera)** - 🎯 **6 richieste utente — Tutte implementate**:
   - **🔴 P0 — Fix bug "cambio template editor non si applica"**: la funzione `handleSave` di `StyleEditor` ora include `design_template`, `text_color`, `color_intensity` nel payload (prima solo hero/color_scheme/theme). Cliccando su un template + "Salva Stile" il cambio viene ora persistito correttamente in DB. Causa: il bottone Salva Stile NON inviava i 3 nuovi campi anche se lo state locale era aggiornato.
   - **🎯 (5) Layout Default salvabile per nuovi siti**: nuovo endpoint REST `/api/settings/layout-default` (GET/POST/DELETE) che memorizza il preset di sezioni in `user_settings.layout_default`. Bottone "Imposta come default" nel layout editor + banner "Layout default attivo" con tasto rimuovi. `generate_demo_site` (FastAPI) e `/api/demo/generate` + `/api/demo/batch` (Vercel) applicano automaticamente sezioni e visibilità ai siti nuovi.
