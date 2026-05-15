@@ -158,6 +158,11 @@ class handler(BaseHTTPRequestHandler):
                 if tpl:
                     template_data = tpl.get('data') or {}
 
+            # Layout default (applicato a tutti i nuovi demo se nessun template_id viene passato)
+            layout_default = db.user_settings.find_one({"setting_id": "layout_default"}, {"_id": 0}) or {}
+            if not data.get('design_template') and layout_default.get('design_template'):
+                design_template = layout_default['design_template']
+
             results = {"created": [], "skipped": [], "errors": []}
 
             for lead_id in lead_ids:
@@ -179,6 +184,13 @@ class handler(BaseHTTPRequestHandler):
 
                     demo_id = str(uuid.uuid4())[:8]
                     content, booking_mode = build_demo_content(lead, template_data)
+
+                    # Applica layout default sui campi NON gestiti dal template utente
+                    for fld in ['section_order', 'text_color', 'color_intensity',
+                                'show_reviews', 'show_gallery', 'show_whyus', 'show_faq',
+                                'show_hours', 'show_map', 'show_services']:
+                        if fld in layout_default and layout_default[fld] is not None and fld not in content:
+                            content[fld] = layout_default[fld]
 
                     business_data = {
                         "place_id": lead.get('place_id'),

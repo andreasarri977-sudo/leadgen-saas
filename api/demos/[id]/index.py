@@ -229,6 +229,8 @@ class handler(BaseHTTPRequestHandler):
                     "design_template": demo.get('design_template', 'classic'),
                     "text_color": content.get('text_color', 'black'),
                     "color_intensity": content.get('color_intensity', 'vivid'),
+                    "title_color": content.get('title_color'),
+                    "hero_bar_color": content.get('hero_bar_color'),
                     # Site settings (languages + section visibility)
                     "site_language": business.get('site_language', 'it'),
                     "translations": business.get('translations', []),
@@ -478,6 +480,19 @@ class handler(BaseHTTPRequestHandler):
                         content_updates['content.text_color'] = section_data['text_color']
                     if section_data.get('color_intensity') in ('soft', 'medium', 'vivid'):
                         content_updates['content.color_intensity'] = section_data['color_intensity']
+                    # Color picker liberi (HEX) per titolo e hero info bar
+                    if 'title_color' in section_data:
+                        tc = section_data['title_color']
+                        if tc is None or tc == '':
+                            content_updates['content.title_color'] = None
+                        elif isinstance(tc, str) and tc.startswith('#') and len(tc) in (4, 7):
+                            content_updates['content.title_color'] = tc
+                    if 'hero_bar_color' in section_data:
+                        hbc = section_data['hero_bar_color']
+                        if hbc is None or hbc == '':
+                            content_updates['content.hero_bar_color'] = None
+                        elif isinstance(hbc, str) and hbc.startswith('#') and len(hbc) in (4, 7):
+                            content_updates['content.hero_bar_color'] = hbc
                     if 'hide_watermark' in section_data:
                         content_updates['content.hide_watermark'] = bool(section_data['hide_watermark'])
                     
@@ -685,8 +700,11 @@ class handler(BaseHTTPRequestHandler):
                     "template_name": tpl.get('name')
                 })
             
-            elif action == "quote":
-                # Generate a PDF quote/preventivo for this demo and optionally email it
+            elif action in ("quote", "invoice"):
+                # Generate a PDF quote/invoice for this demo and optionally email it
+                is_invoice = (action == "invoice")
+                doc_label = "FATTURA" if is_invoice else "PREVENTIVO"
+                doc_short = "Fattura" if is_invoice else "Preventivo"
                 try:
                     from fpdf import FPDF
                 except ImportError:
@@ -775,7 +793,21 @@ class handler(BaseHTTPRequestHandler):
                 business_city = business.get('city', '')
                 
                 from datetime import datetime as _dt, timedelta as _td
-                quote_id = "PRV-" + _dt.now().strftime("%Y%m%d-%H%M")
+                if is_invoice:
+                    # Numerazione progressiva annuale: FAT-{YYYY}-{NNNN}
+                    year = _dt.now().year
+                    counter_doc = db.user_settings.find_one_and_update(
+                        {"setting_id": f"invoice_counter_{year}"},
+                        {"$inc": {"counter": 1}, "$setOnInsert": {"setting_id": f"invoice_counter_{year}", "year": year}},
+                        upsert=True,
+                        return_document=True
+                    )
+                    counter = (counter_doc or {}).get("counter") or 1
+                    quote_id = f"FAT-{year}-{counter:04d}"
+                    valid_until_label = "Scadenza pagamento"
+                else:
+                    quote_id = "PRV-" + _dt.now().strftime("%Y%m%d-%H%M")
+                    valid_until_label = "Valido fino al"
                 today = _dt.now().strftime("%d/%m/%Y")
                 valid_until = (_dt.now() + _td(days=30)).strftime("%d/%m/%Y")
                 
@@ -808,9 +840,9 @@ class handler(BaseHTTPRequestHandler):
                 
                 pdf.set_y(45)
                 pdf.set_font("Helvetica", 'B', 22)
-                pdf.cell(0, 12, "PREVENTIVO", ln=1)
+                pdf.cell(0, 12, doc_label, ln=1)
                 pdf.set_font("Helvetica", '', 10)
-                pdf.cell(0, 5, f"N. {quote_id}    -    Data: {today}    -    Valido fino al: {valid_until}", ln=1)
+                pdf.cell(0, 5, f"N. {quote_id}    -    Data: {today}    -    {valid_until_label}: {valid_until}", ln=1)
                 pdf.set_font("Helvetica", 'I', 8)
                 pdf.set_text_color(120, 120, 120)
                 _label_by_mode = {
@@ -944,7 +976,10 @@ class handler(BaseHTTPRequestHandler):
                 pdf.set_font("Helvetica", '', 9)
                 if profile.get('iban'):
                     pdf.cell(0, 5, _safe(f"Bonifico bancario - IBAN: {profile.get('iban','')}"), ln=1)
-                pdf.cell(0, 5, "50% all'accettazione, 50% alla consegna del sito.", ln=1)
+                if is_invoice:
+                    pdf.cell(0, 5, f"Pagamento intero entro il {valid_until} (30 giorni data fattura).", ln=1)
+                else:
+                    pdf.cell(0, 5, "50% all'accettazione, 50% alla consegna del sito.", ln=1)
                 
                 if profile.get('footer_notes'):
                     pdf.ln(4)
@@ -959,7 +994,7 @@ class handler(BaseHTTPRequestHandler):
                 
                 pdf_bytes = bytes(pdf.output())
                 pdf_b64 = _b64.b64encode(pdf_bytes).decode('utf-8')
-                pdf_filename = f"Preventivo_{business_name.replace(' ', '_')}_{quote_id}.pdf"
+                pdf_filename = f"{doc_short}_{business_name.replace(' ', '_')}_{quote_id}.pdf"
                 
                 sent = False
                 send_error = None
@@ -976,11 +1011,16 @@ class handler(BaseHTTPRequestHandler):
                             else:
                                 _resend.api_key = resend_key
                                 sender_name = profile.get('company_name') or 'LeadHunter Pro'
+                                email_subject = f"{doc_short} sito web - {business_name}"
+                                if is_invoice:
+                                    email_intro = f"<h2 style='color:#1e40af'>Fattura allegata</h2><p>Buongiorno,</p><p>in allegato la fattura <strong>{quote_id}</strong> relativa alla realizzazione del sito web di <strong>{_safe(business_name)}</strong>.</p><p>Scadenza pagamento: <strong>{valid_until}</strong>.</p>"
+                                else:
+                                    email_intro = f"<h2 style='color:#1e40af'>Preventivo allegato</h2><p>Ciao,</p><p>in allegato il preventivo dettagliato per la realizzazione del sito web di <strong>{_safe(business_name)}</strong>.</p>"
                                 _resend.Emails.send({
                                     "from": f"{sender_name} <onboarding@resend.dev>",
                                     "to": [recipient_final],
-                                    "subject": f"Preventivo sito web - {business_name}",
-                                    "html": f"<div style='font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;color:#1a1a1a'><h2 style='color:#1e40af'>Preventivo allegato</h2><p>Ciao,</p><p>in allegato il preventivo dettagliato per la realizzazione del sito web di <strong>{_safe(business_name)}</strong>.</p>{('<p>'+_safe(custom_notes)+'</p>') if custom_notes else ''}<p>Restiamo a disposizione per ogni domanda.</p><p style='margin-top:30px'>Cordiali saluti,<br><strong>{_safe(sender_name)}</strong></p></div>",
+                                    "subject": email_subject,
+                                    "html": f"<div style='font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;color:#1a1a1a'>{email_intro}{('<p>'+_safe(custom_notes)+'</p>') if custom_notes else ''}<p>Restiamo a disposizione per ogni domanda.</p><p style='margin-top:30px'>Cordiali saluti,<br><strong>{_safe(sender_name)}</strong></p></div>",
                                     "attachments": [{"filename": pdf_filename, "content": list(pdf_bytes)}]
                                 })
                                 sent = True
@@ -989,22 +1029,30 @@ class handler(BaseHTTPRequestHandler):
                             log(f"Resend send failed: {_err}")
                 
                 try:
-                    db.quotes.insert_one({
-                        "quote_id": quote_id, "demo_id": demo_id,
+                    collection = db.invoices if is_invoice else db.quotes
+                    doc_id_key = "invoice_id" if is_invoice else "quote_id"
+                    doc_payload = {
+                        doc_id_key: quote_id, "demo_id": demo_id,
                         "business_name": business_name, "price": price_num,
                         "currency": currency, "features": features, "notes": custom_notes,
+                        "tax_mode": tax_mode,
                         "sent": sent, "recipient": recipient_final,
                         "created_at": datetime.now(timezone.utc).isoformat()
-                    })
+                    }
+                    if is_invoice:
+                        doc_payload["due_date"] = valid_until
+                    collection.insert_one(doc_payload)
                 except Exception as _e:
-                    log(f"Quote insert failed: {_e}")
+                    log(f"{doc_short} insert failed: {_e}")
                 
                 client.close()
-                return self._json_response(200, {
-                    "success": True, "quote_id": quote_id, "filename": pdf_filename,
+                response_payload = {
+                    "success": True, "filename": pdf_filename,
                     "pdf_base64": pdf_b64, "sent": sent,
                     "send_error": send_error, "recipient": recipient_final
-                })
+                }
+                response_payload["invoice_id" if is_invoice else "quote_id"] = quote_id
+                return self._json_response(200, response_payload)
             
             else:
                 client.close()

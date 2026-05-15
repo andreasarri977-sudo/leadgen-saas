@@ -1282,6 +1282,15 @@ async def generate_demo_site(request: GenerateDemoRequest):
     content = await generate_business_content(business_name, category, site_language, primary_type)
     logo_base64 = await generate_logo(business_name)
     
+    # Applica layout default (preset salvato dall'utente per i nuovi siti)
+    layout_default = await db.user_settings.find_one({"setting_id": "layout_default"}, {"_id": 0})
+    if layout_default:
+        for fld in ['section_order', 'text_color', 'color_intensity',
+                    'show_reviews', 'show_gallery', 'show_whyus', 'show_faq',
+                    'show_hours', 'show_map', 'show_services']:
+            if fld in layout_default and layout_default[fld] is not None:
+                content[fld] = layout_default[fld]
+    
     # URL interno (non Vercel)
     demo_id = str(uuid.uuid4())
     demo_url = f"/demo/{demo_id}"
@@ -1319,7 +1328,7 @@ async def generate_demo_site(request: GenerateDemoRequest):
         logo_base64=logo_base64,
         content=content,
         business_data=business_data,
-        design_template=(request.design_template or "classic"),
+        design_template=(request.design_template or (layout_default or {}).get('design_template') or "classic"),
         publish_status="draft"
     )
     
@@ -1615,6 +1624,43 @@ async def delete_demo(demo_id: str):
     logger.info(f"Demo {demo_id} eliminata: {demo.get('business_name', 'N/A')}")
     
     return {"success": True, "message": "Demo eliminata con successo"}
+
+# ====== LAYOUT DEFAULT (preset di sezioni/stile per i NUOVI siti) ======
+LAYOUT_DEFAULT_FIELDS = [
+    'section_order',
+    'design_template', 'text_color', 'color_intensity',
+    'show_reviews', 'show_gallery', 'show_whyus', 'show_faq',
+    'show_hours', 'show_map', 'show_services',
+]
+
+@api_router.get("/settings/layout-default")
+async def get_layout_default():
+    doc = await db.user_settings.find_one({"setting_id": "layout_default"}, {"_id": 0})
+    if not doc:
+        return {"exists": False}
+    doc.pop('setting_id', None)
+    doc['exists'] = True
+    return doc
+
+@api_router.post("/settings/layout-default")
+async def save_layout_default(request: Request):
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    payload = {k: data[k] for k in LAYOUT_DEFAULT_FIELDS if k in data}
+    payload['updated_at'] = datetime.now(timezone.utc).isoformat()
+    await db.user_settings.update_one(
+        {"setting_id": "layout_default"},
+        {"$set": {"setting_id": "layout_default", **payload}},
+        upsert=True
+    )
+    return {"success": True, "saved": list(payload.keys())}
+
+@api_router.delete("/settings/layout-default")
+async def delete_layout_default():
+    await db.user_settings.delete_one({"setting_id": "layout_default"})
+    return {"success": True}
 
 @api_router.post("/email/generate")
 async def generate_email(lead_id: str, demo_url: str):

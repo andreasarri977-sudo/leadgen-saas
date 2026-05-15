@@ -305,6 +305,41 @@ function SectionOrderEditor({ sectionOrder, showReviews, showGallery, showWhyus,
     setDirty(false);
   };
 
+  const [savingDefault, setSavingDefault] = useState(false);
+  const [defaultStatus, setDefaultStatus] = useState(null); // null | 'saved' | 'cleared'
+  const saveAsDefault = async () => {
+    setSavingDefault(true);
+    try {
+      // Salva sia ordine sezioni che toggle visibilità correnti come default per i nuovi siti
+      await axios.post(`${API}/settings/layout-default`, {
+        section_order: order,
+        show_reviews: showReviews !== false,
+        show_gallery: showGallery !== false,
+        show_whyus: showWhyus !== false,
+        show_faq: showFaq !== false,
+        show_hours: showHours !== false,
+        show_map: showMap !== false,
+        show_services: showServices !== false,
+      });
+      setDefaultStatus('saved');
+      toast.success('🎯 Layout impostato come default per i nuovi siti');
+    } catch {
+      toast.error('Errore salvataggio default');
+    } finally { setSavingDefault(false); }
+  };
+
+  const clearDefault = async () => {
+    if (!window.confirm('Rimuovere il layout default? I nuovi siti useranno l\'ordine di sistema.')) return;
+    setSavingDefault(true);
+    try {
+      await axios.delete(`${API}/settings/layout-default`);
+      setDefaultStatus('cleared');
+      toast.success('Default rimosso');
+    } catch {
+      toast.error('Errore rimozione default');
+    } finally { setSavingDefault(false); }
+  };
+
   return (
     <Card className="p-6">
       <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
@@ -314,9 +349,21 @@ function SectionOrderEditor({ sectionOrder, showReviews, showGallery, showWhyus,
             Trascina o usa le frecce per riordinare. Tocca <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-bold">−</span> per nascondere, <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-bold">+</span> per riaggiungere.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={reset} data-testid="reset-section-order">
             Ripristina default
+          </Button>
+          <Button
+            onClick={saveAsDefault}
+            disabled={savingDefault}
+            variant="outline"
+            size="sm"
+            className="border-purple-300 text-purple-700 hover:bg-purple-50"
+            data-testid="save-as-default-layout"
+            title="L'ordine attuale verrà applicato automaticamente ai prossimi siti generati"
+          >
+            {savingDefault ? <Loader2 className="animate-spin mr-2" size={14} /> : <span className="mr-1">🎯</span>}
+            Imposta come default
           </Button>
           <Button
             onClick={handleSave}
@@ -329,6 +376,17 @@ function SectionOrderEditor({ sectionOrder, showReviews, showGallery, showWhyus,
           </Button>
         </div>
       </div>
+
+      {defaultStatus === 'saved' && (
+        <div className="mb-4 p-3 rounded-lg bg-purple-50 border border-purple-200 text-sm flex items-center justify-between gap-3 flex-wrap">
+          <span className="text-purple-800">
+            ✓ <strong>Layout default attivo</strong> — l'ordine e la visibilità delle sezioni verranno applicati ai nuovi siti generati.
+          </span>
+          <button onClick={clearDefault} className="text-xs underline text-purple-700 hover:text-purple-900" data-testid="clear-default-layout">
+            Rimuovi default
+          </button>
+        </div>
+      )}
 
       <div className="space-y-2" data-testid="section-order-list">
         {order.map((id, idx) => {
@@ -580,7 +638,7 @@ function SiteSettingsEditor({ siteLanguage, translations, bookingMode, externalB
 }
 
 // Style Editor Component
-function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, designTemplate, textColor, colorIntensity, gallery, businessName, businessCategory, demoId, productionUrl, hideWatermark, onUpdate, onSave, saving }) {
+function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, designTemplate, textColor, colorIntensity, titleColor, heroBarColor, gallery, businessName, businessCategory, demoId, productionUrl, hideWatermark, onUpdate, onSave, saving }) {
   const [selectedColor, setSelectedColor] = useState(colorScheme || 'blue');
   const [selectedHero, setSelectedHero] = useState(heroImage || '');
   const [selectedPosition, setSelectedPosition] = useState(heroPosition || 'center');
@@ -588,6 +646,8 @@ function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme,
   const [selectedTemplate, setSelectedTemplate] = useState(designTemplate || 'classic');
   const [selectedTextColor, setSelectedTextColor] = useState(textColor || 'black');
   const [selectedIntensity, setSelectedIntensity] = useState(colorIntensity || 'vivid');
+  const [selectedTitleColor, setSelectedTitleColor] = useState(titleColor || '');
+  const [selectedHeroBarColor, setSelectedHeroBarColor] = useState(heroBarColor || '');
   const [hideMark, setHideMark] = useState(Boolean(hideWatermark));
   
   // Find initial index based on heroImage
@@ -629,7 +689,14 @@ function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme,
       hero_overlay: selectedOverlay,
       color_scheme: selectedColor,
       theme: theme,
-      hide_watermark: hideMark
+      hide_watermark: hideMark,
+      // Nuovi campi (fix bug "cambio template non si applica")
+      design_template: selectedTemplate,
+      text_color: selectedTextColor,
+      color_intensity: selectedIntensity,
+      // Color picker liberi (HEX)
+      title_color: selectedTitleColor || null,
+      hero_bar_color: selectedHeroBarColor || null,
     });
   };
 
@@ -805,6 +872,77 @@ function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme,
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* === COLORE TITOLO + HERO INFO BAR (color picker liberi HEX) === */}
+          <div className="p-4 rounded-2xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50">
+            <Label className="text-base font-medium block mb-1 flex items-center gap-2">🎨 Colore Titolo & Hero Info</Label>
+            <p className="text-sm text-neutral-600 mb-3">Personalizza il colore del <strong>nome attività</strong> in homepage e dello sfondo della <strong>barra info</strong> sotto la foto (indirizzo · telefono · rating).</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs text-neutral-700 font-semibold uppercase tracking-wide block mb-2">📝 Colore Titolo Sito</Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={selectedTitleColor || '#ffffff'}
+                    onChange={(e) => {
+                      setSelectedTitleColor(e.target.value);
+                      onUpdate({ title_color: e.target.value, hero_image: selectedHero, color_scheme: selectedColor, hero_position: selectedPosition, hero_overlay: selectedOverlay, design_template: selectedTemplate, text_color: selectedTextColor, color_intensity: selectedIntensity, theme });
+                    }}
+                    className="w-12 h-10 rounded-lg cursor-pointer border-2 border-neutral-300"
+                    data-testid="title-color-picker"
+                  />
+                  <Input
+                    type="text"
+                    value={selectedTitleColor || ''}
+                    placeholder="#ffffff (default bianco)"
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setSelectedTitleColor(v);
+                      onUpdate({ title_color: v || null, hero_image: selectedHero, color_scheme: selectedColor, hero_position: selectedPosition, hero_overlay: selectedOverlay, design_template: selectedTemplate, text_color: selectedTextColor, color_intensity: selectedIntensity, theme });
+                    }}
+                    className="flex-1 font-mono text-xs"
+                    data-testid="title-color-hex"
+                  />
+                  {selectedTitleColor && (
+                    <Button type="button" size="sm" variant="ghost" onClick={() => { setSelectedTitleColor(''); onUpdate({ title_color: null, hero_image: selectedHero, color_scheme: selectedColor, hero_position: selectedPosition, hero_overlay: selectedOverlay, design_template: selectedTemplate, text_color: selectedTextColor, color_intensity: selectedIntensity, theme }); }} data-testid="reset-title-color">✕</Button>
+                  )}
+                </div>
+                <p className="text-[10px] text-neutral-500 mt-1">Lascia vuoto per usare il bianco default del template.</p>
+              </div>
+
+              <div>
+                <Label className="text-xs text-neutral-700 font-semibold uppercase tracking-wide block mb-2">📍 Colore Hero Info Bar</Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={selectedHeroBarColor || '#1e40af'}
+                    onChange={(e) => {
+                      setSelectedHeroBarColor(e.target.value);
+                      onUpdate({ hero_bar_color: e.target.value, hero_image: selectedHero, color_scheme: selectedColor, hero_position: selectedPosition, hero_overlay: selectedOverlay, design_template: selectedTemplate, text_color: selectedTextColor, color_intensity: selectedIntensity, theme });
+                    }}
+                    className="w-12 h-10 rounded-lg cursor-pointer border-2 border-neutral-300"
+                    data-testid="herobar-color-picker"
+                  />
+                  <Input
+                    type="text"
+                    value={selectedHeroBarColor || ''}
+                    placeholder="#1e40af (auto da template)"
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setSelectedHeroBarColor(v);
+                      onUpdate({ hero_bar_color: v || null, hero_image: selectedHero, color_scheme: selectedColor, hero_position: selectedPosition, hero_overlay: selectedOverlay, design_template: selectedTemplate, text_color: selectedTextColor, color_intensity: selectedIntensity, theme });
+                    }}
+                    className="flex-1 font-mono text-xs"
+                    data-testid="herobar-color-hex"
+                  />
+                  {selectedHeroBarColor && (
+                    <Button type="button" size="sm" variant="ghost" onClick={() => { setSelectedHeroBarColor(''); onUpdate({ hero_bar_color: null, hero_image: selectedHero, color_scheme: selectedColor, hero_position: selectedPosition, hero_overlay: selectedOverlay, design_template: selectedTemplate, text_color: selectedTextColor, color_intensity: selectedIntensity, theme }); }} data-testid="reset-herobar-color">✕</Button>
+                  )}
+                </div>
+                <p className="text-[10px] text-neutral-500 mt-1">Rende ben visibile indirizzo, telefono, rating sotto la foto hero.</p>
+              </div>
             </div>
           </div>
 
@@ -1805,6 +1943,8 @@ export default function SiteEditor() {
             designTemplate={siteData.design_template || 'classic'}
             textColor={siteData.text_color || 'black'}
             colorIntensity={siteData.color_intensity || 'vivid'}
+            titleColor={siteData.title_color || ''}
+            heroBarColor={siteData.hero_bar_color || ''}
             gallery={siteData.gallery || []}
             businessName={siteData.business_name}
             businessCategory={siteData.business_data?.category || siteData.category}
@@ -1822,6 +1962,8 @@ export default function SiteEditor() {
                 design_template: data.design_template !== undefined ? data.design_template : prev.design_template,
                 text_color: data.text_color !== undefined ? data.text_color : prev.text_color,
                 color_intensity: data.color_intensity !== undefined ? data.color_intensity : prev.color_intensity,
+                title_color: data.title_color !== undefined ? data.title_color : prev.title_color,
+                hero_bar_color: data.hero_bar_color !== undefined ? data.hero_bar_color : prev.hero_bar_color,
               }));
               setHasChanges(prev => ({ ...prev, style: true }));
             }}

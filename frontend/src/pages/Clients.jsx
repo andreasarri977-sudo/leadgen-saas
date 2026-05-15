@@ -175,6 +175,7 @@ export default function Clients() {
   const [costs, setCosts] = useState(EMPTY_COSTS);
   const [saving, setSaving] = useState(false);
   const [generatingQuote, setGeneratingQuote] = useState(false);
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [whatsappMessage, setWhatsappMessage] = useState('');
   const [whatsappVariant, setWhatsappVariant] = useState(null);
@@ -355,6 +356,44 @@ export default function Clients() {
       toast.error(error?.response?.data?.error || 'Errore generazione preventivo');
     } finally {
       setGeneratingQuote(false);
+    }
+  };
+
+  const handleGenerateInvoice = async (sendByEmail = false) => {
+    if (!selectedDemo) {
+      toast.error('Questo cliente non ha ancora un sito demo associato');
+      return;
+    }
+    if (sendByEmail && (!emailRecipient || !emailRecipient.includes('@'))) {
+      toast.error('Inserisci un indirizzo email valido');
+      return;
+    }
+    setGeneratingInvoice(true);
+    try {
+      const payload = _buildQuotePayload();
+      if (sendByEmail) {
+        payload.send_email = true;
+        payload.recipient_email = emailRecipient;
+      }
+      const res = await axios.post(`${API}/demos/${selectedDemo.demo_id}?action=invoice`, payload);
+      const safeName = selected.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const filename = res.data?.filename || `fattura-${safeName}.pdf`;
+      if (res.data?.pdf_base64) {
+        _downloadBase64Pdf(res.data.pdf_base64, filename);
+        if (sendByEmail) {
+          if (res.data?.sent) toast.success(`Fattura ${res.data.invoice_id} inviata a ${emailRecipient}`);
+          else toast.error(res.data?.send_error || 'Email non inviata');
+        } else {
+          toast.success(`Fattura ${res.data?.invoice_id || ''} scaricata`);
+        }
+      } else {
+        toast.error('PDF fattura non disponibile');
+      }
+    } catch (error) {
+      console.error('Errore fattura:', error);
+      toast.error(error?.response?.data?.error || 'Errore generazione fattura');
+    } finally {
+      setGeneratingInvoice(false);
     }
   };
 
@@ -1049,6 +1088,42 @@ export default function Clients() {
                       <p className="text-sm text-neutral-700 whitespace-pre-wrap">{whatsappMessage}</p>
                     </div>
                   )}
+                </Card>
+
+                {/* === FATTURE — emette PDF fattura (3 regimi) usando lo stesso payload del preventivo === */}
+                <Card className="p-5 border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-white">
+                  <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
+                    <FileText size={20} className="text-emerald-700" /> Emetti fattura cliente
+                  </h3>
+                  <p className="text-xs text-neutral-600 mb-4">
+                    Genera la <strong>fattura PDF</strong> con numerazione progressiva annuale (FAT-{new Date().getFullYear()}-NNNN).
+                    Usa la stessa <strong>Tipologia</strong> ({costs.tax_mode === 'with_vat' ? 'Con P.IVA — IVA 22%' : costs.tax_mode === 'occasional_no_vat' ? 'Prestazione occasionale (no P.IVA)' : 'Regime forfettario'}),
+                    importi e voci configurati sopra. Scadenza pagamento: 30 giorni data fattura.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Button
+                      onClick={() => handleGenerateInvoice(false)}
+                      disabled={generatingInvoice || !selectedDemo}
+                      className="justify-start bg-emerald-600 hover:bg-emerald-700"
+                      data-testid="generate-invoice-pdf-btn"
+                    >
+                      {generatingInvoice ? <Loader2 className="animate-spin mr-2" size={16} /> : <FileText size={16} className="mr-2" />}
+                      Scarica Fattura PDF
+                    </Button>
+                    <Button
+                      onClick={() => handleGenerateInvoice(true)}
+                      disabled={generatingInvoice || !selectedDemo}
+                      variant="outline"
+                      className="justify-start border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                      data-testid="send-invoice-email-btn"
+                    >
+                      {generatingInvoice ? <Loader2 className="animate-spin mr-2" size={16} /> : <Mail size={16} className="mr-2" />}
+                      Invia Fattura via Email
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-emerald-700 mt-3">
+                    💡 La fattura viene salvata in archivio (collection <code className="font-mono">invoices</code>) per regimi futuri e tracciabilità.
+                  </p>
                 </Card>
               </>
             )}

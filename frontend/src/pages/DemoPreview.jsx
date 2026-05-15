@@ -483,6 +483,23 @@ export default function DemoPreview() {
     loadDemo();
   }, [demoId]);
 
+  // Reveal-on-scroll: applica .wf-in alle sezioni quando entrano in viewport
+  useEffect(() => {
+    if (!demo) return;
+    const els = document.querySelectorAll('.wf-demo-root section[id], .wf-demo-root .wf-reveal');
+    if (!els.length || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('wf-in');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' });
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [demo]);
+
   // Tracking pixel — fires once per session per demo
   useEffect(() => {
     if (!demo) return;
@@ -760,6 +777,47 @@ export default function DemoPreview() {
             color: ${designTemplate.preview.text};
           }
         ` : ''}
+
+        /* === REVEAL ON SCROLL — fade-up automatico === */
+        @media (prefers-reduced-motion: no-preference) {
+          .wf-demo-root section[id],
+          .wf-demo-root .wf-reveal {
+            opacity: 0;
+            transform: translateY(28px);
+            transition: opacity 700ms cubic-bezier(.16,.84,.44,1), transform 700ms cubic-bezier(.16,.84,.44,1);
+          }
+          .wf-demo-root section[id].wf-in,
+          .wf-demo-root .wf-reveal.wf-in {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        /* === DECORAZIONI FLOTTANTI tra sezioni === */
+        .wf-deco-divider {
+          position: relative;
+          height: 80px;
+          margin: -20px 0;
+          pointer-events: none;
+          overflow: hidden;
+        }
+        .wf-deco-divider svg {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          opacity: 0.55;
+        }
+        @keyframes wfFloat {
+          0%,100% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-14px) rotate(8deg); }
+        }
+        @keyframes wfPulse {
+          0%,100% { transform: scale(1); opacity: 0.5; }
+          50% { transform: scale(1.15); opacity: 0.8; }
+        }
+        .wf-deco-blob { animation: wfFloat 7s ease-in-out infinite; transform-origin: center; }
+        .wf-deco-dot  { animation: wfPulse 4.5s ease-in-out infinite; transform-origin: center; }
       `}</style>
 
       <div className={`min-h-screen bg-white font-sans wf-demo-root ${designTemplate.vivid_mode ? 'wf-vivid' : ''} ${designTemplate.dark_bg ? 'wf-dark' : ''} wf-intensity-${content.color_intensity || 'vivid'}`} data-design-template={designTemplate.id}>
@@ -867,7 +925,7 @@ export default function DemoPreview() {
                     <img src={`data:image/png;base64,${demo.logo_base64}`} alt={demo.business_name}
                          className="w-16 h-16 sm:w-20 sm:h-20 mb-4 bg-white rounded-xl p-2 shadow-2xl object-contain" />
                   )}
-                  <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-2 tracking-tight drop-shadow-lg">
+                  <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-2 tracking-tight drop-shadow-lg" style={content.title_color ? { color: content.title_color } : undefined}>
                     {demo.business_name}
                   </h1>
                   <p className="text-lg sm:text-xl text-white/90 mb-6 max-w-2xl drop-shadow">
@@ -912,7 +970,7 @@ export default function DemoPreview() {
                   <img src={`data:image/png;base64,${demo.logo_base64}`} alt={demo.business_name}
                        className="w-20 h-20 sm:w-24 sm:h-24 mb-4 bg-white rounded-xl p-3 shadow-2xl object-contain" />
                 )}
-                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 tracking-tight">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 tracking-tight" style={content.title_color ? { color: content.title_color } : undefined}>
                   {demo.business_name}
                 </h1>
                 <p className="text-lg sm:text-xl md:text-2xl text-white/90 mb-6 max-w-2xl">
@@ -947,40 +1005,86 @@ export default function DemoPreview() {
           )}
         </header>
 
-        {/* Quick Info Bar */}
-        <div className={`${style.cardBg} py-5 sm:py-6 md:py-8 px-4 sm:px-6 border-b border-neutral-200`}>
+        {/* Quick Info Bar — usa hero_bar_color custom se presente, altrimenti style.cardBg neutro */}
+        {(() => {
+          const heroBarColor = content.hero_bar_color;
+          // Calcolo automatico se testo deve essere bianco o nero su sfondo custom
+          const isLight = heroBarColor ? (() => {
+            const hex = heroBarColor.replace('#','');
+            const full = hex.length === 3 ? hex.split('').map(c=>c+c).join('') : hex;
+            const r = parseInt(full.substr(0,2),16) || 0;
+            const g = parseInt(full.substr(2,2),16) || 0;
+            const b = parseInt(full.substr(4,2),16) || 0;
+            return (r*299 + g*587 + b*114) / 1000 > 160;
+          })() : true;
+          const fgColor = heroBarColor ? (isLight ? '#0f172a' : '#ffffff') : null;
+          const labelColor = heroBarColor ? (isLight ? '#475569' : 'rgba(255,255,255,0.85)') : null;
+          const iconColor = heroBarColor ? (isLight ? '#0f172a' : '#ffffff') : null;
+          return (
+        <div
+          className={`py-5 sm:py-6 md:py-8 px-4 sm:px-6 border-b ${heroBarColor ? 'shadow-lg' : style.cardBg + ' border-neutral-200'}`}
+          style={heroBarColor ? { background: heroBarColor, borderColor: heroBarColor } : undefined}
+          data-testid="hero-info-bar"
+        >
           <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
             {business.address && (
               <div className="flex items-start gap-3">
-                <MapPin size={22} className="text-neutral-500 mt-0.5 flex-shrink-0" />
+                <MapPin size={22} className="mt-0.5 flex-shrink-0" style={iconColor ? { color: iconColor } : { color: '#737373' }} />
                 <div>
-                  <p className="text-xs sm:text-sm text-neutral-500 font-medium">{t('info.address', lang)}</p>
-                  <p className="font-medium text-neutral-800 text-sm sm:text-base">{business.address}</p>
+                  <p className="text-xs sm:text-sm font-medium" style={labelColor ? { color: labelColor } : { color: '#737373' }}>{t('info.address', lang)}</p>
+                  <p className="font-medium text-sm sm:text-base" style={fgColor ? { color: fgColor } : { color: '#262626' }}>{business.address}</p>
                 </div>
               </div>
             )}
             {business.phone && (
               <div className="flex items-start gap-3">
-                <Phone size={22} className="text-neutral-500 mt-0.5 flex-shrink-0" />
+                <Phone size={22} className="mt-0.5 flex-shrink-0" style={iconColor ? { color: iconColor } : { color: '#737373' }} />
                 <div>
-                  <p className="text-xs sm:text-sm text-neutral-500 font-medium">{t('info.phone', lang)}</p>
-                  <a href={`tel:${business.phone}`} className="font-medium text-neutral-800 hover:underline text-sm sm:text-base">{formattedPhone}</a>
+                  <p className="text-xs sm:text-sm font-medium" style={labelColor ? { color: labelColor } : { color: '#737373' }}>{t('info.phone', lang)}</p>
+                  <a href={`tel:${business.phone}`} className="font-medium hover:underline text-sm sm:text-base" style={fgColor ? { color: fgColor } : { color: '#262626' }}>{formattedPhone}</a>
                 </div>
               </div>
             )}
             {business.rating > 0 && (
               <div className="flex items-start gap-3">
-                <Star size={22} className="text-yellow-500 mt-0.5 flex-shrink-0 fill-yellow-500" />
+                <Star size={22} className="mt-0.5 flex-shrink-0 fill-yellow-400" style={{ color: '#facc15' }} />
                 <div>
-                  <p className="text-xs sm:text-sm text-neutral-500 font-medium">{t('info.rating', lang)}</p>
-                  <p className="font-medium text-neutral-800 text-sm sm:text-base">{business.rating} ({business.reviews_count || 0} {t('info.reviews', lang)})</p>
+                  <p className="text-xs sm:text-sm font-medium" style={labelColor ? { color: labelColor } : { color: '#737373' }}>{t('info.rating', lang)}</p>
+                  <p className="font-medium text-sm sm:text-base" style={fgColor ? { color: fgColor } : { color: '#262626' }}>{business.rating} ({business.reviews_count || 0} {t('info.reviews', lang)})</p>
                 </div>
               </div>
             )}
           </div>
         </div>
+          );
+        })()}
 
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-12 md:py-16 space-y-12 sm:space-y-16 md:space-y-20 flex flex-col" data-testid="demo-sections-container" style={{ '--noop': 0 }}>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-12 md:py-16 space-y-12 sm:space-y-16 md:space-y-20 flex flex-col relative" data-testid="demo-sections-container" style={{ '--noop': 0 }}>
+          {/* Floating decorations behind sections (subtle, full-width) */}
+          <svg className="pointer-events-none absolute -left-12 top-32 w-48 h-48 opacity-40" viewBox="0 0 200 200" aria-hidden="true">
+            <circle cx="100" cy="100" r="80" fill="url(#wf-grad1)" className="wf-deco-blob" />
+            <defs>
+              <linearGradient id="wf-grad1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor={style.accent || '#3b82f6'} stopOpacity="0.3" />
+                <stop offset="100%" stopColor={style.accent || '#3b82f6'} stopOpacity="0.05" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <svg className="pointer-events-none absolute -right-16 top-[40%] w-60 h-60 opacity-30 hidden md:block" viewBox="0 0 200 200" aria-hidden="true">
+            <circle cx="100" cy="100" r="80" fill="url(#wf-grad2)" className="wf-deco-blob" style={{ animationDelay: '-2s' }} />
+            <defs>
+              <linearGradient id="wf-grad2" x1="1" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={style.accent || '#3b82f6'} stopOpacity="0.25" />
+                <stop offset="100%" stopColor="#a855f7" stopOpacity="0.08" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <svg className="pointer-events-none absolute left-1/3 top-[70%] w-32 h-32 opacity-50 hidden lg:block" viewBox="0 0 100 100" aria-hidden="true">
+            <circle cx="50" cy="50" r="6" fill={style.accent || '#3b82f6'} className="wf-deco-dot" />
+            <circle cx="20" cy="30" r="4" fill={style.accent || '#3b82f6'} className="wf-deco-dot" style={{ animationDelay: '-1s' }} />
+            <circle cx="80" cy="60" r="5" fill={style.accent || '#3b82f6'} className="wf-deco-dot" style={{ animationDelay: '-2.5s' }} />
+            <circle cx="60" cy="20" r="3" fill={style.accent || '#3b82f6'} className="wf-deco-dot" style={{ animationDelay: '-0.5s' }} />
+          </svg>
           {/* Ogni <section> riceve style={{ order: orderMap[id] }} via classe contestuale */}
           
           {/* About Section */}
