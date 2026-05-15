@@ -176,6 +176,7 @@ export default function Clients() {
   const [saving, setSaving] = useState(false);
   const [generatingQuote, setGeneratingQuote] = useState(false);
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
+  const [invoiceType, setInvoiceType] = useState('full'); // 'full' | 'deposit' | 'balance'
   const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [whatsappMessage, setWhatsappMessage] = useState('');
   const [whatsappVariant, setWhatsappVariant] = useState(null);
@@ -371,6 +372,7 @@ export default function Clients() {
     setGeneratingInvoice(true);
     try {
       const payload = _buildQuotePayload();
+      payload.invoice_type = invoiceType;  // 'full' | 'deposit' (50%) | 'balance' (50%)
       if (sendByEmail) {
         payload.send_email = true;
         payload.recipient_email = emailRecipient;
@@ -1095,11 +1097,44 @@ export default function Clients() {
                   <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
                     <FileText size={20} className="text-emerald-700" /> Emetti fattura cliente
                   </h3>
-                  <p className="text-xs text-neutral-600 mb-4">
+                  <p className="text-xs text-neutral-600 mb-3">
                     Genera la <strong>fattura PDF</strong> con numerazione progressiva annuale (FAT-{new Date().getFullYear()}-NNNN).
                     Usa la stessa <strong>Tipologia</strong> ({costs.tax_mode === 'with_vat' ? 'Con P.IVA — IVA 22%' : costs.tax_mode === 'occasional_no_vat' ? 'Prestazione occasionale (no P.IVA)' : 'Regime forfettario'}),
-                    importi e voci configurati sopra. Scadenza pagamento: 30 giorni data fattura.
+                    importi e voci configurati sopra.
                   </p>
+
+                  {/* Tipo fattura: Saldo unico / Acconto 50% / Saldo 50% */}
+                  <div className="mb-4">
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-emerald-800 block mb-2">Tipo di fattura</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {[
+                        { id: 'full',    title: '💰 Saldo unico',       desc: '100% del totale',                 step: 'Quando ricevi il pagamento intero' },
+                        { id: 'deposit', title: '📥 Acconto 50%',       desc: '50% del totale - prima rata',     step: 'Quando il cliente accetta e versa la prima metà' },
+                        { id: 'balance', title: '📤 Saldo 50%',         desc: '50% del totale - seconda rata',   step: 'Alla consegna del sito, dopo l\'acconto' },
+                      ].map((opt) => {
+                        const active = invoiceType === opt.id;
+                        return (
+                          <button
+                            type="button"
+                            key={opt.id}
+                            onClick={() => setInvoiceType(opt.id)}
+                            data-testid={`invoice-type-${opt.id}`}
+                            className={`text-left p-3 rounded-xl border-2 transition-all ${active ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-200' : 'border-neutral-200 bg-white hover:border-emerald-300'}`}
+                          >
+                            <p className="font-bold text-sm text-neutral-900">{opt.title}</p>
+                            <p className="text-[11px] text-neutral-600 mt-0.5">{opt.desc}</p>
+                            <p className="text-[10px] text-neutral-500 mt-1 italic">{opt.step}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {(invoiceType === 'deposit' || invoiceType === 'balance') && totalAmount > 0 && (
+                      <div className="mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-900">
+                        💡 <strong>Importo che verrà fatturato</strong>: {(totalAmount / 2).toFixed(2)} {costs.currency} <span className="text-amber-700">(50% di {totalAmount.toFixed(2)} {costs.currency})</span>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Button
                       onClick={() => handleGenerateInvoice(false)}
@@ -1122,7 +1157,8 @@ export default function Clients() {
                     </Button>
                   </div>
                   <p className="text-[11px] text-emerald-700 mt-3">
-                    💡 La fattura viene salvata in archivio (collection <code className="font-mono">invoices</code>) per regimi futuri e tracciabilità.
+                    💡 La fattura viene salvata in archivio (collection <code className="font-mono">invoices</code>) per tracciabilità.
+                    {invoiceType === 'deposit' && ' Quando consegni il sito, torna qui e genera la fattura "📤 Saldo 50%" per la seconda rata.'}
                   </p>
                 </Card>
               </>

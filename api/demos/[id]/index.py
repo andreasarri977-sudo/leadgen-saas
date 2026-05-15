@@ -665,15 +665,28 @@ class handler(BaseHTTPRequestHandler):
                 lang_names = {'it': 'italiano', 'fr': 'francese', 'en': 'inglese', 'es': 'spagnolo', 'de': 'tedesco'}
                 target_name = lang_names[target_lang]
 
+                # Costruisco un prompt molto esplicito che obbliga Claude a:
+                # 1. Rispondere con lo STESSO JSON keys-by-keys
+                # 2. Tradurre OGNI elemento degli array (why_choose_us[].title/description, faq[].question/answer)
+                # 3. NON omettere alcun campo presente nell'input
+                input_json = json.dumps(payload_to_translate, ensure_ascii=False, indent=2)
+                expected_keys = list(payload_to_translate.keys())
+                why_count = len(payload_to_translate.get('why_choose_us') or [])
+                faq_count = len(payload_to_translate.get('faq') or [])
+
                 prompt = (
-                    f"Traduci i seguenti contenuti di un sito web in {target_name}. "
-                    f"Mantieni il tono professionale ma cordiale, adatta gli idiomi alla cultura locale "
-                    f"e preserva ESATTAMENTE la struttura JSON (chiavi, array, oggetti annidati). "
-                    f"Non aggiungere ne rimuovere campi.\n"
-                    f"Per 'why_choose_us' traduci 'title' e 'description' ma lascia 'icon' identica.\n"
-                    f"Per 'faq' traduci 'question' e 'answer'.\n"
-                    f"Rispondi SOLO con il JSON tradotto, senza markdown e senza testo extra.\n\n"
-                    f"INPUT:\n{json.dumps(payload_to_translate, ensure_ascii=False)}"
+                    f"Sei un traduttore professionista. Devi tradurre tutti i contenuti seguenti in {target_name}.\n\n"
+                    f"=== REGOLE TASSATIVE ===\n"
+                    f"1. Output: SOLO un singolo oggetto JSON valido, senza markdown ne testo extra.\n"
+                    f"2. L'output DEVE contenere ESATTAMENTE queste chiavi top-level: {expected_keys}\n"
+                    f"3. Per ogni stringa di testo: traduci in {target_name} mantenendo tono e lunghezza simili.\n"
+                    f"4. Per l'array 'why_choose_us' ({why_count} elementi): per OGNI oggetto, traduci 'title' e 'description'. "
+                    f"Lascia 'icon' IDENTICA. Mantieni esattamente {why_count} elementi, nello stesso ordine.\n"
+                    f"5. Per l'array 'faq' ({faq_count} elementi): per OGNI oggetto traduci 'question' e 'answer'. "
+                    f"Mantieni esattamente {faq_count} elementi, nello stesso ordine.\n"
+                    f"6. NON aggiungere ne omettere campi. NON abbreviare gli array.\n\n"
+                    f"=== INPUT DA TRADURRE ===\n{input_json}\n\n"
+                    f"=== OUTPUT (solo JSON {target_name}) ==="
                 )
                 try:
                     import requests as _r
@@ -683,12 +696,12 @@ class handler(BaseHTTPRequestHandler):
                         json={
                             "model": "claude-sonnet-4-5-20250929",
                             "messages": [
-                                {"role": "system", "content": f"Sei un traduttore professionista madrelingua {target_name}. Rispondi SEMPRE solo con JSON valido."},
+                                {"role": "system", "content": f"Sei un traduttore professionista madrelingua {target_name}. Rispondi SEMPRE solo con JSON valido. Non omettere mai chiavi o elementi di array."},
                                 {"role": "user", "content": prompt}
                             ],
-                            "max_tokens": 4000
+                            "max_tokens": 8000
                         },
-                        timeout=60
+                        timeout=90
                     )
                     if llm_response.status_code != 200:
                         client.close()
@@ -709,6 +722,19 @@ class handler(BaseHTTPRequestHandler):
                     client.close()
                     return self._error(500, f"Errore traduzione AI: {str(_e)[:200]}")
 
+                # === VALIDAZIONE strutturale: assicura che ogni array abbia lo stesso numero di elementi ===
+                missing_fields = []
+                if 'why_choose_us' in payload_to_translate:
+                    tr_wcu = translated.get('why_choose_us')
+                    if not isinstance(tr_wcu, list) or len(tr_wcu) != why_count:
+                        missing_fields.append('why_choose_us')
+                        translated['why_choose_us'] = payload_to_translate['why_choose_us']  # fallback
+                if 'faq' in payload_to_translate:
+                    tr_faq = translated.get('faq')
+                    if not isinstance(tr_faq, list) or len(tr_faq) != faq_count:
+                        missing_fields.append('faq')
+                        translated['faq'] = payload_to_translate['faq']  # fallback
+
                 update_ops = {
                     f"content.translations.{target_lang}": translated,
                     "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -724,6 +750,7 @@ class handler(BaseHTTPRequestHandler):
                     "success": True,
                     "target_lang": target_lang,
                     "fields_translated": list(translated.keys()),
+                    "fields_with_warning": missing_fields,
                 })
 
             elif action == "template_apply_inline":
@@ -800,8 +827,22 @@ class handler(BaseHTTPRequestHandler):
             elif action in ("quote", "invoice"):
                 # Generate a PDF quote/invoice for this demo and optionally email it
                 is_invoice = (action == "invoice")
-                doc_label = "FATTURA" if is_invoice else "PREVENTIVO"
-                doc_short = "Fattura" if is_invoice else "Preventivo"
+                # invoice_type: 'full' (100%), 'deposit' (acconto 50%), 'balance' (saldo 50%)
+                invoice_type = (data.get('invoice_type') or 'full').lower() if is_invoice else 'full'
+                if invoice_type not in ('full', 'deposit', 'balance'):
+                    invoice_type = 'full'
+                if is_invoice and invoice_type == 'deposit':
+                    doc_label = "FATTURA D'ACCONTO"
+                    doc_short = "FatturaAcconto"
+                elif is_invoice and invoice_type == 'balance':
+                    doc_label = "FATTURA A SALDO"
+                    doc_short = "FatturaSaldo"
+                elif is_invoice:
+                    doc_label = "FATTURA"
+                    doc_short = "Fattura"
+                else:
+                    doc_label = "PREVENTIVO"
+                    doc_short = "Preventivo"
                 try:
                     from fpdf import FPDF
                 except ImportError:
@@ -836,6 +877,10 @@ class handler(BaseHTTPRequestHandler):
                     price_num = float(price)
                 except Exception:
                     price_num = 800.0
+                # Salva il prezzo totale ORIGINALE prima di dimezzare per acconto/saldo
+                price_total = price_num
+                if invoice_type in ('deposit', 'balance'):
+                    price_num = round(price_total / 2.0, 2)
                 
                 currency_symbol = {'EUR': 'EUR', 'USD': 'USD', 'GBP': 'GBP', 'CHF': 'CHF'}.get(currency, currency)
                 
@@ -1073,7 +1118,15 @@ class handler(BaseHTTPRequestHandler):
                 pdf.set_font("Helvetica", '', 9)
                 if profile.get('iban'):
                     pdf.cell(0, 5, _safe(f"Bonifico bancario - IBAN: {profile.get('iban','')}"), ln=1)
-                if is_invoice:
+                if is_invoice and invoice_type == 'deposit':
+                    pdf.cell(0, 5, f"Acconto pari al 50% del totale concordato di {_money(price_total)} {currency_symbol}.", ln=1)
+                    pdf.cell(0, 5, "Saldo del 50% restante alla consegna del sito web.", ln=1)
+                    pdf.cell(0, 5, f"Scadenza pagamento acconto: {valid_until}.", ln=1)
+                elif is_invoice and invoice_type == 'balance':
+                    pdf.cell(0, 5, f"Saldo finale pari al 50% del totale concordato di {_money(price_total)} {currency_symbol}.", ln=1)
+                    pdf.cell(0, 5, "Acconto del 50% gia versato in fase di accettazione.", ln=1)
+                    pdf.cell(0, 5, f"Scadenza saldo: {valid_until}.", ln=1)
+                elif is_invoice:
                     pdf.cell(0, 5, f"Pagamento intero entro il {valid_until} (30 giorni data fattura).", ln=1)
                 else:
                     pdf.cell(0, 5, "50% all'accettazione, 50% alla consegna del sito.", ln=1)
@@ -1108,10 +1161,29 @@ class handler(BaseHTTPRequestHandler):
                             else:
                                 _resend.api_key = resend_key
                                 sender_name = profile.get('company_name') or 'LeadHunter Pro'
-                                email_subject = f"{doc_short} sito web - {business_name}"
-                                if is_invoice:
+                                if is_invoice and invoice_type == 'deposit':
+                                    email_subject = f"Fattura d'acconto (50%) - {business_name}"
+                                    email_intro = (
+                                        f"<h2 style='color:#1e40af'>Fattura d'acconto allegata</h2>"
+                                        f"<p>Buongiorno,</p>"
+                                        f"<p>in allegato la <strong>fattura d'acconto {quote_id}</strong> pari al 50% (<strong>{_money(price_num)} {currency_symbol}</strong>) "
+                                        f"del totale concordato di <strong>{_money(price_total)} {currency_symbol}</strong> per la realizzazione del sito web di <strong>{_safe(business_name)}</strong>.</p>"
+                                        f"<p>Scadenza acconto: <strong>{valid_until}</strong>. Il saldo restante verra fatturato alla consegna.</p>"
+                                    )
+                                elif is_invoice and invoice_type == 'balance':
+                                    email_subject = f"Fattura a saldo (50%) - {business_name}"
+                                    email_intro = (
+                                        f"<h2 style='color:#1e40af'>Fattura a saldo allegata</h2>"
+                                        f"<p>Buongiorno,</p>"
+                                        f"<p>in allegato la <strong>fattura a saldo {quote_id}</strong> pari al 50% restante (<strong>{_money(price_num)} {currency_symbol}</strong>) "
+                                        f"del totale di <strong>{_money(price_total)} {currency_symbol}</strong> per il sito web di <strong>{_safe(business_name)}</strong>.</p>"
+                                        f"<p>Il sito e stato consegnato. Scadenza saldo: <strong>{valid_until}</strong>. Grazie per la fiducia!</p>"
+                                    )
+                                elif is_invoice:
+                                    email_subject = f"Fattura sito web - {business_name}"
                                     email_intro = f"<h2 style='color:#1e40af'>Fattura allegata</h2><p>Buongiorno,</p><p>in allegato la fattura <strong>{quote_id}</strong> relativa alla realizzazione del sito web di <strong>{_safe(business_name)}</strong>.</p><p>Scadenza pagamento: <strong>{valid_until}</strong>.</p>"
                                 else:
+                                    email_subject = f"Preventivo sito web - {business_name}"
                                     email_intro = f"<h2 style='color:#1e40af'>Preventivo allegato</h2><p>Ciao,</p><p>in allegato il preventivo dettagliato per la realizzazione del sito web di <strong>{_safe(business_name)}</strong>.</p>"
                                 _resend.Emails.send({
                                     "from": f"{sender_name} <onboarding@resend.dev>",
@@ -1138,6 +1210,8 @@ class handler(BaseHTTPRequestHandler):
                     }
                     if is_invoice:
                         doc_payload["due_date"] = valid_until
+                        doc_payload["invoice_type"] = invoice_type  # 'full' | 'deposit' | 'balance'
+                        doc_payload["total_amount"] = price_total   # totale concordato (per acconto/saldo)
                     collection.insert_one(doc_payload)
                 except Exception as _e:
                     log(f"{doc_short} insert failed: {_e}")
