@@ -473,7 +473,7 @@ function SectionOrderEditor({ sectionOrder, showReviews, showGallery, showWhyus,
   );
 }
 
-function SiteSettingsEditor({ siteLanguage, translations, bookingMode, externalBookingUrl, showReviews, showGallery, showWhyus, showFaq, showHours, showMap, showServices, showSocial, onUpdate, onSave, saving }) {
+function SiteSettingsEditor({ demoId, siteLanguage, translations, bookingMode, externalBookingUrl, translationsCache, showReviews, showGallery, showWhyus, showFaq, showHours, showMap, showServices, showSocial, onUpdate, onSave, saving }) {
   const [primaryLang, setPrimaryLang] = useState(siteLanguage || 'it');
   const [trList, setTrList] = useState(translations || []);
   const [booking, setBooking] = useState(bookingMode || 'none');
@@ -488,6 +488,45 @@ function SiteSettingsEditor({ siteLanguage, translations, bookingMode, externalB
     show_services: showServices !== false,
     show_social: showSocial !== false
   });
+  const [translatingLang, setTranslatingLang] = useState(null);
+  const [translatedLangs, setTranslatedLangs] = useState(() => new Set(Object.keys(translationsCache || {})));
+
+  const handleTranslate = async (targetLang) => {
+    if (!demoId) { toast.error('Demo ID mancante'); return; }
+    setTranslatingLang(targetLang);
+    try {
+      const res = await axios.post(`${API}/demos/${demoId}?action=translate`, { target_lang: targetLang });
+      if (res.data?.success) {
+        toast.success(`✓ Traduzione ${targetLang.toUpperCase()} completata (${(res.data.fields_translated || []).length} campi)`);
+        setTranslatedLangs((prev) => new Set([...prev, targetLang]));
+      } else {
+        toast.error('Traduzione fallita');
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Errore traduzione AI');
+    } finally {
+      setTranslatingLang(null);
+    }
+  };
+
+  // eslint-disable-next-line react/no-multi-comp
+  const TranslateButton = ({ langCode, langLabel }) => {
+    const isDone = translatedLangs.has(langCode);
+    const isLoading = translatingLang === langCode;
+    return (
+      <button
+        type="button"
+        onClick={() => handleTranslate(langCode)}
+        disabled={isLoading || !!translatingLang}
+        data-testid={`translate-${langCode}-btn`}
+        className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm transition-all ${isDone ? 'border-green-500 bg-green-50 text-green-800' : 'border-purple-300 bg-white hover:bg-purple-50 text-purple-800'} disabled:opacity-50 disabled:cursor-not-allowed`}
+      >
+        {isLoading ? <Loader2 className="animate-spin" size={14} /> : (isDone ? <CheckCircle size={14} /> : <span>🤖</span>)}
+        <span className="font-medium truncate">{langLabel}</span>
+        <span className="text-[10px] ml-auto opacity-70">{isDone ? 'fatto' : 'genera'}</span>
+      </button>
+    );
+  };
 
   const toggleTr = (code) => {
     if (code === primaryLang) return;
@@ -562,6 +601,31 @@ function SiteSettingsEditor({ siteLanguage, translations, bookingMode, externalB
             })}
           </div>
         </div>
+
+        {/* === GENERA TRADUZIONI AI per ogni lingua attivata === */}
+        {trList.length > 0 && (
+          <div className="mt-4 p-3 rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">
+            <Label className="text-sm font-bold flex items-center gap-2 text-purple-900">
+              🌍 Traduci contenuti del sito con AI
+            </Label>
+            <p className="text-xs text-neutral-700 mt-1 mb-3">
+              Traduce automaticamente <strong>About, Tagline, Subtitle, Why us, FAQ, CTA</strong> con Claude Sonnet.
+              Le recensioni Google restano nella lingua originale. Esegui dopo aver salvato i contenuti definitivi.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {trList.map((langCode) => {
+                const langInfo = LANGUAGE_OPTIONS.find((o) => o.code === langCode);
+                return (
+                  <TranslateButton
+                    key={langCode}
+                    langCode={langCode}
+                    langLabel={langInfo ? `${langInfo.flag} ${langInfo.label}` : langCode}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* BOOKING */}
@@ -2123,8 +2187,10 @@ export default function SiteEditor() {
 
         <TabsContent value="settings">
           <SiteSettingsEditor
+            demoId={demoId}
             siteLanguage={siteData.site_language}
             translations={siteData.translations}
+            translationsCache={siteData.translations_cache}
             bookingMode={siteData.booking_mode}
             externalBookingUrl={siteData.external_booking_url}
             showReviews={siteData.show_reviews}

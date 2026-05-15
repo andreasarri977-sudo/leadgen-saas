@@ -232,6 +232,7 @@ class handler(BaseHTTPRequestHandler):
                     "title_color": content.get('title_color'),
                     "hero_bar_color": content.get('hero_bar_color'),
                     "title_align": content.get('title_align', 'center'),
+                    "translations_cache": content.get('translations', {}),
                     # Site settings (languages + section visibility)
                     "site_language": business.get('site_language', 'it'),
                     "translations": business.get('translations', []),
@@ -633,6 +634,98 @@ class handler(BaseHTTPRequestHandler):
                 client.close()
                 return self._json_response(200, {"ok": True})
             
+            elif action == "translate":
+                # Genera traduzioni AI dei contenuti del demo in una lingua target
+                # e le salva in content.translations[target_lang]
+                target_lang = (data.get('target_lang') or '').strip().lower()
+                SUPPORTED = {'it', 'fr', 'en', 'es', 'de'}
+                if target_lang not in SUPPORTED:
+                    client.close()
+                    return self._error(400, f"Lingua non supportata. Disponibili: {sorted(SUPPORTED)}")
+                emergent_key = os.environ.get('EMERGENT_LLM_KEY')
+                if not emergent_key:
+                    client.close()
+                    return self._error(500, "EMERGENT_LLM_KEY non configurata")
+
+                content = demo.get('content', {}) or {}
+                payload_to_translate = {
+                    'tagline': content.get('tagline'),
+                    'homepage_subtitle': content.get('homepage_subtitle'),
+                    'about_text': content.get('about_text'),
+                    'services_intro': content.get('services_intro'),
+                    'cta_text': content.get('cta_text'),
+                    'why_choose_us': content.get('why_choose_us'),
+                    'faq': content.get('faq'),
+                }
+                payload_to_translate = {k: v for k, v in payload_to_translate.items() if v}
+                if not payload_to_translate:
+                    client.close()
+                    return self._error(400, "Nessun contenuto da tradurre")
+
+                lang_names = {'it': 'italiano', 'fr': 'francese', 'en': 'inglese', 'es': 'spagnolo', 'de': 'tedesco'}
+                target_name = lang_names[target_lang]
+
+                prompt = (
+                    f"Traduci i seguenti contenuti di un sito web in {target_name}. "
+                    f"Mantieni il tono professionale ma cordiale, adatta gli idiomi alla cultura locale "
+                    f"e preserva ESATTAMENTE la struttura JSON (chiavi, array, oggetti annidati). "
+                    f"Non aggiungere ne rimuovere campi.\n"
+                    f"Per 'why_choose_us' traduci 'title' e 'description' ma lascia 'icon' identica.\n"
+                    f"Per 'faq' traduci 'question' e 'answer'.\n"
+                    f"Rispondi SOLO con il JSON tradotto, senza markdown e senza testo extra.\n\n"
+                    f"INPUT:\n{json.dumps(payload_to_translate, ensure_ascii=False)}"
+                )
+                try:
+                    import requests as _r
+                    llm_response = _r.post(
+                        "https://integrations.emergentagent.com/llm/chat/completions",
+                        headers={"Authorization": f"Bearer {emergent_key}", "Content-Type": "application/json"},
+                        json={
+                            "model": "claude-sonnet-4-5-20250929",
+                            "messages": [
+                                {"role": "system", "content": f"Sei un traduttore professionista madrelingua {target_name}. Rispondi SEMPRE solo con JSON valido."},
+                                {"role": "user", "content": prompt}
+                            ],
+                            "max_tokens": 4000
+                        },
+                        timeout=60
+                    )
+                    if llm_response.status_code != 200:
+                        client.close()
+                        return self._error(500, f"LLM error {llm_response.status_code}: {llm_response.text[:200]}")
+                    llm_data = llm_response.json()
+                    llm_text = llm_data['choices'][0]['message']['content']
+                    cleaned = (llm_text or '').strip()
+                    if cleaned.startswith('```'):
+                        lines = cleaned.split('\n')
+                        if lines and lines[0].startswith('```'):
+                            lines = lines[1:]
+                        if lines and lines[-1].startswith('```'):
+                            lines = lines[:-1]
+                        cleaned = '\n'.join(lines)
+                    translated = json.loads(cleaned)
+                except Exception as _e:
+                    log(f"Translate AI error: {_e}")
+                    client.close()
+                    return self._error(500, f"Errore traduzione AI: {str(_e)[:200]}")
+
+                update_ops = {
+                    f"content.translations.{target_lang}": translated,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+                site_lang = demo.get('business_data', {}).get('site_language') or 'it'
+                existing_translations = set(demo.get('business_data', {}).get('translations', []) or [])
+                if target_lang != site_lang and target_lang not in existing_translations:
+                    existing_translations.add(target_lang)
+                    update_ops['business_data.translations'] = sorted(existing_translations)
+                db.demo_sites.update_one({"demo_id": demo_id}, {"$set": update_ops})
+                client.close()
+                return self._json_response(200, {
+                    "success": True,
+                    "target_lang": target_lang,
+                    "fields_translated": list(translated.keys()),
+                })
+
             elif action == "template_apply_inline":
                 # Apply provided template data (e.g. just-generated AI) directly to this demo
                 # Preserves existing fields (services, booking_mode, reviews, etc.) - only updates the ones provided.

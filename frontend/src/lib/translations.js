@@ -50,6 +50,7 @@ const translations = {
       bookTableTitle: 'Prenota un Tavolo',
       bookAppointmentTitle: 'Prenota Appuntamento',
       socialTitle: 'Seguici sui Social',
+      socialSubtitle: 'Resta aggiornato sulle nostre novità!',
       whyChooseUs: 'Perché Sceglierci',
       faqTitle: 'Domande Frequenti'
     },
@@ -203,6 +204,7 @@ const translations = {
       bookTableTitle: 'Réserver une Table',
       bookAppointmentTitle: 'Prendre Rendez-vous',
       socialTitle: 'Suivez-nous',
+      socialSubtitle: 'Restez informé de nos actualités !',
       whyChooseUs: 'Pourquoi Nous Choisir',
       faqTitle: 'Questions Fréquentes'
     },
@@ -353,6 +355,7 @@ const translations = {
       bookTableTitle: 'Book a Table',
       bookAppointmentTitle: 'Book Appointment',
       socialTitle: 'Follow Us',
+      socialSubtitle: 'Stay updated with our latest news!',
       whyChooseUs: 'Why Choose Us',
       faqTitle: 'Frequently Asked Questions'
     },
@@ -503,6 +506,7 @@ const translations = {
       bookTableTitle: 'Reservar Mesa',
       bookAppointmentTitle: 'Reservar Cita',
       socialTitle: 'Síguenos',
+      socialSubtitle: '¡Mantente al día con nuestras novedades!',
       whyChooseUs: 'Por Qué Elegirnos',
       faqTitle: 'Preguntas Frecuentes'
     },
@@ -653,6 +657,7 @@ const translations = {
       bookTableTitle: 'Tisch Reservieren',
       bookAppointmentTitle: 'Termin Buchen',
       socialTitle: 'Folgen Sie Uns',
+      socialSubtitle: 'Bleiben Sie über unsere Neuigkeiten informiert!',
       whyChooseUs: 'Warum Uns Wählen',
       faqTitle: 'Häufig Gestellte Fragen'
     },
@@ -1035,6 +1040,36 @@ export function getServiceDescription(serviceName, lang = 'it') {
   }
   
   return dict['default'];
+}
+
+/**
+ * Restituisce i contenuti AI tradotti se disponibili in content.translations[lang],
+ * altrimenti fa fallback ai contenuti originali. Le recensioni NON vengono toccate
+ * (rimangono nella lingua in cui sono state scritte dai clienti).
+ *
+ * Esempio: getLocalizedContent(content, 'fr') → restituisce un oggetto identico a
+ * `content` ma con about_text, tagline, faq, why_choose_us ecc. in francese se
+ * la traduzione è stata pre-generata.
+ */
+export function getLocalizedContent(content, lang) {
+  if (!content || typeof content !== 'object') return content || {};
+  if (!lang) return content;
+  const translations = content.translations || {};
+  const override = translations[lang];
+  if (!override) return content;
+  // Campi traducibili — gli altri restano come sono
+  const TRANSLATABLE_FIELDS = [
+    'tagline', 'homepage_subtitle', 'about_text',
+    'services_intro', 'cta_text',
+    'why_choose_us', 'faq',
+  ];
+  const merged = { ...content };
+  for (const f of TRANSLATABLE_FIELDS) {
+    if (override[f] !== undefined && override[f] !== null && override[f] !== '') {
+      merged[f] = override[f];
+    }
+  }
+  return merged;
 }
 
 export default translations;

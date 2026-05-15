@@ -5,7 +5,7 @@ import { MapPin, Phone, Clock, Star, ExternalLink, Mail, Globe, Menu as MenuIcon
 import Lightbox from 'yet-another-react-lightbox';
 import Zoom from 'yet-another-react-lightbox/plugins/zoom';
 import 'yet-another-react-lightbox/styles.css';
-import { t, localizeHours, getLanguageFromCountry, getServiceDescription } from '@/lib/translations';
+import { t, localizeHours, getLanguageFromCountry, getServiceDescription, getLocalizedContent } from '@/lib/translations';
 import { toast } from 'sonner';
 import API from '@/lib/api';
 import { getFontSetForCategory, FONT_SETS } from '@/lib/categoryFonts';
@@ -315,14 +315,22 @@ const getWhatsAppLink = (phone, message, whatsappNumber = null) => {
 };
 
 // Language Switcher Component
-function LanguageSwitcher({ currentLang, localeLang, onSwitch, style }) {
+function LanguageSwitcher({ currentLang, localeLang, availableLangs: availableLangsProp, onSwitch, style }) {
   const [isOpen, setIsOpen] = useState(false);
-  
-  // Always show EN + locale language
-  const availableLangs = ['en'];
-  if (localeLang !== 'en' && AVAILABLE_LANGUAGES[localeLang]) {
-    availableLangs.unshift(localeLang);
+
+  // Determina le lingue disponibili: usa la prop se fornita,
+  // altrimenti fallback: locale + 'en' (retrocompatibilità).
+  let availableLangs;
+  if (Array.isArray(availableLangsProp) && availableLangsProp.length > 0) {
+    availableLangs = availableLangsProp.filter((l) => AVAILABLE_LANGUAGES[l]);
+  } else {
+    availableLangs = ['en'];
+    if (localeLang !== 'en' && AVAILABLE_LANGUAGES[localeLang]) {
+      availableLangs.unshift(localeLang);
+    }
   }
+  // Almeno 1 lingua va mostrata sempre
+  if (availableLangs.length === 0) availableLangs = [localeLang || 'en'];
   
   return (
     <div className="relative">
@@ -595,15 +603,22 @@ export default function DemoPreview() {
   }
 
   const business = demo.business_data || {};
-  const content = demo.content || {};
+  const rawContent = demo.content || {};
+  // Locale language (from country)
+  const localeLang = business.site_language || getLanguageFromCountry(business.country) || 'it';
+  const lang = currentLang || localeLang;
+  // Applica traduzioni se l'utente cambia lingua nel demo
+  const content = getLocalizedContent(rawContent, lang);
   const sectionOrderMap = getOrderMap(content.section_order);
   const photos = business.photos || [];
   const rawReviews = filterReviews(business.reviews);
   const reviews = sortReviewsByRecency(rawReviews);
-  
-  // Locale language (from country)
-  const localeLang = business.site_language || getLanguageFromCountry(business.country) || 'it';
-  const lang = currentLang || localeLang;
+
+  // Lingue disponibili nel demo: locale + lingue attivate in Settings + 'en' (sempre)
+  const businessTranslations = Array.isArray(business.translations) ? business.translations : [];
+  const SUPPORTED_LANGS = ['it', 'fr', 'en', 'es', 'de'];
+  const availableLangsSet = new Set([localeLang, 'en', ...businessTranslations]);
+  const availableLangs = SUPPORTED_LANGS.filter((l) => availableLangsSet.has(l));
   
   // Localized hours
   const localizedHours = localizeHours(business.hours_text, lang);
@@ -870,6 +885,7 @@ export default function DemoPreview() {
                 <LanguageSwitcher 
                   currentLang={lang} 
                   localeLang={localeLang} 
+                  availableLangs={availableLangs}
                   onSwitch={setCurrentLang} 
                   style={style} 
                 />
@@ -877,7 +893,7 @@ export default function DemoPreview() {
 
               {/* Mobile: Language + Menu */}
               <div className="flex items-center gap-2 lg:hidden">
-                <LanguageSwitcher currentLang={lang} localeLang={localeLang} onSwitch={setCurrentLang} style={style} />
+                <LanguageSwitcher currentLang={lang} localeLang={localeLang} availableLangs={availableLangs} onSwitch={setCurrentLang} style={style} />
                 <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-neutral-700">
                   {mobileMenuOpen ? <X size={24} /> : <MenuIcon size={24} />}
                 </button>
@@ -1356,11 +1372,7 @@ export default function DemoPreview() {
           <section id="social" className="text-center" style={{ order: sectionOrderMap.social }}>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 tracking-tight">{t('sections.socialTitle', lang)}</h2>
             <p className="text-neutral-600 mb-6 sm:mb-8 text-base sm:text-lg">
-              {lang === 'it' && 'Resta aggiornato sulle nostre novità!'}
-              {lang === 'fr' && 'Restez informé de nos actualités!'}
-              {lang === 'en' && 'Stay updated with our latest news!'}
-              {lang === 'es' && '¡Mantente al día con nuestras novedades!'}
-              {lang === 'de' && 'Bleiben Sie über unsere Neuigkeiten informiert!'}
+              {t('sections.socialSubtitle', lang)}
             </p>
             <div className="flex items-center justify-center gap-4 sm:gap-6">
               {/* Instagram - SEMPRE visibile */}
