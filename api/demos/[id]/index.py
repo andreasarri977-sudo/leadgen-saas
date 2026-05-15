@@ -942,19 +942,22 @@ class handler(BaseHTTPRequestHandler):
                 })
 
             elif action == "menu_ai":
-                # Genera un menu strutturato per ristoranti/pizzerie/bar usando Claude.
-                # Ogni piatto ha: name, description, price, image (URL Pexels).
+                # Genera menu (per ristoranti) O servizi (per altre categorie).
+                # mode='menu' (default) = piatti+prezzi+foto. mode='services' = servizi professionali.
                 emergent_key = os.environ.get('EMERGENT_LLM_KEY')
                 if not emergent_key:
                     client.close()
                     return self._error(500, "EMERGENT_LLM_KEY non configurata")
 
+                mode = (data.get('mode') or 'menu').lower()
+                if mode not in ('menu', 'services'):
+                    mode = 'menu'
+
                 business = demo.get('business_data', {}) or {}
-                business_name = business.get('name', 'Ristorante')
+                business_name = business.get('name', 'Attivita')
                 primary_type = (business.get('primary_type') or '').lower()
-                category = (business.get('category') or business.get('primary_type') or 'ristorante').lower()
+                category = (business.get('category') or business.get('primary_type') or '').lower()
                 city = business.get('city') or business.get('address', '').split(',')[-2].strip() if business.get('address') else ''
-                # Recensioni → estrai cosa dicono i clienti (utile per capire i piatti preferiti)
                 reviews_snippet = ''
                 if business.get('reviews'):
                     snippets = [r.get('text', '')[:200] for r in business['reviews'][:5] if r.get('text')]

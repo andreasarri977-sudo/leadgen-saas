@@ -45,7 +45,7 @@ Per utilizzare tutte le funzionalità di LeadHunter Pro, devi configurare le seg
 1. Clicca sulla chiave appena creata
 2. **Restrizioni applicazione:**
    - Seleziona "Referrer HTTP"
-   - Aggiungi: `https://template-ai-engine.preview.emergentagent.com/*`
+   - Aggiungi: `https://site-generator-293.preview.emergentagent.com/*`
    - Aggiungi: `http://localhost:*/*` (solo per sviluppo locale)
 3. **Restrizioni API:**
    - Seleziona "Limita chiave"
