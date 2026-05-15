@@ -10,10 +10,11 @@ const CLOUD_NAME = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME;
 // Preset di trasformazioni "auto-enhance":
 // - f_auto: formato ottimale (avif/webp/jpg) in base al browser
 // - q_auto: qualità ottimizzata bilanciata
-// - e_improve: auto color/contrast/brightness correction
-// - e_sharpen:60: nitidezza leggera (60 su 0-2000)
-// - dpr_auto: serve risoluzione 1x/2x/3x in base allo schermo
-const DEFAULT_TRANSFORMS = 'f_auto,q_auto,e_improve,e_sharpen:60,dpr_auto';
+// - e_sharpen:60: nitidezza leggera
+// NOTA: rimossi e_improve e dpr_auto perché su alcuni cloud free
+// l'addon "e_improve" non è attivo e ritorna 401, rompendo tutte
+// le immagini. Sharpen è gratuito su tutti i piani.
+const DEFAULT_TRANSFORMS = 'f_auto,q_auto,e_sharpen:60';
 
 /**
  * Avvolge una URL immagine remota con Cloudinary fetch + trasformazioni.
@@ -53,3 +54,21 @@ export function maybeEnhance(url, enabled = true, opts = {}) {
 }
 
 export const CLOUDINARY_CONFIGURED = Boolean(CLOUD_NAME);
+
+/**
+ * Handler `onError` per <img>: se Cloudinary fallisce (401/404/timeout),
+ * il browser ricarica automaticamente l'URL originale.
+ *
+ * Uso: <img src={cloudinaryEnhance(url, {width: 600})}
+ *           data-fallback={url}
+ *           onError={cloudinaryFallback} />
+ */
+export function cloudinaryFallback(event) {
+  const img = event.target;
+  if (!img || img.dataset.cloudinaryFallbackTried === '1') return;
+  const original = img.dataset.fallback;
+  if (original && img.src !== original) {
+    img.dataset.cloudinaryFallbackTried = '1';
+    img.src = original;
+  }
+}

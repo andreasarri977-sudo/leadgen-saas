@@ -9,7 +9,7 @@ import { t, localizeHours, getLanguageFromCountry, getServiceDescription, getLoc
 import { toast } from 'sonner';
 import API from '@/lib/api';
 import { getFontSetForCategory, FONT_SETS } from '@/lib/categoryFonts';
-import { cloudinaryEnhance, CLOUDINARY_CONFIGURED } from '@/lib/cloudinary';
+import { cloudinaryEnhance, CLOUDINARY_CONFIGURED, cloudinaryFallback } from '@/lib/cloudinary';
 import CategoryDecorations from '@/components/CategoryDecorations';
 import { getDesignTemplateById } from '@/lib/designTemplates';
 
@@ -646,7 +646,12 @@ export default function DemoPreview() {
   
   const lightboxSlides = galleryPhotos.map(photo => ({
     src: cloudinaryEnhance(photo.url, { width: 1600 }),
-    alt: business.name
+    alt: business.name,
+    // Fallback URL originale se Cloudinary fallisce
+    srcSet: [
+      { src: cloudinaryEnhance(photo.url, { width: 1600 }), width: 1600 },
+      { src: photo.url, width: 1200 },
+    ],
   }));
 
   const isFoodBusiness = business.primary_type && ['restaurant', 'bar', 'cafe', 'pizza_restaurant'].includes(business.primary_type);
@@ -937,6 +942,8 @@ export default function DemoPreview() {
               <div className="relative h-[50vh] md:h-[60vh]">
                 <img 
                   src={heroPhoto} 
+                  data-fallback={rawHeroPhoto}
+                  onError={cloudinaryFallback}
                   alt={demo.business_name} 
                   className="w-full h-full object-cover" 
                   style={{ objectPosition: getHeroPosition(content.hero_position) }}
@@ -1206,7 +1213,10 @@ export default function DemoPreview() {
                 {galleryPhotos.map((photo, index) => (
                   <button key={index} onClick={() => handleOpenLightbox(index)}
                           className="aspect-square bg-neutral-200 rounded-lg sm:rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all cursor-pointer group">
-                    <img src={cloudinaryEnhance(photo.url, { width: 600 })} alt={`${t('sections.galleryTitle', lang)} ${index + 1}`}
+                    <img src={cloudinaryEnhance(photo.url, { width: 600 })}
+                         data-fallback={photo.url}
+                         onError={cloudinaryFallback}
+                         alt={`${t('sections.galleryTitle', lang)} ${index + 1}`}
                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
                   </button>
                 ))}
