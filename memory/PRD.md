@@ -1,6 +1,14 @@
 # WebFinder Studio - Product Requirements Document
 
 ## CHANGELOG
+- **02/02/2026** - 📤 **Foto custom + Import menu da upload** + 🐛 fix crash MenuEditor:
+  - **Foto custom su piatti/servizi**: nuovo bottone "📁 Carica" accanto a "📷 Pexels" su ogni item (piatti del menu e servizi). Apre file picker → compressione client-side (JPG max 800px, qualità 0.78, ~60-100KB) → salvata come data URL in `item.image`. Funziona in qualsiasi ambiente, zero infrastruttura. Aggiunto anche un mini-bottone "↑" sull'angolo della foto già esistente per sostituirla rapidamente.
+  - **Import menu da foto caricate**: nuovo bottone viola "📤 Carica foto menu" nella toolbar Menu. Apre selettore multiplo (max 6 foto) → compresse client-side a 1600px qualità 0.85 → inviate a `action=menu_import_google` con nuovo parametro `image_data_urls`. Backend riconosce data URL base64 e li passa direttamente a Claude Vision (priorità su foto Google). Risolve il caso in cui Google Maps non ha indicizzato il menu del cliente: ora puoi caricare screenshot WhatsApp, PDF fotografato o foto del menu cartaceo.
+  - **Backend `menu_import_google`**: aggiunto branch `image_data_urls` (lista di stringhe base64/URL) con priorità sui `business.photos`. Se assenti entrambi → errore 400 con messaggio aggiornato che suggerisce di usare "Carica foto menu".
+  - **🐛 Fix crash MenuEditor con demo senza menu**: `siteData.menu` era undefined per demo nuovi → `(menu.services || [])` crashava con "Cannot read properties of undefined". Aggiunto default `{ mode: 'menu', categories: [], services: [] }` nel componente.
+  - Helper riusabili aggiunti in cima a SiteEditor.jsx: `compressImageToDataUrl`, `pickSingleImageFile`, `pickMultipleImageFiles`.
+  - ⚠️ La feature "OCR upload" usa l'endpoint `menu_import_google` che esiste **solo su Vercel** (`/app/api/demos/[id]/index.py`), non in `server.py` preview. Funziona quindi dopo il deploy su Vercel.
+
 - **01/02/2026** - 🔴 **Fix bug "Menu AI genera pizze per non-ristoranti"** (P0):
   - Causa: in `/app/api/demos/[id]/index.py > action=menu_ai`, l'`else` di default trattava qualsiasi attività non-pizzeria/bar/gelateria/parrucchiere/estetica come "RISTORANTE", generando antipasti+primi+secondi anche per tatuatori, idraulici, palestre, ecc.
   - Fix: introdotto `is_food_business` (whitelist `FOOD_KEYWORDS` + nomi tipici) e `is_services_generic` (forced via `mode='services'` oppure attività non-food + non-salone). Per `is_services_generic` viene applicato un `menu_hint` settore-specifico con 13 ramificazioni dedicate (tatuatore/piercing, idraulico, elettricista, palestra/fitness, dentista, avvocato, autofficina/gommista, fotografo, pulizie, immobiliare, veterinario, autoscuola, agenzia viaggi, spa/wellness, nail center) + fallback generico "servizi del settore X". Il prompt vieta esplicitamente cibo, bevande, antipasti/primi/secondi.

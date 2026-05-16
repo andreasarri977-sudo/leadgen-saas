@@ -777,29 +777,37 @@ class handler(BaseHTTPRequestHandler):
             elif action == "menu_import_google":
                 # Importa il menu REALE dalle foto Google Places (foto di menu fotografate dai clienti).
                 # Usa Claude Vision via OpenAI-compatible API per fare OCR strutturato.
+                # FALLBACK: accetta anche image_data_urls (base64 data URL) caricati manualmente dall'utente.
                 emergent_key = os.environ.get('EMERGENT_LLM_KEY')
                 if not emergent_key:
                     client.close()
                     return self._error(500, "EMERGENT_LLM_KEY non configurata")
 
                 business = demo.get('business_data', {}) or {}
-                photos = business.get('photos', []) or []
-                # photos puo essere lista di dict {url} o lista di stringhe
-                photo_urls = []
-                for p in photos:
-                    if isinstance(p, dict):
-                        u = p.get('url') or p.get('src')
-                    else:
-                        u = p
-                    if u and isinstance(u, str):
-                        photo_urls.append(u)
-                if not photo_urls:
-                    client.close()
-                    return self._error(400, "Nessuna foto Google trovata per questo ristorante")
 
-                # Permetti override: l'utente puo passare un subset di foto da analizzare
+                # 1) Sorgente: foto caricate dall'utente (priorità) OPPURE foto Google
+                user_uploads = data.get('image_data_urls')
+                if isinstance(user_uploads, list) and user_uploads:
+                    photo_urls = [u for u in user_uploads if isinstance(u, str) and (u.startswith('data:image') or u.startswith('http'))]
+                    source_label = 'upload'
+                else:
+                    photos = business.get('photos', []) or []
+                    photo_urls = []
+                    for p in photos:
+                        if isinstance(p, dict):
+                            u = p.get('url') or p.get('src')
+                        else:
+                            u = p
+                        if u and isinstance(u, str):
+                            photo_urls.append(u)
+                    if not photo_urls:
+                        client.close()
+                        return self._error(400, "Nessuna foto Google trovata per questo ristorante. Usa 'Carica foto menu' per caricarle manualmente.")
+                    source_label = 'google'
+
+                # Permetti override: l'utente puo passare un subset di foto da analizzare (legacy)
                 selected = data.get('photo_urls')
-                if isinstance(selected, list) and selected:
+                if isinstance(selected, list) and selected and source_label == 'google':
                     photo_urls = [u for u in selected if isinstance(u, str)]
                 # Limita a 6 foto per non saturare token
                 photo_urls = photo_urls[:6]

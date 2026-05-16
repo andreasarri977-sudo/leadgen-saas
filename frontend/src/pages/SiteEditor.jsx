@@ -2530,10 +2530,87 @@ function HoursEditor({ hours, onUpdate, onSave, saving, hasChanges }) {
 }
 
 // MENU EDITOR
-function MenuEditor({ menu, demoId, onUpdate, onSave, saving, hasChanges }) {
+// Comprime un File immagine in data URL JPEG (max width X, qualità Y).
+// Usato per: foto custom su piatti/servizi e foto menu da OCR.
+async function compressImageToDataUrl(file, maxWidth = 800, quality = 0.75) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type?.startsWith('image/')) {
+      reject(new Error('File non valido (deve essere immagine)'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        try {
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(dataUrl);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      img.onerror = () => reject(new Error('Immagine non leggibile'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('Lettura file fallita'));
+    reader.readAsDataURL(file);
+  });
+}
+
+// Apre un picker file unico e ritorna il File (o null se annulla)
+function pickSingleImageFile(accept = 'image/*') {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = accept;
+    input.style.display = 'none';
+    input.onchange = () => {
+      const f = input.files?.[0] || null;
+      resolve(f);
+      input.remove();
+    };
+    input.oncancel = () => { resolve(null); input.remove(); };
+    document.body.appendChild(input);
+    input.click();
+  });
+}
+
+// Apre un picker file multiple e ritorna array di File
+function pickMultipleImageFiles(maxFiles = 6) {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.multiple = true;
+    input.style.display = 'none';
+    input.onchange = () => {
+      const arr = Array.from(input.files || []).slice(0, maxFiles);
+      resolve(arr);
+      input.remove();
+    };
+    input.oncancel = () => { resolve([]); input.remove(); };
+    document.body.appendChild(input);
+    input.click();
+  });
+}
+
+function MenuEditor({ menu: menuProp, demoId, onUpdate, onSave, saving, hasChanges }) {
+  // Default difensivo: se siteData.menu e' undefined/null, usiamo oggetto vuoto.
+  const menu = menuProp || { mode: 'menu', categories: [], services: [] };
   const isMenuMode = menu?.mode === 'menu';
   const [generatingAi, setGeneratingAi] = useState(false);
   const [importingGoogle, setImportingGoogle] = useState(false);
+  const [importingUpload, setImportingUpload] = useState(false);
 
   const handleImportGoogle = async () => {
     if (!demoId) { toast.error('Demo ID mancante'); return; }
@@ -2578,6 +2655,69 @@ function MenuEditor({ menu, demoId, onUpdate, onSave, saving, hasChanges }) {
       setGeneratingAi(false);
     }
   };
+
+  // Importa menu da foto caricate manualmente (screenshot WhatsApp, PDF fotografato, foto cliente).
+  // Riusa lo stesso endpoint menu_import_google passando image_data_urls al posto delle foto Google.
+  const handleImportMenuFromUpload = async () => {
+    if (!demoId) { toast.error('Demo ID mancante'); return; }
+    const files = await pickMultipleImageFiles(6);
+    if (!files.length) return;
+    if (!window.confirm(`📤 Caricare ${files.length} foto del menu?\n\nClaude Vision le leggerà ed estrarrà piatti + prezzi.\n\n⚠️ Sovrascrive il menu attuale. Tempo: 30-60 sec.`)) return;
+    setImportingUpload(true);
+    try {
+      // Comprimi mantenendo dimensione utile per OCR (1600px, qualità 0.85)
+      const dataUrls = [];
+      for (const f of files) {
+        try {
+          const u = await compressImageToDataUrl(f, 1600, 0.85);
+          dataUrls.push(u);
+        } catch (e) {
+          console.warn('Compress fallita per', f.name, e);
+        }
+      }
+      if (!dataUrls.length) { toast.error('Nessuna foto valida'); return; }
+      const res = await axios.post(`${API}/demos/${demoId}?action=menu_import_google`, { image_data_urls: dataUrls });
+      if (res.data?.success) {
+        toast.success(`✓ Menu importato: ${res.data.menu_photos_found}/${res.data.photos_analyzed} foto OK → ${res.data.items_count} piatti in ${res.data.categories_count} categorie`);
+        onUpdate({ ...menu, mode: 'menu', categories: res.data.menu });
+      } else {
+        toast.error('Importazione fallita');
+      }
+    } catch (err) {
+      const status = err?.response?.status;
+      const msg = err?.response?.data?.error || err?.response?.data?.detail || 'Errore importazione menu';
+      toast.error(msg, { duration: status === 404 ? 6000 : 4000 });
+    } finally {
+      setImportingUpload(false);
+    }
+  };
+
+  // Carica una foto custom dal device per il piatto al [catIndex, itemIndex]
+  const handleUploadPhotoForItem = async (catIndex, itemIndex) => {
+    const file = await pickSingleImageFile();
+    if (!file) return;
+    try {
+      const dataUrl = await compressImageToDataUrl(file, 800, 0.78);
+      setItemField(catIndex, itemIndex, 'image', dataUrl);
+      toast.success('📁 Foto caricata');
+    } catch (err) {
+      toast.error('Errore caricamento: ' + err.message);
+    }
+  };
+
+  // Carica una foto custom dal device per il servizio al [index]
+  const handleUploadPhotoForService = async (index) => {
+    const file = await pickSingleImageFile();
+    if (!file) return;
+    try {
+      const dataUrl = await compressImageToDataUrl(file, 800, 0.78);
+      setServiceField(index, 'image', dataUrl);
+      toast.success('📁 Foto caricata');
+    } catch (err) {
+      toast.error('Errore caricamento: ' + err.message);
+    }
+  };
+
 
   const addCategory = () => {
     const newCategories = [...(menu.categories || []), { name: '', items: [''] }];
@@ -2721,19 +2861,31 @@ function MenuEditor({ menu, demoId, onUpdate, onSave, saving, hasChanges }) {
               <Button
                 type="button"
                 onClick={handleImportGoogle}
-                disabled={importingGoogle || generatingAi}
+                disabled={importingGoogle || generatingAi || importingUpload}
                 size="sm"
                 className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white border-0"
                 data-testid="import-menu-google-btn"
                 title="Estrae il menu REALE leggendo le foto del menu pubblicate su Google Maps"
               >
                 {importingGoogle ? <Loader2 className="animate-spin mr-2" size={14} /> : <span className="mr-1">📷</span>}
-                {importingGoogle ? 'OCR foto Google (30-60s)…' : 'Importa menu da Google'}
+                {importingGoogle ? 'OCR foto Google (30-60s)…' : 'Importa da Google'}
+              </Button>
+              <Button
+                type="button"
+                onClick={handleImportMenuFromUpload}
+                disabled={importingUpload || importingGoogle || generatingAi}
+                size="sm"
+                className="bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-700 hover:to-fuchsia-700 text-white border-0"
+                data-testid="import-menu-upload-btn"
+                title="Carica foto/screenshot del menu (anche da WhatsApp) → Claude Vision le legge e crea il menu"
+              >
+                {importingUpload ? <Loader2 className="animate-spin mr-2" size={14} /> : <span className="mr-1">📤</span>}
+                {importingUpload ? 'OCR foto caricate (30-60s)…' : 'Carica foto menu'}
               </Button>
               <Button
                 type="button"
                 onClick={handleGenerateMenuAi}
-                disabled={generatingAi || importingGoogle}
+                disabled={generatingAi || importingGoogle || importingUpload}
                 size="sm"
                 className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0"
                 data-testid="generate-menu-ai-btn"
@@ -2797,12 +2949,17 @@ function MenuEditor({ menu, demoId, onUpdate, onSave, saving, hasChanges }) {
                         <div className="relative shrink-0">
                           <img src={obj.image} alt={obj.name} className="w-16 h-16 rounded-lg object-cover border border-neutral-200" loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />
                           <button type="button" onClick={() => setItemField(catIndex, itemIndex, 'image', '')} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-xs rounded-full hover:bg-red-600 flex items-center justify-center" title="Rimuovi foto">×</button>
+                          <button type="button" onClick={() => handleUploadPhotoForItem(catIndex, itemIndex)} className="absolute -bottom-1.5 -right-1.5 w-5 h-5 bg-purple-600 text-white text-xs rounded-full hover:bg-purple-700 flex items-center justify-center" title="Sostituisci con foto dal device" data-testid={`replace-photo-${catIndex}-${itemIndex}`}>↑</button>
                         </div>
                       ) : (
-                        <button type="button" onClick={() => handlePickPexelsForItem(catIndex, itemIndex)} className="w-16 h-16 shrink-0 rounded-lg border-2 border-dashed border-neutral-300 hover:border-orange-400 hover:bg-orange-50 flex flex-col items-center justify-center text-[10px] text-neutral-400 hover:text-orange-600 transition-colors" data-testid={`add-photo-${catIndex}-${itemIndex}`}>
-                          <span className="text-lg">📷</span>
-                          <span>Foto</span>
-                        </button>
+                        <div className="flex flex-col gap-1 shrink-0">
+                          <button type="button" onClick={() => handlePickPexelsForItem(catIndex, itemIndex)} className="w-16 h-8 rounded-md border border-dashed border-orange-300 hover:border-orange-400 hover:bg-orange-50 flex items-center justify-center text-[10px] text-orange-700 transition-colors gap-1" data-testid={`add-photo-${catIndex}-${itemIndex}`} title="Cerca foto stock su Pexels">
+                            <span>📷</span><span>Pexels</span>
+                          </button>
+                          <button type="button" onClick={() => handleUploadPhotoForItem(catIndex, itemIndex)} className="w-16 h-8 rounded-md border border-dashed border-purple-300 hover:border-purple-400 hover:bg-purple-50 flex items-center justify-center text-[10px] text-purple-700 transition-colors gap-1" data-testid={`upload-photo-${catIndex}-${itemIndex}`} title="Carica foto dal tuo device (compressa in JPG)">
+                            <span>📁</span><span>Carica</span>
+                          </button>
+                        </div>
                       )}
                       <div className="flex-1 min-w-0 space-y-1.5">
                         <div className="flex items-center gap-2">
@@ -2838,9 +2995,14 @@ function MenuEditor({ menu, demoId, onUpdate, onSave, saving, hasChanges }) {
                                 className="text-sm h-8 max-w-[140px] font-semibold"
                               />
                               {!obj.image && (
-                                <Button type="button" variant="outline" size="sm" onClick={() => handlePickPexelsForItem(catIndex, itemIndex)} className="text-xs h-8 border-orange-300 text-orange-700 hover:bg-orange-50">
-                                  📷 Cerca foto Pexels
-                                </Button>
+                                <>
+                                  <Button type="button" variant="outline" size="sm" onClick={() => handlePickPexelsForItem(catIndex, itemIndex)} className="text-xs h-8 border-orange-300 text-orange-700 hover:bg-orange-50">
+                                    📷 Pexels
+                                  </Button>
+                                  <Button type="button" variant="outline" size="sm" onClick={() => handleUploadPhotoForItem(catIndex, itemIndex)} className="text-xs h-8 border-purple-300 text-purple-700 hover:bg-purple-50" data-testid={`upload-photo-inline-${catIndex}-${itemIndex}`}>
+                                    📁 Carica
+                                  </Button>
+                                </>
                               )}
                               <Button type="button" variant="ghost" size="sm" onClick={() => {
                                 const url = window.prompt('Incolla URL immagine (https://...):');
@@ -2888,12 +3050,17 @@ function MenuEditor({ menu, demoId, onUpdate, onSave, saving, hasChanges }) {
                   <div className="relative shrink-0">
                     <img src={obj.image} alt={obj.name} className="w-16 h-16 rounded-lg object-cover border border-neutral-200" loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />
                     <button type="button" onClick={() => setServiceField(index, 'image', '')} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-xs rounded-full hover:bg-red-600 flex items-center justify-center" title="Rimuovi foto">×</button>
+                    <button type="button" onClick={() => handleUploadPhotoForService(index)} className="absolute -bottom-1.5 -right-1.5 w-5 h-5 bg-purple-600 text-white text-xs rounded-full hover:bg-purple-700 flex items-center justify-center" title="Sostituisci con foto dal device" data-testid={`replace-photo-service-${index}`}>↑</button>
                   </div>
                 ) : (
-                  <button type="button" onClick={() => handlePickPexelsForService(index)} className="w-16 h-16 shrink-0 rounded-lg border-2 border-dashed border-neutral-300 hover:border-blue-400 hover:bg-blue-50 flex flex-col items-center justify-center text-[10px] text-neutral-400 hover:text-blue-600 transition-colors" data-testid={`add-photo-service-${index}`}>
-                    <span className="text-lg">📷</span>
-                    <span>Foto</span>
-                  </button>
+                  <div className="flex flex-col gap-1 shrink-0">
+                    <button type="button" onClick={() => handlePickPexelsForService(index)} className="w-16 h-8 rounded-md border border-dashed border-blue-300 hover:border-blue-400 hover:bg-blue-50 flex items-center justify-center text-[10px] text-blue-700 transition-colors gap-1" data-testid={`add-photo-service-${index}`} title="Cerca foto stock su Pexels">
+                      <span>📷</span><span>Pexels</span>
+                    </button>
+                    <button type="button" onClick={() => handleUploadPhotoForService(index)} className="w-16 h-8 rounded-md border border-dashed border-purple-300 hover:border-purple-400 hover:bg-purple-50 flex items-center justify-center text-[10px] text-purple-700 transition-colors gap-1" data-testid={`upload-photo-service-${index}`} title="Carica foto dal tuo device (compressa in JPG)">
+                      <span>📁</span><span>Carica</span>
+                    </button>
+                  </div>
                 )}
                 <div className="flex-1 min-w-0 space-y-1.5">
                   <div className="flex items-center gap-2">
