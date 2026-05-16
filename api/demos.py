@@ -138,6 +138,10 @@ class handler(BaseHTTPRequestHandler):
                 "name": name,
                 "description": (data.get('description') or '').strip(),
                 "category": (data.get('category') or '').strip(),
+                # Sorgente: usati al template_apply per personalizzare nome/citta nei testi del nuovo demo
+                "source_business_name": (data.get('source_business_name') or '').strip(),
+                "source_city": (data.get('source_city') or '').strip(),
+                "source_category": (data.get('source_category') or '').strip(),
                 "data": payload,
                 "created_at": datetime.now(timezone.utc).isoformat()
             }

@@ -2,6 +2,7 @@
 from http.server import BaseHTTPRequestHandler
 import json
 import os
+import re
 import sys
 import uuid
 from urllib.parse import urlparse, parse_qs
@@ -1270,6 +1271,56 @@ class handler(BaseHTTPRequestHandler):
                     client.close()
                     return self._error(404, "Template non trovato")
                 tdata = tpl.get('data') or {}
+
+                # Personalizzazione: sostituisci nome+citta sorgente con quelli del demo target.
+                # Se source_business_name e source_city non sono salvati nel template (template legacy),
+                # si tenta comunque la sostituzione su placeholder {{business_name}} / {{city}}.
+                src_name = (tpl.get('source_business_name') or '').strip()
+                src_city = (tpl.get('source_city') or '').strip()
+                dest_bd = demo.get('business_data', {}) or {}
+                dest_name = (dest_bd.get('name') or '').strip()
+                dest_city = (dest_bd.get('city') or '').strip()
+                if not dest_city and dest_bd.get('address'):
+                    parts = [p.strip() for p in dest_bd.get('address', '').split(',')]
+                    if len(parts) >= 2:
+                        dest_city = parts[-2]
+
+                def _personalize_str(s):
+                    if not isinstance(s, str) or not s:
+                        return s
+                    out = s
+                    # 1) Placeholder espliciti (per template generati in futuro o convertiti)
+                    if dest_name:
+                        out = out.replace('{{business_name}}', dest_name).replace('{{businessName}}', dest_name)
+                    if dest_city:
+                        out = out.replace('{{city}}', dest_city)
+                    # 2) Find&replace case-insensitive del nome sorgente -> nome target
+                    if src_name and dest_name and src_name.lower() != dest_name.lower():
+                        try:
+                            out = re.sub(re.escape(src_name), dest_name, out, flags=re.IGNORECASE)
+                        except Exception:
+                            pass
+                    # 3) Find&replace della citta sorgente -> citta target
+                    if src_city and dest_city and src_city.lower() != dest_city.lower():
+                        try:
+                            out = re.sub(r'\b' + re.escape(src_city) + r'\b', dest_city, out, flags=re.IGNORECASE)
+                        except Exception:
+                            pass
+                    return out
+
+                def _personalize_any(v):
+                    if isinstance(v, str):
+                        return _personalize_str(v)
+                    if isinstance(v, list):
+                        return [_personalize_any(x) for x in v]
+                    if isinstance(v, dict):
+                        return {k: _personalize_any(val) for k, val in v.items()}
+                    return v
+
+                # Campi testuali da personalizzare (gli altri come color_scheme, section_order, ecc. restano invariati)
+                TEXT_FIELDS = {'tagline', 'homepage_subtitle', 'about_text', 'services_intro',
+                               'cta_text', 'why_choose_us', 'faq'}
+
                 # Fields stored at top-level of the demo document (NOT under content.)
                 TOP_LEVEL = {'design_template'}
                 content_updates = {}
@@ -1277,10 +1328,11 @@ class handler(BaseHTTPRequestHandler):
                 for k, v in tdata.items():
                     if v is None:
                         continue
+                    final_v = _personalize_any(v) if k in TEXT_FIELDS else v
                     if k in TOP_LEVEL:
-                        content_updates[k] = v
+                        content_updates[k] = final_v
                     else:
-                        content_updates[f"content.{k}"] = v
+                        content_updates[f"content.{k}"] = final_v
                     applied.append(k)
                 content_updates['updated_at'] = datetime.now(timezone.utc).isoformat()
                 db.demo_sites.update_one({"demo_id": demo_id}, {"$set": content_updates})
@@ -1288,7 +1340,8 @@ class handler(BaseHTTPRequestHandler):
                 return self._json_response(200, {
                     "success": True,
                     "applied": applied,
-                    "template_name": tpl.get('name')
+                    "template_name": tpl.get('name'),
+                    "personalized": bool(src_name or src_city)
                 })
             
             elif action in ("quote", "invoice"):

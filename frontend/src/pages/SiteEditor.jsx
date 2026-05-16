@@ -1551,8 +1551,13 @@ function TemplateModal({ open, onClose, demoId, currentContent, onApplied }) {
     if (!name.trim()) { toast.error('Inserisci un nome'); return; }
     setSaving(true);
     try {
+      const bd = currentContent?.business_data || {};
       const payload = {
         name: name.trim(), category: category.trim(),
+        // Sorgente — usati al template_apply per personalizzare nome/citta nei testi
+        source_business_name: bd.name || '',
+        source_city: bd.city || (bd.address?.split(',')?.slice(-2, -1)?.[0] || '').trim(),
+        source_category: bd.category || bd.primary_type || '',
         // Classic style
         color_scheme: currentContent.color_scheme,
         hero_position: currentContent.hero_position,

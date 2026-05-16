@@ -1,6 +1,20 @@
 # WebFinder Studio - Product Requirements Document
 
 ## CHANGELOG
+- **02/02/2026 (sera)** - 🐛 **Fix bug "Template salvato mostra nome azienda precedente"** (P0):
+  - Causa: il template salvava i testi del demo sorgente alla lettera (es. `about_text: "Pizzeria Da Mario, situata a Milano..."`); applicandolo a un nuovo cliente, i testi rimanevano IDENTICI mostrando il nome/città dell'azienda originale invece di quelli del nuovo cliente.
+  - Fix in 3 punti:
+    1. **Frontend `saveTemplate`** (`SiteEditor.jsx`): payload arricchito con `source_business_name`, `source_city`, `source_category` letti da `siteData.business_data`.
+    2. **Backend `template_save`** (`/app/api/demos.py` + `/app/backend/server.py`): salva questi 3 campi top-level nel doc template.
+    3. **Backend `template_apply`** (`/app/api/demos/[id]/index.py` + `/app/backend/server.py`): nuovo helper `_personalize_any()` che, ricorsivamente su stringhe/liste/dict, applica:
+       - Placeholder espliciti: `{{business_name}}`, `{{businessName}}`, `{{city}}` → valori del demo target
+       - Find&replace case-insensitive di `source_business_name` → `dest_business_name`
+       - Find&replace word-boundary case-insensitive di `source_city` → `dest_city`
+       - Campi personalizzati: `tagline`, `homepage_subtitle`, `about_text`, `services_intro`, `cta_text`, `why_choose_us` (tutti i sub-field), `faq` (question + answer).
+    - I campi non testuali (`color_scheme`, `design_template`, `section_order`, `show_*`, ecc.) restano invariati come prima.
+    - Backward-compat: template legacy (senza `source_*`) vengono applicati senza errori, ma senza personalizzazione automatica. La response include `personalized: true|false` per il client.
+  - Verificato via curl end-to-end: template salvato da "Pizzeria Da Mario (Milano)" applicato a "Trattoria Da Luca (Roma)" → tutti i campi (about, tagline, why us, FAQ) ora mostrano nome+città del nuovo cliente, sia in maiuscolo che minuscolo.
+
 - **02/02/2026** - 📤 **Foto custom + Import menu da upload** + 🐛 fix crash MenuEditor:
   - **Foto custom su piatti/servizi**: nuovo bottone "📁 Carica" accanto a "📷 Pexels" su ogni item (piatti del menu e servizi). Apre file picker → compressione client-side (JPG max 800px, qualità 0.78, ~60-100KB) → salvata come data URL in `item.image`. Funziona in qualsiasi ambiente, zero infrastruttura. Aggiunto anche un mini-bottone "↑" sull'angolo della foto già esistente per sostituirla rapidamente.
   - **Import menu da foto caricate**: nuovo bottone viola "📤 Carica foto menu" nella toolbar Menu. Apre selettore multiplo (max 6 foto) → compresse client-side a 1600px qualità 0.85 → inviate a `action=menu_import_google` con nuovo parametro `image_data_urls`. Backend riconosce data URL base64 e li passa direttamente a Claude Vision (priorità su foto Google). Risolve il caso in cui Google Maps non ha indicizzato il menu del cliente: ora puoi caricare screenshot WhatsApp, PDF fotografato o foto del menu cartaceo.

@@ -1463,6 +1463,10 @@ async def post_demos(request: Request, action: Optional[str] = None):
             "name": name,
             "description": (data.get('description') or '').strip(),
             "category": (data.get('category') or '').strip(),
+            # Sorgente: usati al template_apply per personalizzare nome/citta nei testi del nuovo demo
+            "source_business_name": (data.get('source_business_name') or '').strip(),
+            "source_city": (data.get('source_city') or '').strip(),
+            "source_category": (data.get('source_category') or '').strip(),
             "data": payload,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
@@ -1587,19 +1591,69 @@ async def post_demo_action(demo_id: str, request: Request, action: Optional[str]
         if not tpl:
             raise HTTPException(status_code=404, detail="Template non trovato")
         tdata = tpl.get('data') or {}
+
+        # Personalizzazione: sostituisci nome+citta sorgente con quelli del demo target.
+        src_name = (tpl.get('source_business_name') or '').strip()
+        src_city = (tpl.get('source_city') or '').strip()
+        dest_bd = demo.get('business_data', {}) or {}
+        dest_name = (dest_bd.get('name') or '').strip()
+        dest_city = (dest_bd.get('city') or '').strip()
+        if not dest_city and dest_bd.get('address'):
+            parts = [p.strip() for p in dest_bd.get('address', '').split(',')]
+            if len(parts) >= 2:
+                dest_city = parts[-2]
+
+        def _personalize_str(s):
+            if not isinstance(s, str) or not s:
+                return s
+            out = s
+            if dest_name:
+                out = out.replace('{{business_name}}', dest_name).replace('{{businessName}}', dest_name)
+            if dest_city:
+                out = out.replace('{{city}}', dest_city)
+            if src_name and dest_name and src_name.lower() != dest_name.lower():
+                try:
+                    out = re.sub(re.escape(src_name), dest_name, out, flags=re.IGNORECASE)
+                except Exception:
+                    pass
+            if src_city and dest_city and src_city.lower() != dest_city.lower():
+                try:
+                    out = re.sub(r'\b' + re.escape(src_city) + r'\b', dest_city, out, flags=re.IGNORECASE)
+                except Exception:
+                    pass
+            return out
+
+        def _personalize_any(v):
+            if isinstance(v, str):
+                return _personalize_str(v)
+            if isinstance(v, list):
+                return [_personalize_any(x) for x in v]
+            if isinstance(v, dict):
+                return {k: _personalize_any(val) for k, val in v.items()}
+            return v
+
+        TEXT_FIELDS = {'tagline', 'homepage_subtitle', 'about_text', 'services_intro',
+                       'cta_text', 'why_choose_us', 'faq'}
+
         updates = {}
         applied = []
         for k, v in tdata.items():
             if v is None:
                 continue
+            final_v = _personalize_any(v) if k in TEXT_FIELDS else v
             if k in TEMPLATE_TOP_LEVEL_FIELDS:
-                updates[k] = v
+                updates[k] = final_v
             else:
-                updates[f"content.{k}"] = v
+                updates[f"content.{k}"] = final_v
             applied.append(k)
         updates['updated_at'] = datetime.now(timezone.utc).isoformat()
         await db.demo_sites.update_one({"demo_id": demo_id}, {"$set": updates})
-        return {"success": True, "applied": applied, "template_name": tpl.get('name')}
+        return {
+            "success": True,
+            "applied": applied,
+            "template_name": tpl.get('name'),
+            "personalized": bool(src_name or src_city)
+        }
 
     if action == "template_apply_inline":
         tdata = data.get('data') or {}
