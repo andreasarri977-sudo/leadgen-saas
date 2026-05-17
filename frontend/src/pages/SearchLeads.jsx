@@ -670,6 +670,34 @@ export default function SearchLeads() {
                           ({lead.reviews_count} recensioni)
                         </span>
                       </div>
+                      {/* Badge servizi disponibili da Google (menu/prenotazioni/delivery/etc) */}
+                      {lead.features && (
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2" data-testid={`lead-features-${leadKey}`}>
+                          {(lead.features.serves_breakfast || lead.features.serves_lunch || lead.features.serves_dinner || lead.features.serves_brunch) && (
+                            <Badge className="bg-amber-50 text-amber-800 border border-amber-200 text-[10px] px-1.5 py-0 h-5">🍽️ Menu</Badge>
+                          )}
+                          {lead.features.reservable && (
+                            <Badge className="bg-blue-50 text-blue-800 border border-blue-200 text-[10px] px-1.5 py-0 h-5">📅 Prenotabile</Badge>
+                          )}
+                          {lead.features.delivery && (
+                            <Badge className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] px-1.5 py-0 h-5">🚚 Delivery</Badge>
+                          )}
+                          {lead.features.takeout && (
+                            <Badge className="bg-purple-50 text-purple-800 border border-purple-200 text-[10px] px-1.5 py-0 h-5">🛍️ Asporto</Badge>
+                          )}
+                          {lead.features.dine_in && !(lead.features.serves_breakfast || lead.features.serves_lunch || lead.features.serves_dinner) && (
+                            <Badge className="bg-rose-50 text-rose-800 border border-rose-200 text-[10px] px-1.5 py-0 h-5">💺 In sala</Badge>
+                          )}
+                          {lead.features.serves_vegetarian && (
+                            <Badge className="bg-green-50 text-green-800 border border-green-200 text-[10px] px-1.5 py-0 h-5">🥗 Veg</Badge>
+                          )}
+                          {lead.features.price_level && (
+                            <Badge className="bg-neutral-50 text-neutral-700 border border-neutral-200 text-[10px] px-1.5 py-0 h-5">
+                              {{ 'PRICE_LEVEL_FREE': 'Gratis', 'PRICE_LEVEL_INEXPENSIVE': '€', 'PRICE_LEVEL_MODERATE': '€€', 'PRICE_LEVEL_EXPENSIVE': '€€€', 'PRICE_LEVEL_VERY_EXPENSIVE': '€€€€' }[lead.features.price_level] || lead.features.price_level}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
                       {!isSaved && (

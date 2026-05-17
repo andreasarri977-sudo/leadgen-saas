@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { MapPin, Phone, Clock, Star, ExternalLink, Mail, Globe, Menu as MenuIcon, X, Calendar, Users, MessageCircle, ChevronDown, Instagram, Facebook } from 'lucide-react';
 import Lightbox from 'yet-another-react-lightbox';
 import Zoom from 'yet-another-react-lightbox/plugins/zoom';
 import 'yet-another-react-lightbox/styles.css';
 import { t, localizeHours, getLanguageFromCountry, getServiceDescription, getLocalizedContent } from '@/lib/translations';
+import { getPageBackgroundStyle, isPageBackgroundDark } from '@/lib/backgrounds';
 import { toast } from 'sonner';
 import API from '@/lib/api';
 import { getFontSetForCategory, FONT_SETS } from '@/lib/categoryFonts';
@@ -479,6 +480,18 @@ function BookingForm({ demoId, bookingMode, lang, style, businessPhone, external
 
 export default function DemoPreview() {
   const { demoId } = useParams();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Mostra il bottone "Indietro" SOLO se l'utente arriva dall'app admin (param ?admin=1 o stesso host).
+  // Cosi' il cliente finale che riceve il link non vede il bottone.
+  const showAdminBack = (() => {
+    try {
+      if (searchParams.get('admin') === '1') return true;
+      const ref = document.referrer || '';
+      if (ref && new URL(ref).host === window.location.host) return true;
+    } catch { /* no-op */ }
+    return false;
+  })();
   const [demo, setDemo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -614,6 +627,26 @@ export default function DemoPreview() {
   const rawReviews = filterReviews(business.reviews);
   const reviews = sortReviewsByRecency(rawReviews);
 
+  // Wrapper di setCurrentLang: se la lingua scelta NON ha traduzioni AI gia' generate
+  // (e l'utente e' l'admin del SaaS), genera la traduzione al volo. Cosi' switch lingua = vedi sito tradotto.
+  const handleLangChange = async (newLang) => {
+    setCurrentLang(newLang);
+    if (!newLang || newLang === localeLang) return;
+    const trs = (rawContent && rawContent.translations) || {};
+    if (trs[newLang]) return; // gia' tradotto
+    if (!showAdminBack) return; // non triggerare per clienti finali (consumerebbe budget LLM)
+    try {
+      const tid = toast.loading(`Genero traduzione AI in ${newLang.toUpperCase()}...`);
+      await axios.post(`${API}/demos/${demoId}?action=translate`, { target_lang: newLang });
+      const fresh = await axios.get(`${API}/demos/${demoId}?_t=${Date.now()}`, { headers: { 'Cache-Control': 'no-cache' } });
+      setDemo(fresh.data);
+      toast.success(`Traduzione ${newLang.toUpperCase()} pronta`, { id: tid });
+    } catch (err) {
+      const msg = err?.response?.data?.error || err?.response?.data?.detail || 'Errore traduzione AI';
+      toast.error(msg);
+    }
+  };
+
   // Lingue disponibili nel demo: locale + lingue attivate in Settings + 'en' (sempre)
   const businessTranslations = Array.isArray(business.translations) ? business.translations : [];
   const SUPPORTED_LANGS = ['it', 'fr', 'en', 'es', 'de'];
@@ -622,6 +655,11 @@ export default function DemoPreview() {
   
   // Localized hours
   const localizedHours = localizeHours(business.hours_text, lang);
+
+  // Sfondo pagina personalizzato (gradient preset o foto caricata dall'utente)
+  const pageBg = content.page_background || null;
+  const pageBgStyle = getPageBackgroundStyle(pageBg);
+  const isDarkBg = isPageBackgroundDark(pageBg);
   
   // Booking
   const bookingMode = business.booking_mode || 'none';
@@ -855,7 +893,24 @@ export default function DemoPreview() {
         .wf-deco-dot  { animation: wfPulse 4.5s ease-in-out infinite; transform-origin: center; }
       `}</style>
 
-      <div className={`min-h-screen bg-white font-sans wf-demo-root ${designTemplate.vivid_mode ? 'wf-vivid' : ''} ${designTemplate.dark_bg ? 'wf-dark' : ''} wf-intensity-${content.color_intensity || 'vivid'}`} data-design-template={designTemplate.id}>
+      <div
+        className={`min-h-screen font-sans wf-demo-root ${designTemplate.vivid_mode ? 'wf-vivid' : ''} ${designTemplate.dark_bg ? 'wf-dark' : ''} wf-intensity-${content.color_intensity || 'vivid'} ${pageBgStyle ? 'wf-has-bg' : 'bg-white'} ${isDarkBg ? 'wf-on-dark-bg' : ''}`}
+        data-design-template={designTemplate.id}
+        style={pageBgStyle || undefined}
+      >
+        {/* Admin back button (visibile solo per chi arriva dall'app, NON per clienti finali) */}
+        {showAdminBack && (
+          <button
+            type="button"
+            onClick={() => navigate('/demos')}
+            className="fixed top-3 left-3 z-[60] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-900/85 text-white text-xs font-medium shadow-lg hover:bg-neutral-900 backdrop-blur-sm transition-colors"
+            data-testid="admin-back-to-demos"
+            title="Torna alla lista Siti Demo"
+          >
+            <span aria-hidden="true">←</span>
+            <span>Siti Demo</span>
+          </button>
+        )}
         {/* Navigation - WHITE LABEL (no Emergent branding) */}
         <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-neutral-200 shadow-sm">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
@@ -891,14 +946,14 @@ export default function DemoPreview() {
                   currentLang={lang} 
                   localeLang={localeLang} 
                   availableLangs={availableLangs}
-                  onSwitch={setCurrentLang} 
+                  onSwitch={handleLangChange} 
                   style={style} 
                 />
               </div>
 
               {/* Mobile: Language + Menu */}
               <div className="flex items-center gap-2 lg:hidden">
-                <LanguageSwitcher currentLang={lang} localeLang={localeLang} availableLangs={availableLangs} onSwitch={setCurrentLang} style={style} />
+                <LanguageSwitcher currentLang={lang} localeLang={localeLang} availableLangs={availableLangs} onSwitch={handleLangChange} style={style} />
                 <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-neutral-700">
                   {mobileMenuOpen ? <X size={24} /> : <MenuIcon size={24} />}
                 </button>

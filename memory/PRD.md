@@ -1,6 +1,31 @@
 # WebFinder Studio - Product Requirements Document
 
 ## CHANGELOG
+- **17/05/2026** - 🎨 **4 richieste utente — Tutte implementate**:
+
+  **🔴 P0 — Tasto "Indietro" mancante nei siti demo da PC**
+  - In `DemoSites.jsx` ora i bottoni "Anteprima Demo" aggiungono `?admin=1` all'URL.
+  - In `DemoPreview.jsx` un nuovo bottone floating in alto a sinistra (sticky, neutral-900/85, z-60) torna a `/demos`.
+  - Visibile SOLO se: `?admin=1` OPPURE `document.referrer` è dello stesso host (sicurezza UX). I clienti finali che ricevono il link **non vedono il bottone**.
+
+  **🔴 P0 — Traduzioni profonde mancanti**
+  - **Giorni della settimana (orari + footer)**: `ENGLISH_DAY_MAP` esteso a riconoscere giorni in 5 lingue (IT/EN/FR/ES/DE) come input. Aggiunto pattern Unicode `(?<![\p{L}])...(?![\p{L}])` per gestire accenti correttamente. Aggiunte anche le mappe per "Chiuso/Aperto" in tutte e 5 le lingue di ingresso. Quindi "Lunedì: Chiuso" → "Monday: Closed" cambiando bandiera EN.
+  - **Servizi (lista)**: `services` aggiunto al `payload_to_translate` del backend `action=translate` + al prompt esplicito (gestisce sia stringhe che oggetti `{name,description,price,image}`) + a `TRANSLATABLE_FIELDS` di `getLocalizedContent`. Stessa cosa per `menu_categories`.
+  - **Why choose us + FAQ**: già presenti nella translate AI. Verificato che il fallback su contenuto italiano avveniva quando l'utente non aveva mai cliccato "Traduzione AI" nell'editor → **nuovo auto-trigger**: in `DemoPreview` quando l'admin cambia bandiera, se non esiste cache in `content.translations[lang]`, l'app chiama `action=translate` in background e mostra toast loading. Per i clienti finali (no `?admin=1`) NON viene mai triggerato (zero costi LLM).
+
+  **🟢 P1 — Sfondi pagina personalizzati**
+  - Nuovo file `frontend/src/lib/backgrounds.js` con 8 sfumature eleganti predefinite: Aurora Soft, Sunset Glow, Ocean Mist, Forest Mist, Lavender Dream, Cream Latte, Slate Pro, Midnight Blue. Tutte sobrie, non disturbano la lettura delle card bianche.
+  - Schema dati `content.page_background = { type: 'none'|'gradient'|'image', id?, value? }`.
+  - **StyleEditor**: nuovo blocco "🖼️ Sfondo Pagina" con grid 5x2 dei preset + bottone "📁 Carica foto" (riusa `compressImageToDataUrl` a 1920px qualità 0.82 per sfondi). Foto salvata come data URL nel demo (no infrastruttura).
+  - **DemoPreview**: il `<div>` root applica `style={pageBgStyle}` calcolato da `getPageBackgroundStyle()`. Foto sfondo usa `background-size: cover; background-attachment: fixed`.
+  - **Backend**: validazione `page_background` nel `section=style` di `/app/api/demos/[id]/index.py` + mirror in `server.py` (accetta `none|gradient+id|image+value`, scarta input malformati).
+  - **editor-data** ritorna `page_background` per popolare il selettore correttamente al refresh.
+
+  **🟢 P1 — Badge "Menu/Servizi" su Cerca Aziende**
+  - FieldMask Google Places allargata su `/api/search/companies/index.py` E `server.py`: aggiunte `servesBreakfast/Lunch/Dinner/Brunch/VegetarianFood`, `takeout`, `delivery`, `dineIn`, `reservable`, `priceLevel`, `editorialSummary`.
+  - Ogni lead ora include `features: {serves_*, takeout, delivery, dine_in, reservable, price_level, editorial_summary}`.
+  - `SearchLeads.jsx` mostra sotto città/rating una row di badge: 🍽️ Menu, 📅 Prenotabile, 🚚 Delivery, 🛍️ Asporto, 💺 In sala, 🥗 Veg, € €€ €€€. Badge mostrati solo se Google ha il dato (per attività di servizi sarà vuoto, normale).
+
 - **02/02/2026 (sera)** - 🐛 **Fix bug "Template salvato mostra nome azienda precedente"** (P0):
   - Causa: il template salvava i testi del demo sorgente alla lettera (es. `about_text: "Pizzeria Da Mario, situata a Milano..."`); applicandolo a un nuovo cliente, i testi rimanevano IDENTICI mostrando il nome/città dell'azienda originale invece di quelli del nuovo cliente.
   - Fix in 3 punti:

@@ -424,7 +424,7 @@ export default function DemoSites() {
                 {/* Preview */}
                 <Button
                   data-testid={`view-demo-${demo.demo_id}`}
-                  onClick={() => navigate(`/demo/${demo.demo_id}`)}
+                  onClick={() => navigate(`/demo/${demo.demo_id}?admin=1`)}
                   variant="outline"
                   className="w-full"
                 >

@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import API from '@/lib/api';
 import { DESIGN_TEMPLATES } from '@/lib/designTemplates';
+import { PAGE_BACKGROUNDS } from '@/lib/backgrounds';
 
 // Color schemes
 const COLOR_SCHEMES = [
@@ -706,7 +707,7 @@ function SiteSettingsEditor({ demoId, siteLanguage, translations, bookingMode, e
 }
 
 // Style Editor Component
-function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, designTemplate, textColor, colorIntensity, titleColor, heroBarColor, titleAlign, gallery, businessName, businessCategory, demoId, productionUrl, hideWatermark, onUpdate, onSave, saving }) {
+function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme, designTemplate, textColor, colorIntensity, titleColor, heroBarColor, titleAlign, pageBackground, gallery, businessName, businessCategory, demoId, productionUrl, hideWatermark, onUpdate, onSave, saving }) {
   const [selectedColor, setSelectedColor] = useState(colorScheme || 'blue');
   const [selectedHero, setSelectedHero] = useState(heroImage || '');
   const [selectedPosition, setSelectedPosition] = useState(heroPosition || 'center');
@@ -717,7 +718,31 @@ function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme,
   const [selectedTitleColor, setSelectedTitleColor] = useState(titleColor || '');
   const [selectedHeroBarColor, setSelectedHeroBarColor] = useState(heroBarColor || '');
   const [selectedTitleAlign, setSelectedTitleAlign] = useState(titleAlign || 'center');
+  const [selectedPageBg, setSelectedPageBg] = useState(pageBackground || { type: 'none' });
+  const [bgUploading, setBgUploading] = useState(false);
   const [hideMark, setHideMark] = useState(Boolean(hideWatermark));
+
+  // Helper: aggiorna pageBackground e propaga al parent (mantenendo tutti gli altri campi)
+  const updatePageBg = (newBg) => {
+    setSelectedPageBg(newBg);
+    onUpdate({ page_background: newBg, hero_image: selectedHero, color_scheme: selectedColor, hero_position: selectedPosition, hero_overlay: selectedOverlay, design_template: selectedTemplate, text_color: selectedTextColor, color_intensity: selectedIntensity, theme });
+  };
+
+  const handleUploadPageBg = async () => {
+    const file = await pickSingleImageFile();
+    if (!file) return;
+    setBgUploading(true);
+    try {
+      // Sfondo: foto grande (max 1920px, qualita 0.82, ~150-250 KB)
+      const dataUrl = await compressImageToDataUrl(file, 1920, 0.82);
+      updatePageBg({ type: 'image', value: dataUrl });
+      toast.success('📁 Sfondo impostato');
+    } catch (err) {
+      toast.error('Errore caricamento: ' + err.message);
+    } finally {
+      setBgUploading(false);
+    }
+  };
   
   // Find initial index based on heroImage
   const findHeroIndex = () => {
@@ -768,6 +793,8 @@ function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme,
       hero_bar_color: selectedHeroBarColor || null,
       // Allineamento titolo (center default)
       title_align: selectedTitleAlign,
+      // Sfondo pagina (gradient/image/none)
+      page_background: selectedPageBg,
     });
   };
 
@@ -1050,6 +1077,72 @@ function StyleEditor({ heroImage, heroPosition, heroOverlay, colorScheme, theme,
                 <p className="text-[10px] text-neutral-500 mt-1">Rende ben visibile indirizzo, telefono, rating sotto la foto hero.</p>
               </div>
             </div>
+          </div>
+
+          {/* Sfondo Pagina (gradient o foto) */}
+          <div>
+            <Label className="text-base font-medium mb-3 block">🖼️ Sfondo Pagina</Label>
+            <p className="text-sm text-neutral-500 mb-4">Scegli uno sfondo sfumato pensato per non disturbare la lettura, oppure carica una tua foto.</p>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5">
+              {/* Nessuno */}
+              <button
+                type="button"
+                onClick={() => updatePageBg({ type: 'none' })}
+                className={`relative h-20 rounded-lg border-2 transition-all overflow-hidden ${selectedPageBg?.type === 'none' || !selectedPageBg?.type ? 'border-blue-500 ring-2 ring-blue-200' : 'border-neutral-200 hover:border-neutral-400'}`}
+                data-testid="page-bg-none"
+                title="Nessuno sfondo (bianco)"
+                style={{ background: '#ffffff' }}
+              >
+                <span className="absolute inset-0 flex items-center justify-center text-[11px] font-medium text-neutral-500">Nessuno</span>
+              </button>
+              {/* 8 preset sfumature */}
+              {PAGE_BACKGROUNDS.map((bg) => (
+                <button
+                  key={bg.id}
+                  type="button"
+                  onClick={() => updatePageBg({ type: 'gradient', id: bg.id })}
+                  className={`relative h-20 rounded-lg border-2 transition-all overflow-hidden ${selectedPageBg?.type === 'gradient' && selectedPageBg?.id === bg.id ? 'border-blue-500 ring-2 ring-blue-200' : 'border-neutral-200 hover:border-neutral-400'}`}
+                  data-testid={`page-bg-${bg.id}`}
+                  title={bg.label}
+                  style={{ background: bg.css }}
+                >
+                  <span className={`absolute bottom-1 left-1 right-1 text-[10px] font-semibold truncate text-center px-1 py-0.5 rounded ${bg.dark ? 'bg-black/40 text-white' : 'bg-white/70 text-neutral-700'}`}>
+                    {bg.label}
+                  </span>
+                </button>
+              ))}
+              {/* Upload foto custom */}
+              <button
+                type="button"
+                onClick={handleUploadPageBg}
+                disabled={bgUploading}
+                className={`relative h-20 rounded-lg border-2 border-dashed transition-all overflow-hidden flex flex-col items-center justify-center gap-1 ${selectedPageBg?.type === 'image' ? 'border-purple-500 ring-2 ring-purple-200 bg-purple-50' : 'border-purple-300 hover:border-purple-500 hover:bg-purple-50'}`}
+                data-testid="page-bg-upload"
+                title="Carica la tua foto come sfondo"
+                style={selectedPageBg?.type === 'image' && selectedPageBg?.value ? { backgroundImage: `url("${selectedPageBg.value}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+              >
+                {selectedPageBg?.type === 'image' && selectedPageBg?.value ? (
+                  <span className="absolute bottom-1 left-1 right-1 text-[10px] font-semibold bg-black/50 text-white px-1 py-0.5 rounded text-center">📁 Tua foto</span>
+                ) : (
+                  <>
+                    <span className="text-2xl">{bgUploading ? '⏳' : '📁'}</span>
+                    <span className="text-[10px] font-medium text-purple-700">{bgUploading ? 'Carico...' : 'Carica foto'}</span>
+                  </>
+                )}
+              </button>
+            </div>
+            {selectedPageBg?.type === 'image' && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => updatePageBg({ type: 'none' })}
+                className="mt-2 text-xs text-red-600 hover:bg-red-50"
+                data-testid="page-bg-remove-image"
+              >
+                ✕ Rimuovi foto sfondo
+              </Button>
+            )}
           </div>
 
           {/* Color Scheme */}
@@ -2058,6 +2151,7 @@ export default function SiteEditor() {
             titleColor={siteData.title_color || ''}
             heroBarColor={siteData.hero_bar_color || ''}
             titleAlign={siteData.title_align || 'center'}
+            pageBackground={siteData.page_background || { type: 'none' }}
             gallery={siteData.gallery || []}
             businessName={siteData.business_name}
             businessCategory={siteData.business_data?.category || siteData.category}
@@ -2078,6 +2172,7 @@ export default function SiteEditor() {
                 title_color: data.title_color !== undefined ? data.title_color : prev.title_color,
                 hero_bar_color: data.hero_bar_color !== undefined ? data.hero_bar_color : prev.hero_bar_color,
                 title_align: data.title_align !== undefined ? data.title_align : prev.title_align,
+                page_background: data.page_background !== undefined ? data.page_background : prev.page_background,
               }));
               setHasChanges(prev => ({ ...prev, style: true }));
             }}

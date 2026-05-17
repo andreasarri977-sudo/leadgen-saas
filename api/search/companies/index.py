@@ -68,7 +68,17 @@ class handler(BaseHTTPRequestHandler):
             headers = {
                 "Content-Type": "application/json",
                 "X-Goog-Api-Key": api_key,
-                "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.websiteUri,places.nationalPhoneNumber,places.internationalPhoneNumber,places.primaryType,places.types"
+                "X-Goog-FieldMask": (
+                    "places.id,places.displayName,places.formattedAddress,places.location,"
+                    "places.rating,places.userRatingCount,places.websiteUri,"
+                    "places.nationalPhoneNumber,places.internationalPhoneNumber,"
+                    "places.primaryType,places.types,"
+                    # Caratteristiche servizi (per badge sulla card lead)
+                    "places.servesBreakfast,places.servesLunch,places.servesDinner,"
+                    "places.servesBrunch,places.servesVegetarianFood,"
+                    "places.takeout,places.delivery,places.dineIn,places.reservable,"
+                    "places.priceLevel,places.editorialSummary"
+                )
             }
             
             search_body = json.dumps({
@@ -130,7 +140,21 @@ class handler(BaseHTTPRequestHandler):
                         "website": None,
                         "location": place.get('location', {}),
                         "primary_type": place.get('primaryType', ''),
-                        "types": place.get('types', [])
+                        "types": place.get('types', []),
+                        # Caratteristiche servizi per badge UI
+                        "features": {
+                            "serves_breakfast": bool(place.get('servesBreakfast')),
+                            "serves_lunch": bool(place.get('servesLunch')),
+                            "serves_dinner": bool(place.get('servesDinner')),
+                            "serves_brunch": bool(place.get('servesBrunch')),
+                            "serves_vegetarian": bool(place.get('servesVegetarianFood')),
+                            "takeout": bool(place.get('takeout')),
+                            "delivery": bool(place.get('delivery')),
+                            "dine_in": bool(place.get('dineIn')),
+                            "reservable": bool(place.get('reservable')),
+                            "price_level": place.get('priceLevel') or None,
+                            "editorial_summary": (place.get('editorialSummary') or {}).get('text') if isinstance(place.get('editorialSummary'), dict) else None,
+                        }
                     }
                     
                     leads.append(lead)

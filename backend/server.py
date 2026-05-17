@@ -672,7 +672,13 @@ async def search_companies(request: SearchRequest):
                             
                             details_headers = {
                                 "X-Goog-Api-Key": api_key,
-                                "X-Goog-FieldMask": "id,displayName,formattedAddress,location,primaryType,types,regularOpeningHours,internationalPhoneNumber,websiteUri,googleMapsUri,rating,userRatingCount,reviews,photos",
+                                "X-Goog-FieldMask": (
+                                    "id,displayName,formattedAddress,location,primaryType,types,"
+                                    "regularOpeningHours,internationalPhoneNumber,websiteUri,googleMapsUri,"
+                                    "rating,userRatingCount,reviews,photos,"
+                                    "servesBreakfast,servesLunch,servesDinner,servesBrunch,servesVegetarianFood,"
+                                    "takeout,delivery,dineIn,reservable,priceLevel,editorialSummary"
+                                ),
                                 "X-Goog-FieldMask-Language": request_lang  # Richiedi contenuti nella lingua locale
                             }
                             
@@ -759,8 +765,22 @@ async def search_companies(request: SearchRequest):
                                 
                                 lead_dict = lead.model_dump()
                                 lead_dict['created_at'] = lead_dict['created_at'].isoformat()
+                                # Caratteristiche servizi (per badge UI in SearchLeads)
+                                lead_dict['features'] = {
+                                    "serves_breakfast": bool(details.get('servesBreakfast')),
+                                    "serves_lunch": bool(details.get('servesLunch')),
+                                    "serves_dinner": bool(details.get('servesDinner')),
+                                    "serves_brunch": bool(details.get('servesBrunch')),
+                                    "serves_vegetarian": bool(details.get('servesVegetarianFood')),
+                                    "takeout": bool(details.get('takeout')),
+                                    "delivery": bool(details.get('delivery')),
+                                    "dine_in": bool(details.get('dineIn')),
+                                    "reservable": bool(details.get('reservable')),
+                                    "price_level": details.get('priceLevel') or None,
+                                    "editorial_summary": (details.get('editorialSummary') or {}).get('text') if isinstance(details.get('editorialSummary'), dict) else None,
+                                }
                                 await db.leads.insert_one(lead_dict)
-                                leads.append(lead)
+                                leads.append(lead_dict)
                                 
                                 logger.info(f"Lead creato: {name}")
                     
@@ -3062,6 +3082,20 @@ async def update_site_content(demo_id: str, update: SiteEditorUpdate):
             set_updates['content.text_color'] = sd['text_color']
         if sd.get('color_intensity') in ('soft', 'medium', 'vivid'):
             set_updates['content.color_intensity'] = sd['color_intensity']
+        if 'page_background' in sd:
+            pb = sd['page_background']
+            if pb is None:
+                set_updates['content.page_background'] = None
+            elif isinstance(pb, dict):
+                pb_type = pb.get('type')
+                if pb_type == 'none':
+                    set_updates['content.page_background'] = {'type': 'none'}
+                elif pb_type == 'gradient' and isinstance(pb.get('id'), str):
+                    set_updates['content.page_background'] = {'type': 'gradient', 'id': pb['id'][:32]}
+                elif pb_type == 'image' and isinstance(pb.get('value'), str):
+                    val = pb['value']
+                    if val.startswith('data:image') or val.startswith('http'):
+                        set_updates['content.page_background'] = {'type': 'image', 'value': val}
 
         if set_updates:
             set_updates['updated_at'] = datetime.now(timezone.utc).isoformat()

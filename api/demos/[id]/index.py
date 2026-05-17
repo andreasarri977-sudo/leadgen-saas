@@ -233,6 +233,7 @@ class handler(BaseHTTPRequestHandler):
                     "title_color": content.get('title_color'),
                     "hero_bar_color": content.get('hero_bar_color'),
                     "title_align": content.get('title_align', 'center'),
+                    "page_background": content.get('page_background') or {'type': 'none'},
                     "translations_cache": content.get('translations', {}),
                     # Site settings (languages + section visibility)
                     "site_language": business.get('site_language', 'it'),
@@ -499,6 +500,21 @@ class handler(BaseHTTPRequestHandler):
                             content_updates['content.hero_bar_color'] = hbc
                     if section_data.get('title_align') in ('left', 'center'):
                         content_updates['content.title_align'] = section_data['title_align']
+                    if 'page_background' in section_data:
+                        pb = section_data['page_background']
+                        # Validazione: {type:'none'|'gradient'|'image', id?, value?}
+                        if pb is None:
+                            content_updates['content.page_background'] = None
+                        elif isinstance(pb, dict):
+                            pb_type = pb.get('type')
+                            if pb_type == 'none':
+                                content_updates['content.page_background'] = {'type': 'none'}
+                            elif pb_type == 'gradient' and isinstance(pb.get('id'), str):
+                                content_updates['content.page_background'] = {'type': 'gradient', 'id': pb['id'][:32]}
+                            elif pb_type == 'image' and isinstance(pb.get('value'), str):
+                                val = pb['value']
+                                if val.startswith('data:image') or val.startswith('http'):
+                                    content_updates['content.page_background'] = {'type': 'image', 'value': val}
                     if 'hide_watermark' in section_data:
                         content_updates['content.hide_watermark'] = bool(section_data['hide_watermark'])
                     
@@ -678,6 +694,7 @@ class handler(BaseHTTPRequestHandler):
                     'cta_text': content.get('cta_text'),
                     'why_choose_us': content.get('why_choose_us'),
                     'faq': content.get('faq'),
+                    'services': content.get('services'),
                 }
                 payload_to_translate = {k: v for k, v in payload_to_translate.items() if v}
                 if not payload_to_translate:
@@ -695,6 +712,7 @@ class handler(BaseHTTPRequestHandler):
                 expected_keys = list(payload_to_translate.keys())
                 why_count = len(payload_to_translate.get('why_choose_us') or [])
                 faq_count = len(payload_to_translate.get('faq') or [])
+                services_count = len(payload_to_translate.get('services') or [])
 
                 prompt = (
                     f"Sei un traduttore professionista. Devi tradurre tutti i contenuti seguenti in {target_name}.\n\n"
@@ -706,7 +724,10 @@ class handler(BaseHTTPRequestHandler):
                     f"Lascia 'icon' IDENTICA. Mantieni esattamente {why_count} elementi, nello stesso ordine.\n"
                     f"5. Per l'array 'faq' ({faq_count} elementi): per OGNI oggetto traduci 'question' e 'answer'. "
                     f"Mantieni esattamente {faq_count} elementi, nello stesso ordine.\n"
-                    f"6. NON aggiungere ne omettere campi. NON abbreviare gli array.\n\n"
+                    f"6. Per l'array 'services' ({services_count} elementi): ogni elemento puo' essere una stringa O un oggetto. "
+                    f"Se stringa: traduci la stringa stessa in {target_name}. Se oggetto: traduci 'name' e 'description' (se presenti), "
+                    f"lascia invariati 'price' e 'image'. Mantieni esattamente {services_count} elementi, nello stesso ordine.\n"
+                    f"7. NON aggiungere ne omettere campi. NON abbreviare gli array.\n\n"
                     f"=== INPUT DA TRADURRE ===\n{input_json}\n\n"
                     f"=== OUTPUT (solo JSON {target_name}) ==="
                 )
@@ -756,6 +777,11 @@ class handler(BaseHTTPRequestHandler):
                     if not isinstance(tr_faq, list) or len(tr_faq) != faq_count:
                         missing_fields.append('faq')
                         translated['faq'] = payload_to_translate['faq']  # fallback
+                if 'services' in payload_to_translate:
+                    tr_sv = translated.get('services')
+                    if not isinstance(tr_sv, list) or len(tr_sv) != services_count:
+                        missing_fields.append('services')
+                        translated['services'] = payload_to_translate['services']  # fallback
 
                 update_ops = {
                     f"content.translations.{target_lang}": translated,

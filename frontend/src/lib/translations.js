@@ -781,14 +781,31 @@ export const COUNTRY_TO_LANGUAGE = {
 };
 
 // Mapping giorno inglese -> chiave
+// Mappa giorni in TUTTE le lingue supportate (input -> chiave canonica).
+// Usata da localizeHours: qualunque sia il giorno scritto da Google
+// (italiano, inglese, francese...) lo riconosciamo e lo riconvertiamo
+// nella lingua target dell'utente.
 const ENGLISH_DAY_MAP = {
-  'monday': 'monday',
-  'tuesday': 'tuesday',
-  'wednesday': 'wednesday',
-  'thursday': 'thursday',
-  'friday': 'friday',
-  'saturday': 'saturday',
-  'sunday': 'sunday'
+  // English
+  'monday': 'monday', 'tuesday': 'tuesday', 'wednesday': 'wednesday',
+  'thursday': 'thursday', 'friday': 'friday', 'saturday': 'saturday', 'sunday': 'sunday',
+  // Italian
+  'lunedì': 'monday', 'lunedi': 'monday',
+  'martedì': 'tuesday', 'martedi': 'tuesday',
+  'mercoledì': 'wednesday', 'mercoledi': 'wednesday',
+  'giovedì': 'thursday', 'giovedi': 'thursday',
+  'venerdì': 'friday', 'venerdi': 'friday',
+  'sabato': 'saturday',
+  'domenica': 'sunday',
+  // French
+  'lundi': 'monday', 'mardi': 'tuesday', 'mercredi': 'wednesday',
+  'jeudi': 'thursday', 'vendredi': 'friday', 'samedi': 'saturday', 'dimanche': 'sunday',
+  // Spanish
+  'lunes': 'monday', 'martes': 'tuesday', 'miércoles': 'wednesday', 'miercoles': 'wednesday',
+  'jueves': 'thursday', 'viernes': 'friday', 'sábado': 'saturday', 'sabado': 'saturday', 'domingo': 'sunday',
+  // German
+  'montag': 'monday', 'dienstag': 'tuesday', 'mittwoch': 'wednesday',
+  'donnerstag': 'thursday', 'freitag': 'friday', 'samstag': 'saturday', 'sonntag': 'sunday',
 };
 
 /**
@@ -863,40 +880,43 @@ export function localizeHours(hoursText, lang = 'it') {
   
   const dayTranslations = translations[lang]?.days || translations['it'].days;
   
-  // Traduzioni per "Closed" e altri termini comuni
+  // Traduzioni per "Closed" e altri termini comuni (riconosce input in QUALSIASI lingua supportata)
+  const closedAliases = ['Closed', 'Chiuso', 'Fermé', 'Ferme', 'Cerrado', 'Geschlossen'];
+  const openAliases   = ['Open',   'Aperto', 'Ouvert',         'Abierto', 'Geöffnet', 'Geoffnet'];
   const closedTranslations = {
-    it: 'Chiuso',
-    fr: 'Fermé',
-    en: 'Closed',
-    es: 'Cerrado',
-    de: 'Geschlossen'
+    it: 'Chiuso', fr: 'Fermé', en: 'Closed', es: 'Cerrado', de: 'Geschlossen'
   };
-  
   const openTranslations = {
-    it: 'Aperto',
-    fr: 'Ouvert',
-    en: 'Open',
-    es: 'Abierto',
-    de: 'Geöffnet'
+    it: 'Aperto', fr: 'Ouvert', en: 'Open', es: 'Abierto', de: 'Geöffnet'
   };
-  
+
   return hoursText.map(hourLine => {
     let localizedLine = hourLine;
-    
-    // Sostituisci giorni inglesi con traduzione
-    Object.entries(ENGLISH_DAY_MAP).forEach(([engDay, dayKey]) => {
-      const regex = new RegExp(engDay, 'gi');
+
+    // Sostituisci giorni in QUALUNQUE lingua con la traduzione target
+    Object.entries(ENGLISH_DAY_MAP).forEach(([sourceDay, dayKey]) => {
+      // \b non funziona bene con caratteri accentati; usiamo lookbehind/lookahead su lettere unicode
+      const escaped = sourceDay.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(?<![\\p{L}])${escaped}(?![\\p{L}])`, 'giu');
       const translatedDay = dayTranslations[dayKey];
-      localizedLine = localizedLine.replace(regex, translatedDay);
+      if (translatedDay) {
+        localizedLine = localizedLine.replace(regex, translatedDay);
+      }
     });
-    
-    // Traduci "Closed" nella lingua corretta
-    localizedLine = localizedLine.replace(/\bClosed\b/gi, closedTranslations[lang] || closedTranslations['it']);
-    localizedLine = localizedLine.replace(/\bOpen\b/gi, openTranslations[lang] || openTranslations['it']);
-    
+
+    // Traduci "Closed"/"Aperto" in qualsiasi lingua sorgente -> target
+    const targetClosed = closedTranslations[lang] || closedTranslations['it'];
+    const targetOpen   = openTranslations[lang]   || openTranslations['it'];
+    closedAliases.forEach((w) => {
+      localizedLine = localizedLine.replace(new RegExp(`\\b${w}\\b`, 'gi'), targetClosed);
+    });
+    openAliases.forEach((w) => {
+      localizedLine = localizedLine.replace(new RegExp(`\\b${w}\\b`, 'gi'), targetOpen);
+    });
+
     // Converti AM/PM a formato 24h se necessario
     localizedLine = convertTo24HourFormat(localizedLine);
-    
+
     return localizedLine;
   });
 }
@@ -1062,6 +1082,7 @@ export function getLocalizedContent(content, lang) {
     'tagline', 'homepage_subtitle', 'about_text',
     'services_intro', 'cta_text',
     'why_choose_us', 'faq',
+    'services', 'menu_categories',
   ];
   const merged = { ...content };
   for (const f of TRANSLATABLE_FIELDS) {
